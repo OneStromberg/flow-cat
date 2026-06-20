@@ -127,6 +127,7 @@ async function advance(deps: EngineDeps, phone: string, session: Session): Promi
     deps.sessions.set(phone, session);
     await askCurrent(deps, phone, session);
   } else {
+    deps.sessions.set(phone, session);
     await finalize(deps, phone, session);
   }
 }
