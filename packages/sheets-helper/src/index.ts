@@ -1,0 +1,4 @@
+export type { SheetsGateway } from './gateway.ts';
+export { rowsToObjects, objectToRow } from './rows.ts';
+export { createMemoryGateway } from './memory-gateway.ts';
+export { createGoogleGateway } from './google-gateway.ts';
