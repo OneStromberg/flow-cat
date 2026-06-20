@@ -22,6 +22,17 @@ test('parses an interactive list reply', () => {
   assert.deepEqual(r, { phone: '15551230000', text: 'Office HQ', selectionId: 'opt_2' });
 });
 
+test('parses an interactive button reply', () => {
+  const r = parseWebhook(
+    wrap({
+      from: '15551230000',
+      type: 'interactive',
+      interactive: { type: 'button_reply', button_reply: { id: 'btn_1', title: 'Yes' } },
+    }),
+  );
+  assert.deepEqual(r, { phone: '15551230000', text: 'Yes', selectionId: 'btn_1' });
+});
+
 test('returns null for status/non-message payloads', () => {
   assert.equal(parseWebhook({ entry: [{ changes: [{ value: { statuses: [{}] } }] }] }), null);
   assert.equal(parseWebhook({}), null);

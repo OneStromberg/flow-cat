@@ -15,3 +15,7 @@ test('rejects wrong/missing signatures', () => {
   assert.equal(verifySignature(body, 'sha256=deadbeef', secret), false);
   assert.equal(verifySignature(body, undefined, secret), false);
 });
+
+test('rejects an empty hex value (prefix only)', () => {
+  assert.equal(verifySignature(body, 'sha256=', secret), false);
+});
