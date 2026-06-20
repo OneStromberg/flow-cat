@@ -29,3 +29,23 @@ test('maps list (interactive)', () => {
   assert.equal(p.interactive.type, 'list');
   assert.equal(p.interactive.action.sections[0].rows[0].id, 'opt_0');
 });
+
+test('truncates button title to 20 chars', () => {
+  const longTitle = 'A'.repeat(25);
+  const p = toGraphPayload('555', {
+    kind: 'buttons',
+    body: 'Pick one',
+    buttons: [{ id: 'btn_0', title: longTitle }],
+  }) as any;
+  assert.equal(p.interactive.action.buttons[0].reply.title.length, 20);
+});
+
+test('truncates list row title to 24 chars', () => {
+  const longTitle = 'B'.repeat(30);
+  const p = toGraphPayload('555', {
+    kind: 'list',
+    body: 'Pick one',
+    rows: [{ id: 'row_0', title: longTitle }],
+  }) as any;
+  assert.equal(p.interactive.action.sections[0].rows[0].title.length, 24);
+});
