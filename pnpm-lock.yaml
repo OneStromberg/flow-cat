@@ -24,6 +24,12 @@ importers:
         specifier: ^144.0.0
         version: 144.0.0
 
+  packages/whatsapp-bot:
+    dependencies:
+      '@scourage/sheets-helper':
+        specifier: workspace:*
+        version: link:../sheets-helper
+
 packages:
 
   '@esbuild/aix-ppc64@0.28.1':
