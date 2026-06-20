@@ -23,3 +23,19 @@ test('inactive worker marked active=false; unknown phone null', async () => {
   assert.equal((await findWorker(gw(), '15559999999'))?.active, false);
   assert.equal(await findWorker(gw(), '10000000000'), null);
 });
+
+test('validates worker places against master Places tab; drops typos', async () => {
+  const g = createMemoryGateway({
+    Workers: [
+      ['phone', 'name', 'greeting', 'places', 'active'],
+      ['+1 555-123-0001', 'Alice', '', 'Warehouse, Offce HQ', 'yes'],
+    ],
+    Places: [
+      ['place_name', 'active'],
+      ['Warehouse', 'yes'],
+      ['Office HQ', 'yes'],
+    ],
+  });
+  const w = await findWorker(g, '15551230001');
+  assert.deepEqual(w?.places, ['Warehouse']);
+});

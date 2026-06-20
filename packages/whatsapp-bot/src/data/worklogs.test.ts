@@ -31,5 +31,5 @@ test('adds missing columns for a new question key', async () => {
 test('initializes header when WorkLogs is empty', async () => {
   const g = createMemoryGateway({ WorkLogs: [] });
   await appendWorkLog(g, { logged_at: 'T', phone: '555', name: 'John', place: 'W' }, ['place']);
-  assert.deepEqual(g.dump().WorkLogs[0], ['logged_at', 'phone', 'name', 'place', 'hours']);
+  assert.deepEqual(g.dump().WorkLogs[0], ['logged_at', 'phone', 'name', 'place']);
 });
