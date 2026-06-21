@@ -4,6 +4,7 @@ import { questionToWidget } from '../../../lib/form-widgets';
 import { WorkerForm } from './worker-form';
 
 export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 
 function Notice({ title, body }: { title: string; body: string }) {
   return (

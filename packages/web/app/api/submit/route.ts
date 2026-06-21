@@ -1,6 +1,8 @@
 import { getGateway, COMPANY_TZ } from '../../../lib/sheets';
 import { findWorkerByToken, loadQuestions, validateQuestions, submitWorklog } from '@scourage/worklog-core';
 
+export const runtime = 'nodejs';
+
 export async function POST(req: Request) {
   let body: unknown;
   try {
@@ -13,19 +15,19 @@ export async function POST(req: Request) {
     return Response.json({ error: 'bad request' }, { status: 400 });
   }
 
-  const gw = getGateway();
-  const worker = await findWorkerByToken(gw, token);
-  if (!worker || !worker.active) {
-    return Response.json({ error: 'invalid link' }, { status: 404 });
-  }
-
-  const questions = await loadQuestions(gw);
-  const valid = validateQuestions(questions);
-  if (!valid.ok) {
-    return Response.json({ error: 'not set up' }, { status: 503 });
-  }
-
   try {
+    const gw = getGateway();
+    const worker = await findWorkerByToken(gw, token);
+    if (!worker || !worker.active) {
+      return Response.json({ error: 'invalid link' }, { status: 404 });
+    }
+
+    const questions = await loadQuestions(gw);
+    const valid = validateQuestions(questions);
+    if (!valid.ok) {
+      return Response.json({ error: 'not set up' }, { status: 503 });
+    }
+
     const result = await submitWorklog(gw, worker, questions, answers as Record<string, string>, COMPANY_TZ, new Date());
     if (!result.ok) return Response.json({ errors: result.errors }, { status: 400 });
     return Response.json({ ok: true, hours: result.hours });
