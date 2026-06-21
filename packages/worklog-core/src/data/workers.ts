@@ -8,47 +8,41 @@ export interface Worker {
   greeting: string;
   places: string[];
   active: boolean;
+  token?: string;
 }
 
-export async function findWorker(
-  gateway: SheetsGateway,
-  phone: string,
-): Promise<Worker | null> {
+async function buildWorker(gateway: SheetsGateway, row: Record<string, string>): Promise<Worker> {
+  const workerPlaces = (row.places ?? '').split(',').map((s) => s.trim()).filter(Boolean);
+  const master = await loadActivePlaces(gateway);
+  const masterLower = master.map((m) => m.toLowerCase());
+  const places = master.length === 0
+    ? workerPlaces
+    : workerPlaces.filter((p) => {
+        const ok = masterLower.includes(p.toLowerCase());
+        if (!ok) console.warn(`Worker ${normalizePhone(row.phone ?? '')}: place "${p}" not in active Places master — skipped`);
+        return ok;
+      });
+  return {
+    phone: normalizePhone(row.phone ?? ''),
+    name: (row.name ?? '').trim(),
+    greeting: (row.greeting ?? '').trim(),
+    places,
+    active: (row.active ?? '').trim().toLowerCase() !== 'no',
+    token: (row.token ?? '').trim(),
+  };
+}
+
+export async function findWorker(gateway: SheetsGateway, phone: string): Promise<Worker | null> {
   const target = normalizePhone(phone);
   const objs = rowsToObjects(await gateway.readTab('Workers'));
   const row = objs.find((o) => normalizePhone(o.phone ?? '') === target);
-  if (!row) return null;
+  return row ? buildWorker(gateway, row) : null;
+}
 
-  const workerPlaces = (row.places ?? '')
-    .split(',')
-    .map((s) => s.trim())
-    .filter(Boolean);
-
-  const masterPlaces = await loadActivePlaces(gateway);
-
-  let resolvedPlaces: string[];
-  if (masterPlaces.length === 0) {
-    // Master list is empty (tab missing or empty) — keep worker places as-is.
-    resolvedPlaces = workerPlaces;
-  } else {
-    const masterLower = masterPlaces.map((p) => p.toLowerCase());
-    resolvedPlaces = [];
-    for (const place of workerPlaces) {
-      if (masterLower.includes(place.toLowerCase())) {
-        resolvedPlaces.push(place);
-      } else {
-        console.warn(
-          `Worker ${target}: place "${place}" not in active Places master — skipped`,
-        );
-      }
-    }
-  }
-
-  return {
-    phone: target,
-    name: (row.name ?? '').trim(),
-    greeting: (row.greeting ?? '').trim(),
-    places: resolvedPlaces,
-    active: (row.active ?? '').trim().toLowerCase() !== 'no',
-  };
+export async function findWorkerByToken(gateway: SheetsGateway, token: string): Promise<Worker | null> {
+  const t = (token ?? '').trim();
+  if (!t) return null;
+  const objs = rowsToObjects(await gateway.readTab('Workers'));
+  const row = objs.find((o) => (o.token ?? '').trim() === t);
+  return row ? buildWorker(gateway, row) : null;
 }

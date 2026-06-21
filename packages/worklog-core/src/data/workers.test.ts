@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createMemoryGateway } from '@scourage/sheets-helper';
-import { findWorker } from './workers.ts';
+import { findWorker, findWorkerByToken } from './workers.ts';
 
 const gw = () =>
   createMemoryGateway({
@@ -38,4 +38,18 @@ test('validates worker places against master Places tab; drops typos', async () 
   });
   const w = await findWorker(g, '15551230001');
   assert.deepEqual(w?.places, ['Warehouse']);
+});
+
+test('finds worker by token', async () => {
+  const g = createMemoryGateway({
+    Workers: [
+      ['phone', 'name', 'greeting', 'places', 'active', 'token'],
+      ['15551230000', 'John', '', 'Warehouse', 'yes', 'abc123'],
+    ],
+  });
+  const w = await findWorkerByToken(g, 'abc123');
+  assert.equal(w?.name, 'John');
+  assert.equal(w?.token, 'abc123');
+  assert.equal(await findWorkerByToken(g, 'nope'), null);
+  assert.equal(await findWorkerByToken(g, ''), null);
 });
