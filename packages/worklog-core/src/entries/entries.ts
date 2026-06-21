@@ -41,15 +41,10 @@ async function readEntries(gateway: SheetsGateway): Promise<{ header: string[]; 
   return { header, entries };
 }
 
-function phonesMatch(a: string, b: string): boolean {
-  const na = normalizePhone(a);
-  const nb = normalizePhone(b);
-  return na === nb || na.endsWith(nb) || nb.endsWith(na);
-}
-
 export async function listWorkerEntries(gateway: SheetsGateway, phone: string): Promise<WorkEntry[]> {
   const { entries } = await readEntries(gateway);
-  return entries.filter((e) => phonesMatch(e.phone, phone)).reverse();
+  const target = normalizePhone(phone);
+  return entries.filter((e) => normalizePhone(e.phone) === target).reverse();
 }
 
 export async function getEntry(gateway: SheetsGateway, id: string): Promise<WorkEntry | null> {
@@ -71,7 +66,7 @@ export async function updateEntry(
   const { header, entries } = await readEntries(gateway);
   const entry = entries.find((e) => e.id === (id ?? '').trim());
   if (!entry) return { ok: false, reason: 'not_found' };
-  if (!phonesMatch(entry.phone, worker.phone)) return { ok: false, reason: 'forbidden' };
+  if (normalizePhone(entry.phone) !== normalizePhone(worker.phone)) return { ok: false, reason: 'forbidden' };
   if (entry.locked) return { ok: false, reason: 'locked' };
 
   const v = validateAnswers(questions, answers, worker, tz, now);

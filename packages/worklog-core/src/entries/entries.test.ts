@@ -9,12 +9,12 @@ const HEADER = ['logged_at', 'phone', 'name', 'id', 'place', 'date', 'start', 'e
 const seed = () => ({
   WorkLogs: [
     HEADER,
-    ['T1', '555', 'John', 'e1', 'Warehouse', '2026-06-19', '08:00', '16:00', '8', ''],
-    ['T2', '555', 'John', 'e2', 'Office HQ', '2026-06-20', '09:00', '17:30', '8.5', 'yes'],
-    ['T3', '999', 'Maria', 'e3', 'Warehouse', '2026-06-20', '08:00', '12:00', '4', ''],
+    ['T1', '15551230000', 'John', 'e1', 'Warehouse', '2026-06-19', '08:00', '16:00', '8', ''],
+    ['T2', '15551230000', 'John', 'e2', 'Office HQ', '2026-06-20', '09:00', '17:30', '8.5', 'yes'],
+    ['T3', '19999999999', 'Maria', 'e3', 'Warehouse', '2026-06-20', '08:00', '12:00', '4', ''],
   ],
 });
-const worker: Worker = { phone: '555', name: 'John', greeting: '', places: ['Warehouse', 'Office HQ'], active: true, teudatZeut: '1' };
+const worker: Worker = { phone: '15551230000', name: 'John', greeting: '', places: ['Warehouse', 'Office HQ'], active: true, teudatZeut: '1' };
 const questions: Question[] = [
   { order: 1, key: 'place', type: 'worker_places', text: 'Where?', options: [], required: true },
   { order: 2, key: 'date', type: 'date', text: 'Day?', options: [], required: true },
@@ -25,7 +25,7 @@ const now = new Date('2026-06-21T09:00:00Z');
 
 test('lists only this worker entries, newest first', async () => {
   const g = createMemoryGateway(seed());
-  const entries = await listWorkerEntries(g, '+1 555');
+  const entries = await listWorkerEntries(g, '+1 (555) 123-0000');
   assert.equal(entries.length, 2);
   assert.deepEqual(entries.map((e) => e.id), ['e2', 'e1']); // newest (later row) first
   assert.equal(entries[0].locked, true);
