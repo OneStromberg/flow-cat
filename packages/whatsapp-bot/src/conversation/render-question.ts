@@ -1,5 +1,4 @@
-import type { Question } from '../questions/types.ts';
-import type { Worker } from '../data/workers.ts';
+import type { Question, Worker } from '@scourage/worklog-core';
 import type { OutboundMessage } from '../whatsapp/types.ts';
 
 function optionList(text: string, options: string[]): OutboundMessage {

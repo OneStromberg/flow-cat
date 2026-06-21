@@ -29,6 +29,15 @@ importers:
       '@scourage/sheets-helper':
         specifier: workspace:*
         version: link:../sheets-helper
+      '@scourage/worklog-core':
+        specifier: workspace:*
+        version: link:../worklog-core
+
+  packages/worklog-core:
+    dependencies:
+      '@scourage/sheets-helper':
+        specifier: workspace:*
+        version: link:../sheets-helper
 
 packages:
 

@@ -1,7 +1,7 @@
 import { createGoogleGateway } from '@scourage/sheets-helper';
 import type { Config } from './config.ts';
 import { createConsoleClient } from './whatsapp/console-client.ts';
-import { loadQuestions } from './questions/load-questions.ts';
+import { loadQuestions } from '@scourage/worklog-core';
 import { createMemorySessionStore } from './conversation/session-store.ts';
 import type { EngineDeps } from './conversation/engine.ts';
 import type { WhatsAppClient } from './whatsapp/types.ts';

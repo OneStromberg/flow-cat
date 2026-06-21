@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createMemorySessionStore, type Session } from './session-store.ts';
-import type { Worker } from '../data/workers.ts';
+import type { Worker } from '@scourage/worklog-core';
 
 const worker: Worker = { phone: '555', name: 'John', greeting: '', places: [], active: true };
 const sess = (updatedAt: number): Session => ({ worker, questions: [], index: 0, answers: {}, updatedAt });

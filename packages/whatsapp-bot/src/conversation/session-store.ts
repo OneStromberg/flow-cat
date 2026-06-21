@@ -1,5 +1,4 @@
-import type { Worker } from '../data/workers.ts';
-import type { Question } from '../questions/types.ts';
+import type { Worker, Question } from '@scourage/worklog-core';
 
 export interface Session {
   worker: Worker;

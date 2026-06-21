@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { createMemoryGateway } from '@scourage/sheets-helper';
 import { createConsoleClient } from '../whatsapp/console-client.ts';
 import { createMemorySessionStore } from './session-store.ts';
-import { loadQuestions } from '../questions/load-questions.ts';
+import { loadQuestions } from '@scourage/worklog-core';
 import { handleMessage, type EngineDeps } from './engine.ts';
 
 test('console transport drives a full conversation end to end', async () => {

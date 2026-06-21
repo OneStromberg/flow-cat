@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { createMemoryGateway, type SheetsGateway } from '@scourage/sheets-helper';
 import { handleMessage, type EngineDeps } from './engine.ts';
 import { createMemorySessionStore } from './session-store.ts';
-import { loadQuestions } from '../questions/load-questions.ts';
+import { loadQuestions } from '@scourage/worklog-core';
 import type { OutboundMessage, WhatsAppClient } from '../whatsapp/types.ts';
 
 const DEFAULT_QUESTIONS = [

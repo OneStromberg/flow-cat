@@ -9,6 +9,7 @@
     "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {
-    "@scourage/sheets-helper": "workspace:*"
+    "@scourage/sheets-helper": "workspace:*",
+    "@scourage/worklog-core": "workspace:*"
   }
 }

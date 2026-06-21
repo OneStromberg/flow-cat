@@ -1,4 +1,4 @@
-import { objectToRow, rowsToObjects, type SheetsGateway } from '@scourage/sheets-helper';
+import { objectToRow, type SheetsGateway } from '@scourage/sheets-helper';
 
 export async function appendWorkLog(
   gateway: SheetsGateway,
@@ -23,6 +23,3 @@ export async function appendWorkLog(
 
   await gateway.appendRow('WorkLogs', objectToRow(record, header));
 }
-
-// re-export for callers that want to read back (kept minimal; unused by bot today)
-export { rowsToObjects };

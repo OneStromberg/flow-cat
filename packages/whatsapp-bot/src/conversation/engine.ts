@@ -1,11 +1,6 @@
 import type { SheetsGateway } from '@scourage/sheets-helper';
 import type { InboundMessage, WhatsAppClient } from '../whatsapp/types.ts';
-import type { Question } from '../questions/types.ts';
-import { validateQuestions } from '../questions/validate-config.ts';
-import { findWorker, type Worker } from '../data/workers.ts';
-import { appendWorkLog } from '../data/worklogs.ts';
-import { normalizePhone } from '../data/phone.ts';
-import { parseClockTime, computeHours } from '../time/clock.ts';
+import { findWorker, appendWorkLog, normalizePhone, validateQuestions, parseClockTime, computeHours, type Worker, type Question } from '@scourage/worklog-core';
 import { renderQuestion } from './render-question.ts';
 import { parseAnswer } from './parse-answer.ts';
 import { type Session, type SessionStore } from './session-store.ts';

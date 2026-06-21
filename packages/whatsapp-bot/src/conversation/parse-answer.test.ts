@@ -1,8 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { parseAnswer } from './parse-answer.ts';
-import type { Question } from '../questions/types.ts';
-import type { Worker } from '../data/workers.ts';
+import type { Question, Worker } from '@scourage/worklog-core';
 
 const tz = 'Asia/Jerusalem';
 const now = new Date('2026-06-20T09:00:00Z');

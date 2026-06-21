@@ -1,8 +1,6 @@
-import type { Question } from '../questions/types.ts';
-import type { Worker } from '../data/workers.ts';
+import type { Question, Worker } from '@scourage/worklog-core';
+import { parseClockTime, resolveTypedDate, todayISO, yesterdayISO } from '@scourage/worklog-core';
 import type { InboundMessage } from '../whatsapp/types.ts';
-import { parseClockTime } from '../time/clock.ts';
-import { resolveTypedDate, todayISO, yesterdayISO } from '../time/dates.ts';
 
 type Result = { ok: true; value: string } | { ok: false; reprompt: string };
 
