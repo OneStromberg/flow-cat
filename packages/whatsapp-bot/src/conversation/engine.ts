@@ -1,6 +1,6 @@
 import type { SheetsGateway } from '@scourage/sheets-helper';
 import type { InboundMessage, WhatsAppClient } from '../whatsapp/types.ts';
-import { findWorker, appendWorkLog, normalizePhone, validateQuestions, parseClockTime, computeHours, type Worker, type Question } from '@scourage/worklog-core';
+import { findWorker, appendWorkLog, normalizePhone, validateQuestions, parseClockTime, computeHours, buildWorklogRecord, type Worker, type Question } from '@scourage/worklog-core';
 import { renderQuestion } from './render-question.ts';
 import { parseAnswer } from './parse-answer.ts';
 import { type Session, type SessionStore } from './session-store.ts';
@@ -128,25 +128,7 @@ async function advance(deps: EngineDeps, phone: string, session: Session): Promi
 }
 
 async function finalize(deps: EngineDeps, phone: string, session: Session): Promise<void> {
-  const record: Record<string, string> = {
-    logged_at: deps.now().toISOString(),
-    phone: session.worker.phone,
-    name: session.worker.name,
-  };
-  for (const q of session.questions) record[q.key] = session.answers[q.key] ?? '';
-
-  const startQ = session.questions.find((q) => q.key === 'start' && q.type === 'time');
-  const endQ = session.questions.find((q) => q.key === 'end' && q.type === 'time');
-  if (startQ && endQ && session.answers['start'] && session.answers['end']) {
-    const start = parseClockTime(session.answers['start']);
-    const end = parseClockTime(session.answers['end']);
-    if (start && end) {
-      const h = computeHours(start, end);
-      if (h !== null) record['hours'] = String(h);
-    }
-  }
-
-  const keys = session.questions.map((q) => q.key);
+  const { record, keys } = buildWorklogRecord(session.worker, session.questions, session.answers, deps.now());
   try {
     await appendWorkLog(deps.gateway, record, keys);
   } catch (err) {
