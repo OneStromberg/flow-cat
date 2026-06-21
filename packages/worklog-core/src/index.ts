@@ -14,3 +14,4 @@ export { validateAnswers } from './submit/validate-answers.ts';
 export { submitWorklog } from './submit/submit-worklog.ts';
 export type { WorkEntry } from './entries/entries.ts';
 export { listWorkerEntries, getEntry, updateEntry } from './entries/entries.ts';
+export { createSession, readSession } from './session/session.ts';
