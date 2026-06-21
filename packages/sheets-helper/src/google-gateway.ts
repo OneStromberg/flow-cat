@@ -1,15 +1,9 @@
 import { google } from 'googleapis';
 import type { SheetsGateway } from './gateway.ts';
+import { buildSheetsAuth, type SheetsAuthOptions } from './auth.ts';
 
-export function createGoogleGateway(opts: {
-  keyFilePath: string;
-  spreadsheetId: string;
-}): SheetsGateway {
-  const auth = new google.auth.GoogleAuth({
-    keyFile: opts.keyFilePath,
-    scopes: ['https://www.googleapis.com/auth/spreadsheets'],
-  });
-  const sheets = google.sheets({ version: 'v4', auth });
+export function createGoogleGateway(opts: SheetsAuthOptions): SheetsGateway {
+  const sheets = google.sheets({ version: 'v4', auth: buildSheetsAuth(opts) });
   const { spreadsheetId } = opts;
 
   return {
