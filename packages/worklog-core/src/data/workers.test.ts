@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createMemoryGateway } from '@scourage/sheets-helper';
-import { findWorker, findWorkerByToken } from './workers.ts';
+import { findWorker, findWorkerByToken, authenticateWorker } from './workers.ts';
 
 const gw = () =>
   createMemoryGateway({
@@ -52,4 +52,18 @@ test('finds worker by token', async () => {
   assert.equal(w?.token, 'abc123');
   assert.equal(await findWorkerByToken(g, 'nope'), null);
   assert.equal(await findWorkerByToken(g, ''), null);
+});
+
+test('parses teudat_zeut and authenticates by phone + teudat', async () => {
+  const g = createMemoryGateway({
+    Workers: [
+      ['phone', 'name', 'greeting', 'places', 'active', 'teudat_zeut'],
+      ['15551230000', 'John', '', 'Warehouse', 'yes', '123456782'],
+    ],
+  });
+  const ok = await authenticateWorker(g, '+1 555-123-0000', '123456782');
+  assert.equal(ok?.name, 'John');
+  assert.equal(ok?.teudatZeut, '123456782');
+  assert.equal(await authenticateWorker(g, '15551230000', '999999999'), null); // wrong teudat
+  assert.equal(await authenticateWorker(g, '10000000000', '123456782'), null); // wrong phone
 });

@@ -4,6 +4,7 @@ import type { Worker } from '../data/workers.ts';
 import { appendWorkLog } from '../data/worklogs.ts';
 import { validateAnswers } from './validate-answers.ts';
 import { buildWorklogRecord } from './build-record.ts';
+import { generateToken } from '../data/tokens.ts';
 
 export async function submitWorklog(
   gateway: SheetsGateway,
@@ -16,6 +17,8 @@ export async function submitWorklog(
   const v = validateAnswers(questions, answers, worker, tz, now);
   if (!v.ok) return v;
   const { record, keys } = buildWorklogRecord(worker, questions, answers, now);
+  record.id = generateToken();
+  record.locked = '';
   await appendWorkLog(gateway, record, keys);
   return { ok: true, hours: record['hours'] ?? null };
 }

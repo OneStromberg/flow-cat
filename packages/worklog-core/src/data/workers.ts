@@ -9,6 +9,7 @@ export interface Worker {
   places: string[];
   active: boolean;
   token?: string;
+  teudatZeut: string;
 }
 
 async function buildWorker(gateway: SheetsGateway, row: Record<string, string>): Promise<Worker> {
@@ -29,6 +30,7 @@ async function buildWorker(gateway: SheetsGateway, row: Record<string, string>):
     places,
     active: (row.active ?? '').trim().toLowerCase() !== 'no',
     token: (row.token ?? '').trim(),
+    teudatZeut: (row.teudat_zeut ?? '').trim(),
   };
 }
 
@@ -45,4 +47,15 @@ export async function findWorkerByToken(gateway: SheetsGateway, token: string): 
   const objs = rowsToObjects(await gateway.readTab('Workers'));
   const row = objs.find((o) => (o.token ?? '').trim() === t);
   return row ? buildWorker(gateway, row) : null;
+}
+
+export async function authenticateWorker(
+  gateway: SheetsGateway,
+  phone: string,
+  teudatZeut: string,
+): Promise<Worker | null> {
+  const worker = await findWorker(gateway, phone);
+  if (!worker || !worker.active) return null;
+  if (worker.teudatZeut === '' || worker.teudatZeut !== teudatZeut.trim()) return null;
+  return worker;
 }

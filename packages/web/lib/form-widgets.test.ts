@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { questionToWidget } from './form-widgets.ts';
 import type { Question, Worker } from '@scourage/worklog-core';
 
-const worker: Worker = { phone: '5', name: 'J', greeting: '', places: ['Warehouse', 'Office HQ'], active: true };
+const worker: Worker = { phone: '5', name: 'J', greeting: '', places: ['Warehouse', 'Office HQ'], active: true, teudatZeut: '' };
 const q = (o: Partial<Question>): Question => ({ order: 1, key: 'k', type: 'text', text: 'T', options: [], required: true, ...o });
 
 test('worker_places -> select of worker places', () => {

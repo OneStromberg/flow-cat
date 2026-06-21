@@ -5,7 +5,7 @@ import type { Question, Worker } from '@scourage/worklog-core';
 
 const tz = 'Asia/Jerusalem';
 const now = new Date('2026-06-20T09:00:00Z');
-const worker: Worker = { phone: '555', name: 'John', greeting: '', places: ['Warehouse', 'Office HQ'], active: true };
+const worker: Worker = { phone: '555', name: 'John', greeting: '', places: ['Warehouse', 'Office HQ'], active: true, teudatZeut: '' };
 const q = (o: Partial<Question>): Question => ({ order: 1, key: 'k', type: 'text', text: 'T', options: [], required: true, ...o });
 
 test('worker_places accepts list id and typed number/label', () => {

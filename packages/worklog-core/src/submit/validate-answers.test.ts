@@ -5,7 +5,7 @@ import type { Question } from '../questions/types.ts';
 import type { Worker } from '../data/workers.ts';
 
 const q = (o: Partial<Question>): Question => ({ order: 1, key: 'k', type: 'text', text: 'T', options: [], required: true, ...o });
-const worker: Worker = { phone: '5', name: 'J', greeting: '', places: ['Warehouse', 'Office HQ'], active: true };
+const worker: Worker = { phone: '5', name: 'J', greeting: '', places: ['Warehouse', 'Office HQ'], active: true, teudatZeut: '' };
 const tz = 'Asia/Jerusalem';
 const now = new Date('2026-06-20T09:00:00Z');
 const questions = [

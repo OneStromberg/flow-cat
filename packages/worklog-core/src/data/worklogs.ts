@@ -5,8 +5,11 @@ export async function appendWorkLog(
   record: Record<string, string>,
   questionKeys: string[],
 ): Promise<void> {
-  const desired = ['logged_at', 'phone', 'name', ...questionKeys];
+  const desired = ['logged_at', 'phone', 'name'];
+  if (record.id !== undefined) desired.push('id');
+  desired.push(...questionKeys);
   if (record.hours !== undefined && record.hours !== '') desired.push('hours');
+  if (record.locked !== undefined) desired.push('locked');
 
   const rows = await gateway.readTab('WorkLogs');
   const existing = rows[0] && rows[0].length ? rows[0].map((h) => h.trim()) : [];

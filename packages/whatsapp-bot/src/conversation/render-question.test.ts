@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { renderQuestion } from './render-question.ts';
 import type { Question, Worker } from '@scourage/worklog-core';
 
-const worker: Worker = { phone: '555', name: 'John', greeting: '', places: ['Warehouse', 'Office HQ'], active: true };
+const worker: Worker = { phone: '555', name: 'John', greeting: '', places: ['Warehouse', 'Office HQ'], active: true, teudatZeut: '' };
 const q = (o: Partial<Question>): Question => ({ order: 1, key: 'k', type: 'text', text: 'T', options: [], required: true, ...o });
 
 test('worker_places renders a list of the worker places', () => {
