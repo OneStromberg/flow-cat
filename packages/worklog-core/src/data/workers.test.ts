@@ -67,3 +67,14 @@ test('parses teudat_zeut and authenticates by phone + teudat', async () => {
   assert.equal(await authenticateWorker(g, '15551230000', '999999999'), null); // wrong teudat
   assert.equal(await authenticateWorker(g, '10000000000', '123456782'), null); // wrong phone
 });
+
+test('never authenticates a worker whose stored teudat_zeut is empty', async () => {
+  const g = createMemoryGateway({
+    Workers: [
+      ['phone', 'name', 'greeting', 'places', 'active', 'teudat_zeut'],
+      ['15551230000', 'NoTeudat', '', 'Warehouse', 'yes', ''],
+    ],
+  });
+  assert.equal(await authenticateWorker(g, '15551230000', ''), null);
+  assert.equal(await authenticateWorker(g, '15551230000', '123456782'), null);
+});
