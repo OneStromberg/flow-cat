@@ -12,3 +12,5 @@ export { todayISO, yesterdayISO, resolveTypedDate } from './time/dates.ts';
 export { buildWorklogRecord } from './submit/build-record.ts';
 export { validateAnswers } from './submit/validate-answers.ts';
 export { submitWorklog } from './submit/submit-worklog.ts';
+export type { WorkEntry } from './entries/entries.ts';
+export { listWorkerEntries, getEntry, updateEntry } from './entries/entries.ts';
