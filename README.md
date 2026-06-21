@@ -5,6 +5,7 @@ WhatsApp work-log bot + Google Sheets backend (pnpm monorepo).
 ## Packages
 - `packages/sheets-helper` — Google Sheets access library (service-account auth, generic tab read/append).
 - `packages/whatsapp-bot` — the bot (data-driven conversation engine, console + Cloud API transports).
+- `packages/web` — FlowCat web form (Vercel). See `packages/web/README.md`.
 
 ## Quick start (local, no Meta needed)
 1. `pnpm install`
@@ -16,6 +17,10 @@ WhatsApp work-log bot + Google Sheets backend (pnpm monorepo).
 
 ## Tests
 `pnpm -r test`
+
+## packages/web — FlowCat web form (Vercel)
+The worker form (`/w/<token>`) renders from the `Questions` tab and writes to `WorkLogs`.
+See `packages/web/README.md`. Admin UI is Plan B.
 
 ## Going live (later)
 Set `WHATSAPP_TRANSPORT=cloud`, fill the Meta vars in `.env`, run `pnpm --filter @scourage/whatsapp-bot dev`, expose `:3000` via an HTTPS tunnel (ngrok), and point the Meta webhook at `<tunnel>/webhook`.
