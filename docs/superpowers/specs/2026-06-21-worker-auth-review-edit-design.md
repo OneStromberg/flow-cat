@@ -24,6 +24,7 @@ separate later plan.
 | Access | Shared `/login` page (phone + teudat zeut); **replaces** the per-worker `/w/<token>` magic link. |
 | Second factor | **teudat zeut**, exact-match (trimmed) against a `teudat_zeut` column. Knowledge factor — adequate for an internal tool (noted, not strong auth). |
 | Session | **Session cookie** (no expiry → cleared when the browser closes), HttpOnly + Secure, **HMAC-signed**, holds only the worker's phone. |
+| Cookie signing key | **No new env var required.** Derived (one-way) from the existing `GOOGLE_SERVICE_ACCOUNT_JSON` secret; an optional `SESSION_SECRET` env var overrides it if ever set. |
 | Worker abilities | Enter new entry · review own hours · **edit** unlocked entries. No delete. |
 | Locked entries | Admin sets a `locked` column on `WorkLogs`; worker sees those read-only. |
 | Old entries (no `id`) | Shown in review but **not editable** (nothing to target). No backfill in v1. |
@@ -58,9 +59,15 @@ protected API route. Missing/invalid → redirect to `/login` (pages) or `401` (
   On success, set the session cookie. On any mismatch, return a single generic
   error ("Phone number or teudat zeut didn't match") — never reveal which field.
 - **Session cookie:** name `fc_session`; value = `base64url(payload) + "." + hmac`,
-  where `payload = { phone, iat }` and the HMAC-SHA256 is keyed by `SESSION_SECRET`.
+  where `payload = { phone, iat }` and the HMAC-SHA256 is keyed by the **signing key**.
   Flags: `HttpOnly; Secure; SameSite=Lax; Path=/` and **no `Max-Age`/`Expires`**
   (session cookie → cleared on browser close). The cookie holds **only the phone**.
+- **Signing key (no new env var):** `getSigningKey()` returns `process.env.SESSION_SECRET`
+  if set, else derives a stable key as `HMAC-SHA256("flowcat-session", <service-account
+  private_key from GOOGLE_SERVICE_ACCOUNT_JSON>)`. The SA private key is high-entropy and
+  server-only, so the derived key is secure and requires **zero new configuration**.
+  (Rotating the SA key invalidates live sessions — negligible, since they're
+  browser-close session cookies and the worker just logs in again.)
 - **`session.ts` lib (worklog-core or web/lib):**
   - `createSession(phone: string, secret: string): string` — signs the cookie value.
   - `readSession(value: string, secret: string): { phone: string } | null` —
@@ -140,7 +147,7 @@ Add to both the `SheetsGateway` interface and the Google + memory gateways.
 - **web:** login route (match → cookie set; mismatch → 401); `/api/submit` now
   session-based (401 without cookie); `PATCH /api/entries/[id]` (locked → 403,
   not-owned → 403, valid → updates).
-- New env var **`SESSION_SECRET`** in Vercel + `packages/web/.env.local` + `.env.local.example`.
+- **No new required env var.** `SESSION_SECRET` is optional (documented in `.env.local.example`); by default the signing key is derived from `GOOGLE_SERVICE_ACCOUNT_JSON`. `getSigningKey()` is unit-tested for both the env-set and derived paths.
 
 ## 10. Out of scope (this build) / future
 
