@@ -437,7 +437,7 @@ import type { Question } from '../questions/types.ts';
 import type { Worker } from '../data/workers.ts';
 
 const q = (o: Partial<Question>): Question => ({ order: 1, key: 'k', type: 'text', text: 'T', options: [], required: true, ...o });
-const worker: Worker = { phone: '5', name: 'J', greeting: '', places: ['Warehouse', 'Office HQ'], active: true, token: 't' };
+const worker: Worker = { phone: '5', name: 'J', greeting: '', places: ['Warehouse', 'Office HQ'], active: true };
 const tz = 'Asia/Jerusalem';
 const now = new Date('2026-06-20T09:00:00Z');
 const questions = [
@@ -540,7 +540,7 @@ import type { Question } from '../questions/types.ts';
 import type { Worker } from '../data/workers.ts';
 
 const q = (o: Partial<Question>): Question => ({ order: 1, key: 'k', type: 'text', text: 'T', options: [], required: true, ...o });
-const worker: Worker = { phone: '555', name: 'John', greeting: '', places: ['Warehouse'], active: true, token: 't' };
+const worker: Worker = { phone: '555', name: 'John', greeting: '', places: ['Warehouse'], active: true };
 const questions = [q({ key: 'place', type: 'worker_places' }), q({ key: 'start', type: 'time' }), q({ key: 'end', type: 'time' })];
 const now = new Date('2026-06-20T09:00:00Z');
 
@@ -710,7 +710,7 @@ export interface Worker {
   greeting: string;
   places: string[];
   active: boolean;
-  token: string;
+  token?: string;
 }
 
 async function buildWorker(gateway: SheetsGateway, row: Record<string, string>): Promise<Worker> {
@@ -989,7 +989,7 @@ import assert from 'node:assert/strict';
 import { questionToWidget } from './form-widgets.ts';
 import type { Question, Worker } from '@scourage/worklog-core';
 
-const worker: Worker = { phone: '5', name: 'J', greeting: '', places: ['Warehouse', 'Office HQ'], active: true, token: 't' };
+const worker: Worker = { phone: '5', name: 'J', greeting: '', places: ['Warehouse', 'Office HQ'], active: true };
 const q = (o: Partial<Question>): Question => ({ order: 1, key: 'k', type: 'text', text: 'T', options: [], required: true, ...o });
 
 test('worker_places -> select of worker places', () => {
