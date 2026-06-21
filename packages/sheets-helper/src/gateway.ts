@@ -5,4 +5,6 @@ export interface SheetsGateway {
   writeHeaderRow(tab: string, headers: string[]): Promise<void>;
   /** Appends a single row to the bottom of a tab. */
   appendRow(tab: string, row: string[]): Promise<void>;
+  /** Overwrites the given 1-based row number (row 1 = header) with `row`. */
+  updateRow(tab: string, rowNumber: number, row: string[]): Promise<void>;
 }

@@ -28,5 +28,13 @@ export function createGoogleGateway(opts: SheetsAuthOptions): SheetsGateway {
         requestBody: { values: [row] },
       });
     },
+    async updateRow(tab, rowNumber, row) {
+      await sheets.spreadsheets.values.update({
+        spreadsheetId,
+        range: `${tab}!A${rowNumber}`,
+        valueInputOption: 'RAW',
+        requestBody: { values: [row] },
+      });
+    },
   };
 }

@@ -15,6 +15,10 @@ export function createMemoryGateway(
     async appendRow(tab, row) {
       (tabs[tab] ??= []).push([...row]);
     },
+    async updateRow(tab, rowNumber, row) {
+      const t = (tabs[tab] ??= []);
+      t[rowNumber - 1] = [...row];
+    },
     dump() {
       return tabs;
     },

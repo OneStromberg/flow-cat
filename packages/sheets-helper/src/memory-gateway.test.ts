@@ -14,3 +14,9 @@ test('memory gateway appends rows and writes header', async () => {
   await g.appendRow('WorkLogs', ['555', 'John']);
   assert.deepEqual(g.dump().WorkLogs, [['phone', 'name'], ['555', 'John']]);
 });
+
+test('memory gateway updates a specific row', async () => {
+  const g = createMemoryGateway({ WorkLogs: [['id', 'name'], ['a', 'John'], ['b', 'Maria']] });
+  await g.updateRow('WorkLogs', 3, ['b', 'Maria Updated']);
+  assert.deepEqual(g.dump().WorkLogs, [['id', 'name'], ['a', 'John'], ['b', 'Maria Updated']]);
+});
