@@ -26,3 +26,9 @@ export async function requireWorker(): Promise<Worker | null> {
   if (!session) return null;
   return findWorker(getGateway(), session.phone);
 }
+
+export async function requireAdmin(): Promise<Worker | null> {
+  const worker = await requireWorker();
+  if (!worker || !worker.active || worker.admin !== true) return null;
+  return worker;
+}

@@ -22,7 +22,7 @@ export function LoginForm() {
       });
       const data = await res.json();
       if (res.ok && data.ok) {
-        router.replace('/app');
+        router.replace('/');
         router.refresh();
       } else {
         setError(data.error ?? 'Login failed.');
