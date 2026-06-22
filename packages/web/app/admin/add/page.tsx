@@ -1,0 +1,26 @@
+import { redirect } from 'next/navigation';
+import { requireAdmin } from '../../../lib/session';
+import { getGateway } from '../../../lib/sheets';
+import { loadActivePlaces, TRANSPORTATION, HEBREW_LEVEL, PAY_TYPE, SCHEDULE } from '@scourage/worklog-core';
+import { AddWorkerForm } from './add-worker-form';
+
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+
+export default async function AddWorkerPage() {
+  const admin = await requireAdmin();
+  if (!admin) redirect('/');
+  const places = await loadActivePlaces(getGateway());
+  return (
+    <main className="mx-auto max-w-md p-5">
+      <div className="flex items-center justify-between">
+        <h1 className="text-xl font-semibold">Add worker</h1>
+        <a href="/admin" className="text-sm text-gray-500 underline">Back</a>
+      </div>
+      <AddWorkerForm
+        places={places}
+        enums={{ transportation: TRANSPORTATION, hebrewLevel: HEBREW_LEVEL, payType: PAY_TYPE, schedule: SCHEDULE }}
+      />
+    </main>
+  );
+}
