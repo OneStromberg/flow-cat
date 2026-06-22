@@ -11,7 +11,8 @@ export function computeHours(
   start: { h: number; m: number },
   end: { h: number; m: number },
 ): number | null {
-  const mins = (end.h * 60 + end.m) - (start.h * 60 + start.m);
-  if (mins <= 0) return null;
+  let mins = (end.h * 60 + end.m) - (start.h * 60 + start.m);
+  if (mins < 0) mins += 24 * 60; // finish earlier than start → overnight (next day)
+  if (mins === 0) return null; // identical start/finish → no shift
   return Math.round((mins / 60) * 100) / 100;
 }

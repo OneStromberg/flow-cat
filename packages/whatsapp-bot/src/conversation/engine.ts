@@ -91,12 +91,12 @@ export async function handleMessage(deps: EngineDeps, inbound: InboundMessage): 
     return;
   }
 
-  // Cross-field: finish must be after start
+  // Cross-field: identical start/finish is invalid; overnight (start > end) is accepted
   if (q.key === 'end' && q.type === 'time' && session.answers['start']) {
     const start = parseClockTime(session.answers['start']);
     const end = parseClockTime(parsed.value);
     if (start && end && computeHours(start, end) === null) {
-      await text(deps, phone, 'Finish time must be after the start time. Please re-enter the finish time (e.g. 16:30).');
+      await text(deps, phone, "Start and finish can't be the same time. Please re-enter the finish time (e.g. 16:30).");
       return;
     }
   }

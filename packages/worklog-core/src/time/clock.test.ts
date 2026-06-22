@@ -15,8 +15,10 @@ test('rejects bad times', () => {
   assert.equal(parseClockTime('abc'), null);
 });
 
-test('computes hours and rejects non-positive spans', () => {
-  assert.equal(computeHours({ h: 8, m: 0 }, { h: 16, m: 30 }), 8.5);
-  assert.equal(computeHours({ h: 9, m: 0 }, { h: 9, m: 0 }), null);
-  assert.equal(computeHours({ h: 17, m: 0 }, { h: 9, m: 0 }), null);
+test('computes hours, overnight across midnight, and rejects identical times', () => {
+  assert.equal(computeHours({ h: 8, m: 0 }, { h: 16, m: 30 }), 8.5);   // same-day
+  assert.equal(computeHours({ h: 22, m: 0 }, { h: 6, m: 0 }), 8);      // overnight
+  assert.equal(computeHours({ h: 23, m: 30 }, { h: 0, m: 30 }), 1);    // overnight across midnight
+  assert.equal(computeHours({ h: 17, m: 0 }, { h: 9, m: 0 }), 16);     // overnight (was null)
+  assert.equal(computeHours({ h: 9, m: 0 }, { h: 9, m: 0 }), null);    // identical → invalid
 });

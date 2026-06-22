@@ -32,8 +32,13 @@ test('flags required-missing, bad place, future date, bad time, end<=start', () 
   }
 });
 
-test('end must be after start when both valid', () => {
-  const r = validateAnswers(questions, { place: 'Warehouse', date: '2026-06-19', start: '16:00', end: '09:00' }, worker, tz, now);
+test('start > end is a valid overnight shift (no error)', () => {
+  const r = validateAnswers(questions, { place: 'Warehouse', date: '2026-06-19', start: '22:00', end: '06:00' }, worker, tz, now);
+  assert.deepEqual(r, { ok: true });
+});
+
+test('identical start and finish is rejected', () => {
+  const r = validateAnswers(questions, { place: 'Warehouse', date: '2026-06-19', start: '09:00', end: '09:00' }, worker, tz, now);
   assert.equal(r.ok, false);
-  if (!r.ok) assert.equal(r.errors.end, 'Finish must be after start');
+  if (!r.ok) assert.equal(r.errors.end, "Start and finish can't be the same time.");
 });

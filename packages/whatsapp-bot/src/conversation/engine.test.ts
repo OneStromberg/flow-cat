@@ -61,14 +61,26 @@ test('full happy path writes a WorkLog with computed hours', async () => {
   assert.match(bodies(sent).at(-1)!, /Logged/);
 });
 
-test('finish before start is rejected', async () => {
+test('overnight shift (finish before start) is accepted', async () => {
+  const { deps, gateway } = makeDeps();
+  await handleMessage(deps, { phone: '15551230000', text: 'hi' });
+  await handleMessage(deps, { phone: '15551230000', selectionId: 'opt_0' });
+  await handleMessage(deps, { phone: '15551230000', selectionId: 'date_today' });
+  await handleMessage(deps, { phone: '15551230000', text: '22:00' });
+  await handleMessage(deps, { phone: '15551230000', text: '06:00' });
+  const log = gateway.dump().WorkLogs;
+  assert.equal(log.length, 2);
+  assert.equal(log[1][log[0].indexOf('hours')], '8');
+});
+
+test('identical start and finish is rejected', async () => {
   const { deps, sent } = makeDeps();
   await handleMessage(deps, { phone: '15551230000', text: 'hi' });
   await handleMessage(deps, { phone: '15551230000', selectionId: 'opt_0' });
   await handleMessage(deps, { phone: '15551230000', selectionId: 'date_today' });
-  await handleMessage(deps, { phone: '15551230000', text: '16:00' });
   await handleMessage(deps, { phone: '15551230000', text: '09:00' });
-  assert.match(bodies(sent).join(' '), /after.*start|after the start/i);
+  await handleMessage(deps, { phone: '15551230000', text: '09:00' });
+  assert.match(bodies(sent).join(' '), /same time|can.t be the same/i);
 });
 
 test('reordered + extra question config is honored', async () => {

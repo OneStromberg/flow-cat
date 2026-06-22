@@ -39,10 +39,10 @@ export function validateAnswers(
     }
   }
 
-  // cross-field: finish after start (only when both parse cleanly)
+  // cross-field: identical start/finish is invalid; start > end is a valid overnight shift
   const s = parseClockTime(answers['start'] ?? '');
   const e = parseClockTime(answers['end'] ?? '');
-  if (s && e && e.h * 60 + e.m <= s.h * 60 + s.m) errors['end'] = 'Finish must be after start';
+  if (s && e && s.h === e.h && s.m === e.m) errors['end'] = "Start and finish can't be the same time.";
 
   return Object.keys(errors).length ? { ok: false, errors } : { ok: true };
 }
