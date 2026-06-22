@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic';
 
 export default async function LoginPage() {
   const worker = await requireWorker();
-  if (worker) redirect('/app');
+  if (worker) redirect('/'); // role-router sends admins to /admin, workers to /app
   return (
     <main className="mx-auto max-w-sm p-6">
       <h1 className="text-xl font-semibold">FlowCat — Log in</h1>
