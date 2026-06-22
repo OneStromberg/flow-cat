@@ -1,4 +1,4 @@
-import { rowsToObjects, type SheetsGateway } from '@scourage/sheets-helper';
+import { objectToRow, rowsToObjects, type SheetsGateway } from '@scourage/sheets-helper';
 
 export async function loadActivePlaces(gateway: SheetsGateway): Promise<string[]> {
   const objs = rowsToObjects(await gateway.readTab('Places'));
@@ -9,4 +9,89 @@ export async function loadActivePlaces(gateway: SheetsGateway): Promise<string[]
       return name !== '' && active !== 'no';
     })
     .map((o) => (o.place_name ?? '').trim());
+}
+
+export interface Place {
+  name: string;
+  active: boolean;
+  lat: string;
+  lng: string;
+  placeId: string;
+  address: string;
+}
+
+export interface AddPlaceInput {
+  name: string;
+  lat: string;
+  lng: string;
+  placeId: string;
+  address: string;
+}
+
+const PLACES_COLUMNS = ['place_name', 'active', 'lat', 'lng', 'place_id', 'address'];
+
+export function wazeUrl(lat: string, lng: string): string {
+  return `https://waze.com/ul?ll=${lat},${lng}&navigate=yes`;
+}
+
+export function googleMapsUrl(lat: string, lng: string, placeId: string): string {
+  const base = `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
+  return placeId ? `${base}&query_place_id=${placeId}` : base;
+}
+
+export async function listPlaces(gateway: SheetsGateway): Promise<Place[]> {
+  const objs = rowsToObjects(await gateway.readTab('Places'));
+  return objs
+    .filter((o) => (o.place_name ?? '').trim() !== '')
+    .map((o) => ({
+      name: (o.place_name ?? '').trim(),
+      active: (o.active ?? '').trim().toLowerCase() !== 'no',
+      lat: (o.lat ?? '').trim(),
+      lng: (o.lng ?? '').trim(),
+      placeId: (o.place_id ?? '').trim(),
+      address: (o.address ?? '').trim(),
+    }));
+}
+
+function numeric(s: string): boolean {
+  return s.trim() !== '' && Number.isFinite(Number(s));
+}
+
+export async function addPlace(
+  gateway: SheetsGateway,
+  input: AddPlaceInput,
+): Promise<{ ok: true } | { ok: false; errors: Record<string, string> }> {
+  const errors: Record<string, string> = {};
+  const name = input.name.trim();
+  if (!name) errors.name = 'Required';
+  if (!numeric(input.lat)) errors.lat = 'Select a place from the list';
+  if (!numeric(input.lng)) errors.lng = 'Select a place from the list';
+
+  if (name) {
+    const objs = rowsToObjects(await gateway.readTab('Places'));
+    if (objs.some((o) => (o.place_name ?? '').trim().toLowerCase() === name.toLowerCase())) {
+      errors.name = 'A place with this name already exists';
+    }
+  }
+
+  if (Object.keys(errors).length) return { ok: false, errors };
+
+  const record: Record<string, string> = {
+    place_name: name,
+    active: 'yes',
+    lat: input.lat.trim(),
+    lng: input.lng.trim(),
+    place_id: input.placeId.trim(),
+    address: input.address.trim(),
+  };
+
+  const rows = await gateway.readTab('Places');
+  const existing = rows[0] && rows[0].length ? rows[0].map((h) => h.trim()) : [];
+  const header = [...existing];
+  for (const col of PLACES_COLUMNS) if (!header.includes(col)) header.push(col);
+  if (existing.length === 0 || header.length !== existing.length) {
+    await gateway.writeHeaderRow('Places', header);
+  }
+  await gateway.appendRow('Places', objectToRow(record, header));
+  return { ok: true };
 }
