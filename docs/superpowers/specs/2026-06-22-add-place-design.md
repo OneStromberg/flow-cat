@@ -127,9 +127,11 @@ on the pages/route that touch googleapis (matching the existing admin pages).
     coordless legacy rows.
   - `wazeUrl` — exact format.
   - `googleMapsUrl` — with and without `place_id`.
-- **web:**
-  - `POST /api/admin/places` — admin-only (401 for non-admin), validation errors
-    → 400, success → 200.
+- **web:** The codebase has no route-test harness (web tests glob only
+  `lib/**/*.test.ts` of pure functions). The `POST /api/admin/places` route is a
+  thin coercion wrapper mirroring the existing untested `workers` route; its
+  real logic (validation, dedup, append) is covered by the `addPlace` unit tests
+  above. Web verification is `typecheck` + `build`.
 - The Google `PlaceAutocompleteElement` widget is external/client-only and is
   not unit-tested.
 
