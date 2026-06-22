@@ -11,18 +11,29 @@ declare global {
   interface Window { google?: any }
 }
 
-function loadMaps(key: string): Promise<any> {
-  if (window.google?.maps?.importLibrary) return Promise.resolve(window.google);
-  const existing = document.getElementById('gmaps-js') as HTMLScriptElement | null;
-  if (existing) return new Promise((res) => existing.addEventListener('load', () => res(window.google)));
-  return new Promise((res, rej) => {
+// Loads the Maps JS API and resolves only once `importLibrary` is actually
+// callable. We poll for readiness instead of trusting script.onload, which with
+// loading=async can fire before importLibrary exists. We use ONLY importLibrary
+// (no legacy `libraries=` param) — mixing the two loading paths breaks.
+function loadMaps(key: string): Promise<void> {
+  if (!document.getElementById('gmaps-js')) {
     const s = document.createElement('script');
     s.id = 'gmaps-js';
     s.async = true;
-    s.src = `https://maps.googleapis.com/maps/api/js?key=${key}&libraries=places&loading=async&v=weekly`;
-    s.onload = () => res(window.google);
-    s.onerror = () => rej(new Error('maps load failed'));
+    s.src = `https://maps.googleapis.com/maps/api/js?key=${key}&v=weekly&loading=async`;
     document.head.appendChild(s);
+  }
+  return new Promise((res, rej) => {
+    let n = 0;
+    const t = setInterval(() => {
+      if (window.google?.maps?.importLibrary) {
+        clearInterval(t);
+        res();
+      } else if (++n > 150) {
+        clearInterval(t);
+        rej(new Error('Google Maps did not initialize (timeout)'));
+      }
+    }, 100);
   });
 }
 
@@ -37,9 +48,9 @@ export function AddPlaceForm() {
     if (!KEY) { setErr('Maps key not configured (NEXT_PUBLIC_GOOGLE_MAPS_API_KEY).'); return; }
     let cancelled = false;
     loadMaps(KEY)
-      .then(async (google) => {
+      .then(async () => {
         if (cancelled || !boxRef.current) return;
-        const { PlaceAutocompleteElement } = await google.maps.importLibrary('places');
+        const { PlaceAutocompleteElement } = await window.google.maps.importLibrary('places');
         const el = new PlaceAutocompleteElement();
         el.style.width = '100%';
         boxRef.current.innerHTML = '';
@@ -56,7 +67,10 @@ export function AddPlaceForm() {
           });
         });
       })
-      .catch(() => setErr('Could not load Google Maps. Check the API key and its restrictions.'));
+      .catch((e: any) => {
+        console.error('Maps init failed:', e);
+        setErr('Could not load Google Maps: ' + (e?.message ?? String(e)));
+      });
     return () => { cancelled = true; };
   }, []);
 
