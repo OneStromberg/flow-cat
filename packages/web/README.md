@@ -23,3 +23,10 @@ Next.js worker form + (Plan B) admin, on Vercel. Google Sheet is the database.
 ### Sheet columns this expects
 - **Workers:** `phone · name · greeting · places · active · teudat_zeut`
 - **WorkLogs:** `logged_at · phone · name · id · <question keys> · hours · locked` (the bot/app add `id`/`locked` automatically on new entries; admins set `locked = yes` to freeze a row).
+
+## Admin area
+A worker with `admin = yes` in the Workers tab logs in normally and lands on `/admin`:
+- **Workers list** with multi-field filtering (transport, Hebrew level, pay, schedule, city, places, age range, active, name/phone search) — AND across fields, OR within each.
+- **Add worker** (`/admin/add`) — phone, teudat zeut, name, allowed places, city, age, transportation, Hebrew level, pay eligibility (+ amount), schedule. Duplicate phones are rejected.
+
+Set `admin = yes` on a worker row to promote them. New Workers columns: `admin · city · age · transportation · hebrew_level · pay_type · pay_amount · schedule`.
