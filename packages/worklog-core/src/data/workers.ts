@@ -10,19 +10,23 @@ export interface Worker {
   active: boolean;
   token?: string;
   teudatZeut: string;
+  admin?: boolean;
+  city?: string;
+  transportation?: string;
+  age?: string;
+  hebrewLevel?: string;
+  payType?: string;
+  payAmount?: string;
+  schedule?: string;
 }
 
-async function buildWorker(gateway: SheetsGateway, row: Record<string, string>): Promise<Worker> {
+/** Pure: build a Worker from a sheet row, filtering places against a pre-loaded master list. */
+export function parseWorker(row: Record<string, string>, master: string[]): Worker {
   const workerPlaces = (row.places ?? '').split(',').map((s) => s.trim()).filter(Boolean);
-  const master = await loadActivePlaces(gateway);
   const masterLower = master.map((m) => m.toLowerCase());
   const places = master.length === 0
     ? workerPlaces
-    : workerPlaces.filter((p) => {
-        const ok = masterLower.includes(p.toLowerCase());
-        if (!ok) console.warn(`Worker ${normalizePhone(row.phone ?? '')}: place "${p}" not in active Places master — skipped`);
-        return ok;
-      });
+    : workerPlaces.filter((p) => masterLower.includes(p.toLowerCase()));
   return {
     phone: normalizePhone(row.phone ?? ''),
     name: (row.name ?? '').trim(),
@@ -31,7 +35,20 @@ async function buildWorker(gateway: SheetsGateway, row: Record<string, string>):
     active: (row.active ?? '').trim().toLowerCase() !== 'no',
     token: (row.token ?? '').trim(),
     teudatZeut: (row.teudat_zeut ?? '').trim(),
+    admin: (row.admin ?? '').trim().toLowerCase() === 'yes',
+    city: (row.city ?? '').trim(),
+    transportation: (row.transportation ?? '').trim(),
+    age: (row.age ?? '').trim(),
+    hebrewLevel: (row.hebrew_level ?? '').trim(),
+    payType: (row.pay_type ?? '').trim(),
+    payAmount: (row.pay_amount ?? '').trim(),
+    schedule: (row.schedule ?? '').trim(),
   };
+}
+
+async function buildWorker(gateway: SheetsGateway, row: Record<string, string>): Promise<Worker> {
+  const master = await loadActivePlaces(gateway);
+  return parseWorker(row, master);
 }
 
 export async function findWorker(gateway: SheetsGateway, phone: string): Promise<Worker | null> {
@@ -58,4 +75,10 @@ export async function authenticateWorker(
   if (!worker || !worker.active) return null;
   if (worker.teudatZeut === '' || worker.teudatZeut !== teudatZeut.trim()) return null;
   return worker;
+}
+
+export async function listWorkers(gateway: SheetsGateway): Promise<Worker[]> {
+  const master = await loadActivePlaces(gateway);
+  const objs = rowsToObjects(await gateway.readTab('Workers'));
+  return objs.filter((o) => (o.phone ?? '').trim() !== '').map((o) => parseWorker(o, master));
 }

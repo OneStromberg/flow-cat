@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createMemoryGateway } from '@scourage/sheets-helper';
-import { findWorker, findWorkerByToken, authenticateWorker } from './workers.ts';
+import { findWorker, findWorkerByToken, authenticateWorker, listWorkers } from './workers.ts';
 
 const gw = () =>
   createMemoryGateway({
@@ -77,4 +77,26 @@ test('never authenticates a worker whose stored teudat_zeut is empty', async () 
   });
   assert.equal(await authenticateWorker(g, '15551230000', ''), null);
   assert.equal(await authenticateWorker(g, '15551230000', '123456782'), null);
+});
+
+test('parses admin + profile fields and lists all workers', async () => {
+  const g = createMemoryGateway({
+    Places: [['place_name', 'active'], ['Warehouse', 'yes']],
+    Workers: [
+      ['phone', 'name', 'greeting', 'places', 'active', 'teudat_zeut', 'admin', 'city', 'age', 'transportation', 'hebrew_level', 'pay_type', 'pay_amount', 'schedule'],
+      ['15551230000', 'Boss', '', 'Warehouse', 'yes', '111', 'yes', 'Tel Aviv', '40', 'car', 'read_write', 'full', '', 'all'],
+      ['15559990000', 'Dan', '', 'Warehouse', 'yes', '222', '', 'Haifa', '25', 'electric_bicycle', 'mid', 'amount', '4500', 'nights'],
+    ],
+  });
+  const all = await listWorkers(g);
+  assert.equal(all.length, 2);
+  const boss = all.find((w) => w.name === 'Boss')!;
+  assert.equal(boss.admin, true);
+  assert.equal(boss.city, 'Tel Aviv');
+  assert.equal(boss.transportation, 'car');
+  assert.equal(boss.schedule, 'all');
+  const dan = all.find((w) => w.name === 'Dan')!;
+  assert.equal(dan.admin, false);
+  assert.equal(dan.payType, 'amount');
+  assert.equal(dan.payAmount, '4500');
 });

@@ -1,5 +1,6 @@
 export type { Worker } from './data/workers.ts';
-export { findWorker, findWorkerByToken, authenticateWorker } from './data/workers.ts';
+export { findWorker, findWorkerByToken, authenticateWorker, listWorkers } from './data/workers.ts';
+export { TRANSPORTATION, HEBREW_LEVEL, PAY_TYPE, SCHEDULE } from './data/worker-fields.ts';
 export { generateToken } from './data/tokens.ts';
 export { loadActivePlaces } from './data/places.ts';
 export { appendWorkLog } from './data/worklogs.ts';
