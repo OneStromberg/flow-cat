@@ -22,7 +22,10 @@ export default async function AdminPage() {
     <main className="mx-auto max-w-4xl p-5">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold">Workers</h1>
-        <a href="/admin/add" className="rounded-lg bg-gray-900 px-3 py-2 text-sm text-white">+ Add worker</a>
+        <div className="flex items-center gap-2">
+          <a href="/admin/places" className="rounded-lg border border-gray-300 px-3 py-2 text-sm">Places</a>
+          <a href="/admin/add" className="rounded-lg bg-gray-900 px-3 py-2 text-sm text-white">+ Add worker</a>
+        </div>
       </div>
       <WorkersFilter
         workers={workers}
