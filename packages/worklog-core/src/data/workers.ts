@@ -77,8 +77,12 @@ export async function authenticateWorker(
   return worker;
 }
 
+/**
+ * Lists all workers for admin/management views with their RAW sheet places (no
+ * master-Places filtering — `parseWorker(o, [])` keeps every assigned place).
+ * The worker-facing `findWorker` still filters places against the master list.
+ */
 export async function listWorkers(gateway: SheetsGateway): Promise<Worker[]> {
-  const master = await loadActivePlaces(gateway);
   const objs = rowsToObjects(await gateway.readTab('Workers'));
-  return objs.filter((o) => (o.phone ?? '').trim() !== '').map((o) => parseWorker(o, master));
+  return objs.filter((o) => (o.phone ?? '').trim() !== '').map((o) => parseWorker(o, []));
 }

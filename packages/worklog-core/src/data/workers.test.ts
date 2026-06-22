@@ -100,3 +100,16 @@ test('parses admin + profile fields and lists all workers', async () => {
   assert.equal(dan.payType, 'amount');
   assert.equal(dan.payAmount, '4500');
 });
+
+test('listWorkers returns RAW worker places (no master filtering) for admin views', async () => {
+  const g = createMemoryGateway({
+    Places: [['place_name', 'active'], ['Warehouse', 'yes']], // master has only Warehouse
+    Workers: [
+      ['phone', 'name', 'places', 'active'],
+      ['15551230000', 'A', 'Warehouse, New Site', 'yes'],
+    ],
+  });
+  const all = await listWorkers(g);
+  // 'New Site' is NOT in the master Places tab, but the admin view must still show it
+  assert.deepEqual(all[0].places, ['Warehouse', 'New Site']);
+});
