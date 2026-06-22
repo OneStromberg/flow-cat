@@ -76,7 +76,9 @@ on the pages/route that touch googleapis (matching the existing admin pages).
      `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`, then `await google.maps.importLibrary('places')`.
      If the key is missing/empty, render a clear inline message ("Maps key not
      configured") instead of the widget.
-  2. Renders a `PlaceAutocompleteElement`.
+  2. Renders a `PlaceAutocompleteElement` with **no `types` restriction**, so
+     suggestions include both **addresses and establishments** (a street
+     address or a business/landmark name both autocomplete).
   3. On the element's `gmp-select` event, fetches the place's
      `displayName`, `location` (lat/lng), `formattedAddress`, and `id`, and
      stores them in React state. The selected place is shown as a confirmation
@@ -140,8 +142,11 @@ on the pages/route that touch googleapis (matching the existing admin pages).
 
 ## 10. Prerequisite (user action)
 
-Create a Google Maps Platform API key with **Maps JavaScript API** + **Places
-API (New)** enabled, billing enabled, and an HTTP-referrer restriction for the
-Vercel domain (`flow-cat.vercel.app` and any preview domains). Add it to Vercel
-as `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`. All code is independent of this and can be
+Reuse the existing Google Maps key (project `story-teller-app-01`) or create a
+new one. For it to work in the browser it must have: **application restriction =
+HTTP referrers** (NOT Android-app) including `https://flow-cat.vercel.app/*`,
+`https://*.vercel.app/*`, and `http://localhost:3000/*`; **API restrictions**
+including *Maps JavaScript API* and *Places API (New)*; and both of those APIs
+**enabled** on the project (billing on). Add it to Vercel as
+`NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`. All code is independent of this and can be
 built/tested with a placeholder key (only the live autocomplete needs the real key).
