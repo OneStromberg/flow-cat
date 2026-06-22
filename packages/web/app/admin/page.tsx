@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation';
 import { requireAdmin } from '../../lib/session';
 import { getGateway } from '../../lib/sheets';
-import { listWorkers, TRANSPORTATION, HEBREW_LEVEL, PAY_TYPE, SCHEDULE } from '@scourage/worklog-core';
+import { listWorkers, loadActivePlaces, TRANSPORTATION, HEBREW_LEVEL, PAY_TYPE, SCHEDULE } from '@scourage/worklog-core';
 import { WorkersFilter } from './workers-filter';
 
 export const runtime = 'nodejs';
@@ -11,9 +11,12 @@ export default async function AdminPage() {
   const admin = await requireAdmin();
   if (!admin) redirect('/');
 
-  const workers = await listWorkers(getGateway());
+  const gw = getGateway();
+  const workers = await listWorkers(gw);
+  const activePlaces = await loadActivePlaces(gw);
   const cities = [...new Set(workers.map((w) => w.city ?? '').filter(Boolean))].sort();
-  const places = [...new Set(workers.flatMap((w) => w.places))].sort();
+  // Filter chips = master active places ∪ every place actually assigned in the sheet.
+  const places = [...new Set([...activePlaces, ...workers.flatMap((w) => w.places)])].sort();
 
   return (
     <main className="mx-auto max-w-4xl p-5">
