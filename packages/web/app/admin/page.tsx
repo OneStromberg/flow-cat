@@ -1,0 +1,32 @@
+import { redirect } from 'next/navigation';
+import { requireAdmin } from '../../lib/session';
+import { getGateway } from '../../lib/sheets';
+import { listWorkers, TRANSPORTATION, HEBREW_LEVEL, PAY_TYPE, SCHEDULE } from '@scourage/worklog-core';
+import { WorkersFilter } from './workers-filter';
+
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+
+export default async function AdminPage() {
+  const admin = await requireAdmin();
+  if (!admin) redirect('/');
+
+  const workers = await listWorkers(getGateway());
+  const cities = [...new Set(workers.map((w) => w.city ?? '').filter(Boolean))].sort();
+  const places = [...new Set(workers.flatMap((w) => w.places))].sort();
+
+  return (
+    <main className="mx-auto max-w-4xl p-5">
+      <div className="flex items-center justify-between">
+        <h1 className="text-xl font-semibold">Workers</h1>
+        <a href="/admin/add" className="rounded-lg bg-gray-900 px-3 py-2 text-sm text-white">+ Add worker</a>
+      </div>
+      <WorkersFilter
+        workers={workers}
+        cities={cities}
+        places={places}
+        enums={{ transportation: TRANSPORTATION, hebrewLevel: HEBREW_LEVEL, payType: PAY_TYPE, schedule: SCHEDULE }}
+      />
+    </main>
+  );
+}
