@@ -18,3 +18,4 @@ export type { WorkEntry } from './entries/entries.ts';
 export { listWorkerEntries, getEntry, updateEntry } from './entries/entries.ts';
 export { createSession, readSession } from './session/session.ts';
 export { addWorker, type AddWorkerInput } from './data/add-worker.ts';
+export { listTemplates, addTemplate, updateTemplate, parseTemplate, WEEKDAYS, type ShiftTemplate, type AddTemplateInput } from './data/shift-templates.ts';
