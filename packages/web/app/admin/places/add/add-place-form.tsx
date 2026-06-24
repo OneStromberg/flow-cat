@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 const KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? '';
 
 type Selected = { name: string; lat: string; lng: string; placeId: string; address: string };
+type Extra = { client: string; contact: string; baseRate: string; geofenceRadiusM: string; requiredAttributes: string; notes: string };
 
 declare global {
   interface Window { google?: any }
@@ -41,6 +42,7 @@ export function AddPlaceForm() {
   const router = useRouter();
   const boxRef = useRef<HTMLDivElement>(null);
   const [sel, setSel] = useState<Selected | null>(null);
+  const [extra, setExtra] = useState<Extra>({ client: '', contact: '', baseRate: '', geofenceRadiusM: '100', requiredAttributes: '', notes: '' });
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -82,7 +84,7 @@ export function AddPlaceForm() {
       const res = await fetch('/api/admin/places', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(sel),
+        body: JSON.stringify({ ...sel, ...extra }),
       });
       const data = await res.json();
       if (res.ok && data.ok) {
@@ -110,6 +112,70 @@ export function AddPlaceForm() {
           <div className="font-medium">{sel.name}</div>
           <div className="text-gray-600">{sel.address}</div>
           <div className="text-gray-400">{sel.lat}, {sel.lng}</div>
+        </div>
+      )}
+      {sel && (
+        <div className="space-y-3">
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Client</label>
+            <input
+              type="text"
+              value={extra.client}
+              onChange={(e) => setExtra({ ...extra, client: e.target.value })}
+              className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm placeholder-gray-400"
+              placeholder="Client name"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Contact</label>
+            <input
+              type="text"
+              value={extra.contact}
+              onChange={(e) => setExtra({ ...extra, contact: e.target.value })}
+              className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm placeholder-gray-400"
+              placeholder="Contact info"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Base rate</label>
+            <input
+              type="text"
+              value={extra.baseRate}
+              onChange={(e) => setExtra({ ...extra, baseRate: e.target.value })}
+              className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm placeholder-gray-400"
+              placeholder="Base rate"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Geofence radius (m)</label>
+            <input
+              type="text"
+              value={extra.geofenceRadiusM}
+              onChange={(e) => setExtra({ ...extra, geofenceRadiusM: e.target.value })}
+              className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm placeholder-gray-400"
+              placeholder="100"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Required attributes</label>
+            <input
+              type="text"
+              value={extra.requiredAttributes}
+              onChange={(e) => setExtra({ ...extra, requiredAttributes: e.target.value })}
+              className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm placeholder-gray-400"
+              placeholder="Comma-separated attributes"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Notes</label>
+            <input
+              type="text"
+              value={extra.notes}
+              onChange={(e) => setExtra({ ...extra, notes: e.target.value })}
+              className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm placeholder-gray-400"
+              placeholder="Additional notes"
+            />
+          </div>
         </div>
       )}
       {err && <p className="text-sm text-red-600">{err}</p>}

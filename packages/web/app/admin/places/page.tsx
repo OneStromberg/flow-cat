@@ -21,6 +21,7 @@ export default async function PlacesPage() {
         <thead>
           <tr className="border-b text-left text-gray-500">
             <th className="py-2">Name</th>
+            <th>Client</th>
             <th>Address</th>
             <th>Active</th>
             <th>Navigate</th>
@@ -32,6 +33,7 @@ export default async function PlacesPage() {
             return (
               <tr key={p.name} className="border-b">
                 <td className="py-2 font-medium">{p.name}</td>
+                <td className="text-gray-600">{p.client || '—'}</td>
                 <td className="text-gray-600">{p.address || '—'}</td>
                 <td>{p.active ? 'yes' : 'no'}</td>
                 <td>
@@ -46,7 +48,7 @@ export default async function PlacesPage() {
             );
           })}
           {places.length === 0 && (
-            <tr><td colSpan={4} className="py-4 text-gray-500">No places yet.</td></tr>
+            <tr><td colSpan={5} className="py-4 text-gray-500">No places yet.</td></tr>
           )}
         </tbody>
       </table>

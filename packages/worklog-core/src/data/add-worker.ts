@@ -1,6 +1,6 @@
 import { objectToRow, rowsToObjects, type SheetsGateway } from '@scourage/sheets-helper';
 import { normalizePhone } from './phone.ts';
-import { TRANSPORTATION, HEBREW_LEVEL, PAY_TYPE, SCHEDULE } from './worker-fields.ts';
+import { TRANSPORTATION, HEBREW_LEVEL, PAY_TYPE, SCHEDULE, GENDER } from './worker-fields.ts';
 
 export interface AddWorkerInput {
   phone: string;
@@ -14,11 +14,12 @@ export interface AddWorkerInput {
   payType: string;
   payAmount: string;
   schedule: string;
+  gender: string;
 }
 
 const WORKERS_COLUMNS = [
   'phone', 'name', 'greeting', 'places', 'active', 'token', 'teudat_zeut',
-  'admin', 'city', 'age', 'transportation', 'hebrew_level', 'pay_type', 'pay_amount', 'schedule',
+  'admin', 'city', 'age', 'transportation', 'hebrew_level', 'pay_type', 'pay_amount', 'schedule', 'gender',
 ];
 
 function inEnum(val: string, list: readonly { value: string }[]): boolean {
@@ -40,6 +41,7 @@ export async function addWorker(
   if (!inEnum(input.hebrewLevel, HEBREW_LEVEL)) errors.hebrewLevel = 'Invalid';
   if (!inEnum(input.payType, PAY_TYPE)) errors.payType = 'Invalid';
   if (!inEnum(input.schedule, SCHEDULE)) errors.schedule = 'Invalid';
+  if (!inEnum(input.gender, GENDER)) errors.gender = 'Invalid';
   if (input.payType === 'amount' && (!input.payAmount.trim() || !Number.isFinite(Number(input.payAmount)))) {
     errors.payAmount = 'Enter an amount';
   }
@@ -69,6 +71,7 @@ export async function addWorker(
     pay_type: input.payType,
     pay_amount: input.payType === 'amount' ? input.payAmount.trim() : '',
     schedule: input.schedule,
+    gender: input.gender,
   };
 
   const rows = await gateway.readTab('Workers');

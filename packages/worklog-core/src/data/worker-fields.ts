@@ -23,3 +23,9 @@ export const SCHEDULE = [
   { value: 'nights', label: 'Nights' },
   { value: 'all', label: 'All' },
 ] as const;
+
+export const GENDER = [
+  { value: 'male', label: 'Male' },
+  { value: 'female', label: 'Female' },
+  { value: 'other', label: 'Other' },
+] as const;

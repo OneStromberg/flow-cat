@@ -21,7 +21,7 @@ export async function POST(req: Request) {
     places: Array.isArray(b.places) ? (b.places as unknown[]).map(str).filter(Boolean) : [],
     city: str(b.city), age: str(b.age),
     transportation: str(b.transportation), hebrewLevel: str(b.hebrewLevel),
-    payType: str(b.payType), payAmount: str(b.payAmount), schedule: str(b.schedule),
+    payType: str(b.payType), payAmount: str(b.payAmount), schedule: str(b.schedule), gender: str(b.gender),
   };
 
   try {

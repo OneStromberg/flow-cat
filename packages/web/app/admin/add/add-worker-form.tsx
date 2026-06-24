@@ -4,11 +4,11 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 
 type EnumOpt = readonly { value: string; label: string }[];
-type Props = { places: string[]; enums: { transportation: EnumOpt; hebrewLevel: EnumOpt; payType: EnumOpt; schedule: EnumOpt } };
+type Props = { places: string[]; enums: { transportation: EnumOpt; hebrewLevel: EnumOpt; payType: EnumOpt; schedule: EnumOpt; gender: EnumOpt } };
 
 const FIELDS0 = {
   phone: '', teudatZeut: '', name: '', city: '', age: '',
-  transportation: '', hebrewLevel: '', payType: '', payAmount: '', schedule: '',
+  transportation: '', hebrewLevel: '', payType: '', payAmount: '', schedule: '', gender: '',
 };
 
 export function AddWorkerForm({ places, enums }: Props) {
@@ -86,6 +86,7 @@ export function AddWorkerForm({ places, enums }: Props) {
       {input('city', 'City')}
       {input('age', 'Age', 'number')}
       {select('transportation', 'Transportation', enums.transportation)}
+      {select('gender', 'Gender', enums.gender)}
       {select('hebrewLevel', 'Hebrew level', enums.hebrewLevel)}
       {select('payType', 'Pay eligibility', enums.payType)}
       {v.payType === 'amount' && input('payAmount', 'Amount', 'number')}

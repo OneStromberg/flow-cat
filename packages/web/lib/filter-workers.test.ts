@@ -5,14 +5,14 @@ import type { Worker } from '@scourage/worklog-core';
 
 const w = (o: Partial<Worker>): Worker => ({
   phone: '1', name: 'X', greeting: '', places: [], active: true, teudatZeut: '',
-  admin: false, city: '', transportation: '', age: '', hebrewLevel: '', payType: '', payAmount: '', schedule: '', ...o,
+  admin: false, city: '', transportation: '', age: '', hebrewLevel: '', payType: '', payAmount: '', schedule: '', gender: '', ...o,
 });
 const workers: Worker[] = [
   w({ name: 'Boss', phone: '15551230000', city: 'Tel Aviv', transportation: 'car', age: '40', places: ['Warehouse'], schedule: 'all' }),
   w({ name: 'Dan', phone: '15559990000', city: 'Haifa', transportation: 'electric_bicycle', age: '25', places: ['Office'], schedule: 'nights' }),
   w({ name: 'Eve', phone: '15558880000', city: 'Haifa', transportation: 'nothing', age: '60', places: ['Warehouse', 'Office'], active: false, schedule: 'days' }),
 ];
-const empty: WorkerFilters = { search: '', cities: [], transportation: [], hebrewLevel: [], payType: [], schedule: [], places: [], active: 'all', ageMin: '', ageMax: '' };
+const empty: WorkerFilters = { search: '', cities: [], transportation: [], hebrewLevel: [], payType: [], schedule: [], places: [], active: 'all', ageMin: '', ageMax: '', gender: [] };
 
 test('empty filters return everyone', () => {
   assert.equal(filterWorkers(workers, empty).length, 3);
@@ -31,4 +31,13 @@ test('places matches any selected place', () => {
 test('active filter and age range', () => {
   assert.deepEqual(filterWorkers(workers, { ...empty, active: 'no' }).map((x) => x.name), ['Eve']);
   assert.deepEqual(filterWorkers(workers, { ...empty, ageMin: '30', ageMax: '50' }).map((x) => x.name), ['Boss']);
+});
+
+test('filters by gender (OR within, AND across)', () => {
+  const base = { search:'', cities:[], transportation:[], hebrewLevel:[], payType:[], schedule:[], places:[], active:'all' as const, ageMin:'', ageMax:'', gender:['female'] };
+  const ws = [
+    { phone:'1', name:'A', greeting:'', places:[], active:true, teudatZeut:'', gender:'female' },
+    { phone:'2', name:'B', greeting:'', places:[], active:true, teudatZeut:'', gender:'male' },
+  ] as any;
+  assert.deepEqual(filterWorkers(ws, base).map((w:any)=>w.phone), ['1']);
 });

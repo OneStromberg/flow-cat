@@ -31,14 +31,14 @@ test('listPlaces parses rows including coordless legacy places', async () => {
   });
   const ps = await listPlaces(g);
   assert.equal(ps.length, 2);
-  assert.deepEqual(ps[0], { name: 'Warehouse', active: true, lat: '32.1', lng: '34.8', placeId: 'ChIJ1', address: '1 St' });
+  assert.deepEqual(ps[0], { name: 'Warehouse', active: true, lat: '32.1', lng: '34.8', placeId: 'ChIJ1', address: '1 St', client: '', geofenceRadiusM: '100', contact: '', baseRate: '', requiredAttributes: [], notes: '' });
   assert.equal(ps[1].active, false);
   assert.equal(ps[1].lat, '');
 });
 
 test('addPlace appends an aligned row with active=yes', async () => {
   const g = createMemoryGateway({ Places: [['place_name', 'active']] });
-  const r = await addPlace(g, { name: '  New Site ', lat: '32.5', lng: '34.9', placeId: 'ChIJnew', address: '5 Rd' });
+  const r = await addPlace(g, { name: '  New Site ', lat: '32.5', lng: '34.9', placeId: 'ChIJnew', address: '5 Rd', client: '', geofenceRadiusM: '', contact: '', baseRate: '', requiredAttributes: '', notes: '' });
   assert.deepEqual(r, { ok: true });
   const rows = g.dump().Places;
   const header = rows[0];
@@ -54,22 +54,51 @@ test('addPlace appends an aligned row with active=yes', async () => {
 
 test('addPlace rejects missing name and missing/non-numeric coords', async () => {
   const g = createMemoryGateway({ Places: [['place_name', 'active']] });
-  const noName = await addPlace(g, { name: '', lat: '1', lng: '2', placeId: '', address: '' });
+  const noName = await addPlace(g, { name: '', lat: '1', lng: '2', placeId: '', address: '', client: '', geofenceRadiusM: '', contact: '', baseRate: '', requiredAttributes: '', notes: '' });
   assert.equal(noName.ok, false);
   if (!noName.ok) assert.equal(noName.errors.name, 'Required');
 
-  const badLat = await addPlace(g, { name: 'X', lat: 'abc', lng: '2', placeId: '', address: '' });
+  const badLat = await addPlace(g, { name: 'X', lat: 'abc', lng: '2', placeId: '', address: '', client: '', geofenceRadiusM: '', contact: '', baseRate: '', requiredAttributes: '', notes: '' });
   assert.equal(badLat.ok, false);
   if (!badLat.ok) assert.equal(badLat.errors.lat, 'Select a place from the list');
 
-  const noLng = await addPlace(g, { name: 'X', lat: '1', lng: '', placeId: '', address: '' });
+  const noLng = await addPlace(g, { name: 'X', lat: '1', lng: '', placeId: '', address: '', client: '', geofenceRadiusM: '', contact: '', baseRate: '', requiredAttributes: '', notes: '' });
   assert.equal(noLng.ok, false);
   if (!noLng.ok) assert.equal(noLng.errors.lng, 'Select a place from the list');
 });
 
 test('addPlace rejects duplicate place name (case-insensitive)', async () => {
   const g = createMemoryGateway({ Places: [['place_name', 'active'], ['Warehouse', 'yes']] });
-  const r = await addPlace(g, { name: '  warehouse ', lat: '1', lng: '2', placeId: '', address: '' });
+  const r = await addPlace(g, { name: '  warehouse ', lat: '1', lng: '2', placeId: '', address: '', client: '', geofenceRadiusM: '', contact: '', baseRate: '', requiredAttributes: '', notes: '' });
   assert.equal(r.ok, false);
   if (!r.ok) assert.equal(r.errors.name, 'A place with this name already exists');
+});
+
+test('listPlaces parses new location fields and defaults geofence to 100', async () => {
+  const g = createMemoryGateway({
+    Places: [
+      ['place_name','active','lat','lng','place_id','address','client','geofence_radius_m','contact','base_rate','required_attributes','notes'],
+      ['Site A','yes','32','34','x','addr','Acme','','Dan','45','car, male','near gate'],
+    ],
+  });
+  const p = (await listPlaces(g))[0];
+  assert.equal(p.client, 'Acme');
+  assert.equal(p.geofenceRadiusM, '100');           // blank → default 100
+  assert.equal(p.contact, 'Dan');
+  assert.equal(p.baseRate, '45');
+  assert.deepEqual(p.requiredAttributes, ['car','male']);
+  assert.equal(p.notes, 'near gate');
+});
+
+test('addPlace stores new fields and rejects non-numeric radius/rate', async () => {
+  const g = createMemoryGateway({ Places: [['place_name','active']] });
+  const ok = await addPlace(g, { name:'Site B', lat:'1', lng:'2', placeId:'', address:'', client:'Beta', geofenceRadiusM:'150', contact:'Eli', baseRate:'50', requiredAttributes:'car', notes:'gate 2' });
+  assert.deepEqual(ok, { ok: true });
+  const rows = g.dump().Places; const h = rows[0]; const r = rows[rows.length-1];
+  assert.equal(r[h.indexOf('client')], 'Beta');
+  assert.equal(r[h.indexOf('geofence_radius_m')], '150');
+  assert.equal(r[h.indexOf('required_attributes')], 'car');
+  const bad = await addPlace(g, { name:'Site C', lat:'1', lng:'2', placeId:'', address:'', client:'', geofenceRadiusM:'wide', contact:'', baseRate:'', requiredAttributes:'', notes:'' });
+  assert.equal(bad.ok, false);
+  if (!bad.ok) assert.equal(bad.errors.geofenceRadiusM, 'Must be a number');
 });
