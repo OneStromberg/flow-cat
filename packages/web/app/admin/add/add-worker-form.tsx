@@ -4,11 +4,12 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 
 type EnumOpt = readonly { value: string; label: string }[];
-type Props = { places: string[]; enums: { transportation: EnumOpt; hebrewLevel: EnumOpt; payType: EnumOpt; schedule: EnumOpt; gender: EnumOpt } };
+type Props = { places: string[]; enums: { transportation: EnumOpt; hebrewLevel: EnumOpt; payType: EnumOpt; schedule: EnumOpt; gender: EnumOpt; payStructure: EnumOpt } };
 
 const FIELDS0 = {
   phone: '', teudatZeut: '', name: '', city: '', age: '',
   transportation: '', hebrewLevel: '', payType: '', payAmount: '', schedule: '', gender: '',
+  payStructure: '', payRate: '',
 };
 
 export function AddWorkerForm({ places, enums }: Props) {
@@ -90,6 +91,8 @@ export function AddWorkerForm({ places, enums }: Props) {
       {select('hebrewLevel', 'Hebrew level', enums.hebrewLevel)}
       {select('payType', 'Pay eligibility', enums.payType)}
       {v.payType === 'amount' && input('payAmount', 'Amount', 'number')}
+      {select('payStructure', 'Pay structure', enums.payStructure)}
+      {input('payRate', 'Pay rate', 'number')}
       {select('schedule', 'Schedule', enums.schedule)}
       {fatal && <p className="text-sm text-red-600">{fatal}</p>}
       <button type="submit" disabled={busy} className="w-full rounded-lg bg-gray-900 px-4 py-3 text-base font-medium text-white disabled:opacity-50">

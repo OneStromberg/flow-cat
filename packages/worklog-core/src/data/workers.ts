@@ -20,6 +20,8 @@ export interface Worker {
   schedule?: string;
   gender?: string;
   telegramChatId?: string;
+  payStructure?: string;
+  payRate?: string;
 }
 
 /** Pure: build a Worker from a sheet row, filtering places against a pre-loaded master list. */
@@ -47,6 +49,8 @@ export function parseWorker(row: Record<string, string>, master: string[]): Work
     schedule: (row.schedule ?? '').trim(),
     gender: (row.gender ?? '').trim(),
     telegramChatId: (row.telegram_chat_id ?? '').trim(),
+    payStructure: (row.pay_structure ?? '').trim(),
+    payRate: (row.pay_rate ?? '').trim(),
   };
 }
 

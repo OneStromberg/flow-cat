@@ -118,3 +118,8 @@ test('parseWorker reads gender', () => {
   const w = parseWorker({ phone: '15551230000', name: 'A', places: '', active: 'yes', gender: 'female' }, []);
   assert.equal(w.gender, 'female');
 });
+
+test('parseWorker reads pay_structure and pay_rate', () => {
+  const w = parseWorker({ phone:'15551230000', name:'A', places:'', active:'yes', pay_structure:'monthly', pay_rate:'8000' }, []);
+  assert.equal(w.payStructure, 'monthly'); assert.equal(w.payRate, '8000');
+});

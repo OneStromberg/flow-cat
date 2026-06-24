@@ -15,6 +15,7 @@ const FORM0 = {
   headcount: '',
   validFrom: '',
   validTo: '',
+  rate: '',
 };
 
 // ── Recurring assignment editor (per template) ────────────────────────────────
@@ -345,6 +346,19 @@ export function ShiftsAdmin({
               onChange={(e) => set('headcount', e.target.value)}
             />
             {errors.headcount && <p className="mt-1 text-sm text-red-600">{errors.headcount}</p>}
+          </div>
+
+          {/* Rate */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Rate (optional)</label>
+            <input
+              className={inputClass}
+              type="number"
+              min={0}
+              value={v.rate}
+              onChange={(e) => set('rate', e.target.value)}
+            />
+            {errors.rate && <p className="mt-1 text-sm text-red-600">{errors.rate}</p>}
           </div>
 
           {/* Valid from / to */}

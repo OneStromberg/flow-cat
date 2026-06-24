@@ -25,6 +25,7 @@ export async function POST(req: Request) {
     headcount: str(b.headcount),
     validFrom: str(b.validFrom),
     validTo: str(b.validTo),
+    rate: str(b.rate),
   };
 
   try {
