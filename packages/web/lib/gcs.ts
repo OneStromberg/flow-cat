@@ -1,5 +1,4 @@
-import { Readable } from 'node:stream';
-import { google } from 'googleapis';
+import { Storage } from '@google-cloud/storage';
 import { parseServiceAccountJson } from '@scourage/sheets-helper';
 
 // ── Pure helpers (exported for tests) ─────────────────────────────────────────
@@ -18,8 +17,15 @@ export function decodeDataUrl(
   return { buffer, contentType };
 }
 
-// ── Upload (best-effort, never throws) ────────────────────────────────────────
+// ── GCS client (lazy; null when creds missing) ────────────────────────────────
 
+function client(): Storage | null {
+  const json = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
+  if (!json) return null;
+  return new Storage({ credentials: parseServiceAccountJson(json) });
+}
+
+// ── Upload (best-effort, never throws). Returns the OBJECT NAME, signed on read.
 export async function storeCheckinPhoto(
   dataUrl: string | undefined,
   key: string,
@@ -27,36 +33,37 @@ export async function storeCheckinPhoto(
 ): Promise<string> {
   const bucket = process.env.CHECKIN_PHOTOS_BUCKET;
   if (!bucket || !dataUrl) return '';
-
   const decoded = decodeDataUrl(dataUrl);
   if (!decoded) return '';
-
   try {
-    const { buffer, contentType } = decoded;
+    const storage = client();
+    if (!storage) return '';
     const name = photoObjectName(key, which);
-
-    const credentials = parseServiceAccountJson(
-      process.env.GOOGLE_SERVICE_ACCOUNT_JSON!,
-    );
-    const auth = new google.auth.GoogleAuth({
-      credentials,
-      scopes: ['https://www.googleapis.com/auth/devstorage.read_write'],
+    await storage.bucket(bucket).file(name).save(decoded.buffer, {
+      contentType: decoded.contentType,
+      resumable: false,
     });
-
-    await google.storage('v1').objects.insert({
-      bucket,
-      name,
-      media: {
-        mimeType: contentType,
-        body: Readable.from(buffer),
-      },
-      auth,
-      requestBody: {},
-    });
-
-    return `https://storage.googleapis.com/${bucket}/${name}`;
+    return name;
   } catch (err) {
     console.error('[gcs] storeCheckinPhoto failed:', err);
+    return '';
+  }
+}
+
+// ── Signed read URL (private bucket; time-limited). Best-effort → '' on failure.
+export async function signedReadUrl(objectName: string): Promise<string> {
+  const bucket = process.env.CHECKIN_PHOTOS_BUCKET;
+  if (!bucket || !objectName) return '';
+  try {
+    const storage = client();
+    if (!storage) return '';
+    const [url] = await storage
+      .bucket(bucket)
+      .file(objectName)
+      .getSignedUrl({ version: 'v4', action: 'read', expires: Date.now() + 15 * 60 * 1000 });
+    return url;
+  } catch (err) {
+    console.error('[gcs] signedReadUrl failed:', err);
     return '';
   }
 }
