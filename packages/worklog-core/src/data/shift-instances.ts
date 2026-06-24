@@ -1,0 +1,191 @@
+import { objectToRow, rowsToObjects, type SheetsGateway } from '@scourage/sheets-helper';
+import { listTemplates } from './shift-templates.ts';
+import { listRecurring } from './shift-assignments.ts';
+
+export interface ShiftInstance {
+  id: string;
+  templateId: string;
+  location: string;
+  date: string;
+  start: string;
+  end: string;
+  headcount: number;
+  status: string;
+}
+
+const INSTANCE_COLUMNS = ['id', 'template_id', 'location', 'date', 'start', 'end', 'headcount', 'status', 'generated_at'];
+const ASSIGN_COLUMNS = ['instance_id', 'employee_phone', 'source', 'status', 'assigned_at', 'assigned_by'];
+
+// ── Date helpers ──────────────────────────────────────────────────────────────
+const WD = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+function addDays(iso: string, n: number): string {
+  const [y, m, d] = iso.split('-').map(Number);
+  const dt = new Date(Date.UTC(y, m - 1, d + n));
+  return dt.toISOString().slice(0, 10);
+}
+
+function weekday(iso: string): string {
+  const [y, m, d] = iso.split('-').map(Number);
+  return WD[new Date(Date.UTC(y, m - 1, d)).getUTCDay()];
+}
+
+function compact(iso: string): string {
+  return iso.replace(/-/g, '');
+}
+
+// ── Header helpers ────────────────────────────────────────────────────────────
+async function ensureInstanceHeader(gateway: SheetsGateway): Promise<string[]> {
+  const rows = await gateway.readTab('ShiftInstances');
+  const existing = rows[0] && rows[0].length ? rows[0].map((h) => h.trim()) : [];
+  const header = [...existing];
+  for (const c of INSTANCE_COLUMNS) if (!header.includes(c)) header.push(c);
+  if (existing.length === 0 || header.length !== existing.length) {
+    await gateway.writeHeaderRow('ShiftInstances', header);
+  }
+  return header;
+}
+
+async function ensureAssignHeader(gateway: SheetsGateway): Promise<string[]> {
+  const rows = await gateway.readTab('ShiftAssignments');
+  const existing = rows[0] && rows[0].length ? rows[0].map((h) => h.trim()) : [];
+  const header = [...existing];
+  for (const c of ASSIGN_COLUMNS) if (!header.includes(c)) header.push(c);
+  if (existing.length === 0 || header.length !== existing.length) {
+    await gateway.writeHeaderRow('ShiftAssignments', header);
+  }
+  return header;
+}
+
+// ── Public API ────────────────────────────────────────────────────────────────
+
+export async function listInstances(
+  gateway: SheetsGateway,
+  filter: { from: string; to: string; location?: string },
+): Promise<ShiftInstance[]> {
+  const objs = rowsToObjects(await gateway.readTab('ShiftInstances'));
+  return objs
+    .filter((o) => (o.id ?? '').trim() !== '')
+    .filter((o) => {
+      const date = (o.date ?? '').trim();
+      return date >= filter.from && date <= filter.to;
+    })
+    .filter((o) => !filter.location || (o.location ?? '').trim() === filter.location)
+    .map((o) => ({
+      id: (o.id ?? '').trim(),
+      templateId: (o.template_id ?? '').trim(),
+      location: (o.location ?? '').trim(),
+      date: (o.date ?? '').trim(),
+      start: (o.start ?? '').trim(),
+      end: (o.end ?? '').trim(),
+      headcount: Number((o.headcount ?? '0').trim()) || 0,
+      status: (o.status ?? '').trim(),
+    }));
+}
+
+export async function cancelInstance(gateway: SheetsGateway, id: string): Promise<void> {
+  const rows = await gateway.readTab('ShiftInstances');
+  if (!rows.length) return;
+  const header = rows[0].map((h) => h.trim());
+  const idx = rows.findIndex((r, i) => i > 0 && (r[header.indexOf('id')] ?? '').trim() === id);
+  if (idx < 0) return;
+  const newRow = [...rows[idx]];
+  newRow[header.indexOf('status')] = 'cancelled';
+  await gateway.updateRow('ShiftInstances', idx + 1, newRow); // updateRow is 1-based
+}
+
+export async function generateInstances(
+  gateway: SheetsGateway,
+  today: string,
+  horizonDays = 42,
+): Promise<{ templatesProcessed: number; instancesCreated: number; assignmentsSeeded: number; horizonEnd: string }> {
+  const horizonEnd = addDays(today, horizonDays);
+
+  // Load all active templates
+  const templates = (await listTemplates(gateway)).filter((t) => t.active);
+
+  // Load existing instance ids into a Set (idempotency)
+  const instanceRows = rowsToObjects(await gateway.readTab('ShiftInstances'));
+  const existingIds = new Set(instanceRows.map((o) => (o.id ?? '').trim()).filter(Boolean));
+
+  // Load existing assignment keys (instanceId|phone, ANY status) into a Set (idempotency)
+  const assignRows = rowsToObjects(await gateway.readTab('ShiftAssignments'));
+  const existingAssignKeys = new Set(
+    assignRows
+      .map((o) => {
+        const iid = (o.instance_id ?? '').trim();
+        const ph = (o.employee_phone ?? '').trim();
+        return iid && ph ? `${iid}|${ph}` : '';
+      })
+      .filter(Boolean),
+  );
+
+  // Ensure headers (read once, needed before appending)
+  const instanceHeader = await ensureInstanceHeader(gateway);
+  const assignHeader = await ensureAssignHeader(gateway);
+
+  let instancesCreated = 0;
+  let assignmentsSeeded = 0;
+
+  for (const tpl of templates) {
+    // Load active recurring assignments for this template
+    const recurring = (await listRecurring(gateway, tpl.id)).filter((r) => r.active);
+
+    for (let offset = 0; offset < horizonDays; offset++) {
+      const date = addDays(today, offset);
+
+      // Clip to valid_from / valid_to
+      if (tpl.validFrom && date < tpl.validFrom) continue;
+      if (tpl.validTo && date > tpl.validTo) continue;
+
+      // Check weekday
+      const wd = weekday(date);
+      if (!tpl.days.includes(wd)) continue;
+
+      const instanceId = `${tpl.id}_${compact(date)}`;
+
+      // Create instance if not already present
+      if (!existingIds.has(instanceId)) {
+        const record: Record<string, string> = {
+          id: instanceId,
+          template_id: tpl.id,
+          location: tpl.location,
+          date,
+          start: tpl.start,
+          end: tpl.end,
+          headcount: String(tpl.headcount),
+          status: 'scheduled',
+          generated_at: new Date().toISOString(),
+        };
+        await gateway.appendRow('ShiftInstances', objectToRow(record, instanceHeader));
+        existingIds.add(instanceId);
+        instancesCreated++;
+      }
+
+      // Seed recurring assignments
+      for (const rec of recurring) {
+        const key = `${instanceId}|${rec.employeePhone}`;
+        if (!existingAssignKeys.has(key)) {
+          const assignRecord: Record<string, string> = {
+            instance_id: instanceId,
+            employee_phone: rec.employeePhone,
+            source: 'recurring',
+            status: 'assigned',
+            assigned_at: new Date().toISOString(),
+            assigned_by: 'system',
+          };
+          await gateway.appendRow('ShiftAssignments', objectToRow(assignRecord, assignHeader));
+          existingAssignKeys.add(key);
+          assignmentsSeeded++;
+        }
+      }
+    }
+  }
+
+  return {
+    templatesProcessed: templates.length,
+    instancesCreated,
+    assignmentsSeeded,
+    horizonEnd,
+  };
+}

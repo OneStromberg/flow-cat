@@ -20,3 +20,4 @@ export { createSession, readSession } from './session/session.ts';
 export { addWorker, type AddWorkerInput } from './data/add-worker.ts';
 export { listTemplates, addTemplate, updateTemplate, parseTemplate, WEEKDAYS, type ShiftTemplate, type AddTemplateInput } from './data/shift-templates.ts';
 export { listRecurring, addRecurring, removeRecurring, listAssignments, assignManual, removeAssignment, type RecurringAssignment, type ShiftAssignment } from './data/shift-assignments.ts';
+export { generateInstances, listInstances, cancelInstance, type ShiftInstance } from './data/shift-instances.ts';
