@@ -15,6 +15,17 @@ export function CheckinClient({ items, workerName }: CheckinClientProps) {
   const [geofenceWarning, setGeofenceWarning] = useState<string | null>(null);
   const [geoError, setGeoError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [photoDataUrl, setPhotoDataUrl] = useState<string | undefined>(undefined);
+
+  function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === 'string') setPhotoDataUrl(reader.result);
+    };
+    reader.readAsDataURL(file);
+  }
 
   async function handleAction(instanceId: string, action: 'in' | 'out') {
     setGeofenceWarning(null);
@@ -28,7 +39,7 @@ export function CheckinClient({ items, workerName }: CheckinClientProps) {
       const res = await fetch('/api/checkin', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ instanceId, action, lat, lng }),
+        body: JSON.stringify({ instanceId, action, lat, lng, photo: photoDataUrl }),
       });
 
       const data = (await res.json()) as {
@@ -86,6 +97,23 @@ export function CheckinClient({ items, workerName }: CheckinClientProps) {
           {actionError}
         </div>
       )}
+
+      <div className="flex items-center gap-3">
+        <label className="text-sm text-gray-600" htmlFor="checkin-photo">
+          Photo (optional)
+        </label>
+        <input
+          id="checkin-photo"
+          type="file"
+          accept="image/*"
+          capture="user"
+          className="text-sm text-gray-700"
+          onChange={handlePhotoChange}
+        />
+        {photoDataUrl && (
+          <span className="text-xs text-green-700">Photo ready</span>
+        )}
+      </div>
 
       <ul className="divide-y divide-gray-200 rounded-lg border border-gray-200">
         {items.map(({ instance, attendance }) => {

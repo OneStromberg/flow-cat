@@ -13,6 +13,7 @@
   "dependencies": {
     "@scourage/sheets-helper": "workspace:*",
     "@scourage/worklog-core": "workspace:*",
+    "googleapis": "^144.0.0",
     "next": "^15.1.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",

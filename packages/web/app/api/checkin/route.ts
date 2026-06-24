@@ -1,5 +1,6 @@
 import { getGateway, COMPANY_TZ } from '../../../lib/sheets';
 import { requireWorker } from '../../../lib/session';
+import { storeCheckinPhoto } from '../../../lib/gcs';
 import {
   listAssignments,
   listInstances,
@@ -29,6 +30,7 @@ export async function POST(req: Request) {
   const action = String(raw.action ?? '').trim() as 'in' | 'out';
   const lat = Number(raw.lat);
   const lng = Number(raw.lng);
+  const photo = typeof raw.photo === 'string' ? raw.photo : undefined;
 
   if (!instanceId || (action !== 'in' && action !== 'out')) {
     return Response.json({ error: 'instanceId and action (in|out) are required' }, { status: 400 });
@@ -70,6 +72,11 @@ export async function POST(req: Request) {
     }
 
     const at = new Date().toISOString();
+    const photoUrl = await storeCheckinPhoto(
+      photo,
+      `${instanceId}_${worker.phone}`,
+      action,
+    );
 
     if (action === 'in') {
       const result = await checkIn(gw, {
@@ -78,7 +85,7 @@ export async function POST(req: Request) {
         at,
         lat: String(lat),
         lng: String(lng),
-        photo: '',
+        photo: photoUrl,
         inGeofence,
       });
       if (!result.ok) {
@@ -92,7 +99,7 @@ export async function POST(req: Request) {
         at,
         lat: String(lat),
         lng: String(lng),
-        photo: '',
+        photo: photoUrl,
         inGeofence,
       });
       if (!result.ok) {
