@@ -18,6 +18,12 @@ export interface Place {
   lng: string;
   placeId: string;
   address: string;
+  client: string;
+  geofenceRadiusM: string;
+  contact: string;
+  baseRate: string;
+  requiredAttributes: string[];
+  notes: string;
 }
 
 export interface AddPlaceInput {
@@ -26,9 +32,15 @@ export interface AddPlaceInput {
   lng: string;
   placeId: string;
   address: string;
+  client: string;
+  geofenceRadiusM: string;
+  contact: string;
+  baseRate: string;
+  requiredAttributes: string;
+  notes: string;
 }
 
-const PLACES_COLUMNS = ['place_name', 'active', 'lat', 'lng', 'place_id', 'address'];
+const PLACES_COLUMNS = ['place_name', 'active', 'lat', 'lng', 'place_id', 'address', 'client', 'geofence_radius_m', 'contact', 'base_rate', 'required_attributes', 'notes'];
 
 export function wazeUrl(lat: string, lng: string): string {
   return `https://waze.com/ul?ll=${lat},${lng}&navigate=yes`;
@@ -50,6 +62,12 @@ export async function listPlaces(gateway: SheetsGateway): Promise<Place[]> {
       lng: (o.lng ?? '').trim(),
       placeId: (o.place_id ?? '').trim(),
       address: (o.address ?? '').trim(),
+      client: (o.client ?? '').trim(),
+      geofenceRadiusM: (o.geofence_radius_m ?? '').trim() || '100',
+      contact: (o.contact ?? '').trim(),
+      baseRate: (o.base_rate ?? '').trim(),
+      requiredAttributes: (o.required_attributes ?? '').split(',').map((s) => s.trim()).filter(Boolean),
+      notes: (o.notes ?? '').trim(),
     }));
 }
 
@@ -66,6 +84,8 @@ export async function addPlace(
   if (!name) errors.name = 'Required';
   if (!numeric(input.lat)) errors.lat = 'Select a place from the list';
   if (!numeric(input.lng)) errors.lng = 'Select a place from the list';
+  if (input.geofenceRadiusM.trim() && !numeric(input.geofenceRadiusM)) errors.geofenceRadiusM = 'Must be a number';
+  if (input.baseRate.trim() && !numeric(input.baseRate)) errors.baseRate = 'Must be a number';
 
   if (name) {
     const objs = rowsToObjects(await gateway.readTab('Places'));
@@ -83,6 +103,12 @@ export async function addPlace(
     lng: input.lng.trim(),
     place_id: input.placeId.trim(),
     address: input.address.trim(),
+    client: input.client.trim(),
+    geofence_radius_m: input.geofenceRadiusM.trim(),
+    contact: input.contact.trim(),
+    base_rate: input.baseRate.trim(),
+    required_attributes: input.requiredAttributes.trim(),
+    notes: input.notes.trim(),
   };
 
   const rows = await gateway.readTab('Places');
