@@ -8,7 +8,7 @@
 
 - **0A — Storage:** **Sheets only.** No rollover/archival yet. Any future storage change is a separate process (dump + migration), out of scope here.
 - **0B — Client:** **Web only** (no mobile/PWA/native). All notifications via **Telegram Bot**.
-- **0C — Messaging:** **Telegram Bot** (replaces the parked WhatsApp bot for this product). **Convention:** every automated/scheduled job (shift generator, alert poller, nightly backup) reports a run summary to admins via Telegram. A minimal outbound `notifyAdmins(text)` helper (env `TELEGRAM_BOT_TOKEN` + `TELEGRAM_ADMIN_CHAT_IDS`) is built in Phase 1b; the full bot (worker linking, broadcasts) lands in Phase 4.
+- **0C — Messaging:** **Telegram Bot** (replaces the parked WhatsApp bot for this product). **Convention:** every automated/scheduled job (shift generator, alert poller, nightly backup) reports a run summary to admins via Telegram. **Admin recipients are data-driven**, NOT a static env list: `notifyAdmins(text, chatIds)` sends to workers flagged `admin=yes` who have a linked `telegram_chat_id` (the Phase-4 bot populates that column when a user opens the bot). Only `TELEGRAM_BOT_TOKEN` is an env var. The `notifyAdmins` + `pickAdminChatIds(workers)` helpers are built in Phase 1b; the full bot (worker linking, broadcasts) lands in Phase 4. Until linking exists, notify no-ops gracefully (no linked admin chats yet).
 - **0D — Roles:** **worker + admin** only (no separate manager tier; "supervisor/manager" in the PRD = admin).
 - **0E — Languages:** **English / Russian / Hebrew** (Hebrew ⇒ RTL).
 - **0F — Time:** Single timezone **Asia/Jerusalem**. Confirmed.
