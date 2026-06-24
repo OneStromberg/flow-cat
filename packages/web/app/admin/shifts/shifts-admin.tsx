@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import type { ShiftTemplate } from '@scourage/worklog-core';
+import type { ShiftTemplate, Worker, RecurringAssignment } from '@scourage/worklog-core';
+import type { InstanceWithCount } from './page';
 
 const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] as const;
 
@@ -16,9 +17,171 @@ const FORM0 = {
   validTo: '',
 };
 
-type Props = { templates: ShiftTemplate[]; places: string[] };
+// ── Recurring assignment editor (per template) ────────────────────────────────
 
-export function ShiftsAdmin({ templates, places }: Props) {
+function RecurringEditor({
+  template,
+  workers,
+  recurring,
+}: {
+  template: ShiftTemplate;
+  workers: Worker[];
+  recurring: RecurringAssignment[];
+}) {
+  const router = useRouter();
+  const [busy, setBusy] = useState(false); // ponytail: bool; no per-action granularity needed
+  const [addPhone, setAddPhone] = useState('');
+
+  const activeRecurring = recurring.filter((r) => r.active);
+  const assignedPhones = new Set(activeRecurring.map((r) => r.employeePhone));
+
+  // Workers already assigned (by phone, resolved to name)
+  const assignedWorkers = activeRecurring
+    .map((r) => workers.find((w) => w.phone === r.employeePhone))
+    .filter((w): w is Worker => Boolean(w));
+
+  // Workers available to add (not currently assigned, active)
+  const available = workers.filter((w) => w.active && !assignedPhones.has(w.phone));
+  const members = available.filter((w) => w.places.includes(template.location));
+  const others = available.filter((w) => !w.places.includes(template.location));
+
+  async function postAction(action: 'addRecurring' | 'removeRecurring', phone: string) {
+    setBusy(true);
+    try {
+      await fetch('/api/admin/shift-assignments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action, templateId: template.id, phone }),
+      });
+      router.refresh();
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleAdd() {
+    if (!addPhone) return;
+    setAddPhone('');
+    await postAction('addRecurring', addPhone);
+  }
+
+  return (
+    <div className="mt-3 rounded-lg border border-gray-100 bg-gray-50 p-3">
+      <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Recurring assignments</p>
+
+      {assignedWorkers.length === 0 && (
+        <p className="mt-1 text-xs text-gray-400">No recurring employees assigned.</p>
+      )}
+
+      {assignedWorkers.length > 0 && (
+        <ul className="mt-2 space-y-1">
+          {assignedWorkers.map((w) => (
+            <li key={w.phone} className="flex items-center justify-between gap-2 text-sm">
+              <span>{w.name}</span>
+              <button
+                onClick={() => postAction('removeRecurring', w.phone)}
+                disabled={busy}
+                className="rounded px-2 py-0.5 text-xs text-red-600 hover:bg-red-50 disabled:opacity-40"
+              >
+                Remove
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {/* Add employee picker */}
+      {available.length > 0 && (
+        <div className="mt-3 flex items-center gap-2">
+          <select
+            value={addPhone}
+            onChange={(e) => setAddPhone(e.target.value)}
+            className="flex-1 rounded border border-gray-300 px-2 py-1.5 text-sm"
+          >
+            <option value="">Add employee…</option>
+            {members.length > 0 && (
+              <optgroup label="Site members">
+                {members.map((w) => (
+                  <option key={w.phone} value={w.phone}>
+                    {w.name}
+                  </option>
+                ))}
+              </optgroup>
+            )}
+            {others.length > 0 && (
+              <optgroup label="Other workers">
+                {others.map((w) => (
+                  <option key={w.phone} value={w.phone}>
+                    {w.name} (not a site member)
+                  </option>
+                ))}
+              </optgroup>
+            )}
+          </select>
+          <button
+            onClick={handleAdd}
+            disabled={!addPhone || busy}
+            className="rounded-lg bg-gray-800 px-3 py-1.5 text-sm font-medium text-white disabled:opacity-40"
+          >
+            Add
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Upcoming instances view (per template) ────────────────────────────────────
+
+function InstancesView({ instances }: { instances: InstanceWithCount[] }) {
+  if (instances.length === 0) {
+    return <p className="mt-2 text-xs text-gray-400">No upcoming instances in the next 42 days.</p>;
+  }
+
+  const sorted = [...instances].sort((a, b) => a.date.localeCompare(b.date));
+
+  return (
+    <div className="mt-3">
+      <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Upcoming instances</p>
+      <ul className="mt-2 space-y-1">
+        {sorted.map((inst) => {
+          const needsStaff = inst.status !== 'cancelled' && inst.assignedCount < inst.headcount;
+          return (
+            <li key={inst.id} className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-sm">
+              <span className="w-24 text-gray-600">{inst.date}</span>
+              <span className="text-gray-500">{inst.start}–{inst.end}</span>
+              <span className={needsStaff ? 'font-medium text-red-600' : 'text-gray-600'}>
+                {inst.assignedCount}/{inst.headcount}
+              </span>
+              {inst.status === 'cancelled' && (
+                <span className="text-xs text-gray-400">(cancelled)</span>
+              )}
+              {needsStaff && <span className="text-xs text-amber-600">⚠ needs staff</span>}
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+}
+
+// ── Main component ────────────────────────────────────────────────────────────
+
+type Props = {
+  templates: ShiftTemplate[];
+  places: string[];
+  workers: Worker[];
+  recurringByTemplate: Record<string, RecurringAssignment[]>;
+  instancesByTemplate: Record<string, InstanceWithCount[]>;
+};
+
+export function ShiftsAdmin({
+  templates,
+  places,
+  workers,
+  recurringByTemplate,
+  instancesByTemplate,
+}: Props) {
   const router = useRouter();
   const [v, setV] = useState({ ...FORM0 });
   const [days, setDays] = useState<string[]>([]);
@@ -68,15 +231,28 @@ export function ShiftsAdmin({ templates, places }: Props) {
         {templates.length === 0 ? (
           <p className="text-sm text-gray-500">No templates yet.</p>
         ) : (
-          <ul className="divide-y divide-gray-200 rounded-lg border border-gray-200">
+          <ul className="space-y-4">
             {templates.map((t) => (
-              <li key={t.id} className="flex flex-wrap items-center gap-x-4 gap-y-1 px-4 py-3 text-sm">
-                <span className="font-medium">{t.location}</span>
-                <span className="text-gray-600">{t.label}</span>
-                <span className="text-gray-500">{t.days.join(', ')}</span>
-                <span className="text-gray-500">{t.start}–{t.end}</span>
-                <span className="text-gray-500">×{t.headcount}</span>
-                <span className="ml-auto text-xs text-gray-400">{t.validFrom} → {t.validTo}</span>
+              <li key={t.id} className="rounded-lg border border-gray-200 p-4">
+                {/* Template header */}
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
+                  <span className="font-medium">{t.location}</span>
+                  <span className="text-gray-600">{t.label}</span>
+                  <span className="text-gray-500">{t.days.join(', ')}</span>
+                  <span className="text-gray-500">{t.start}–{t.end}</span>
+                  <span className="text-gray-500">×{t.headcount}</span>
+                  <span className="ml-auto text-xs text-gray-400">{t.validFrom} → {t.validTo}</span>
+                </div>
+
+                {/* Recurring assignment editor */}
+                <RecurringEditor
+                  template={t}
+                  workers={workers}
+                  recurring={recurringByTemplate[t.id] ?? []}
+                />
+
+                {/* Upcoming instances */}
+                <InstancesView instances={instancesByTemplate[t.id] ?? []} />
               </li>
             ))}
           </ul>
