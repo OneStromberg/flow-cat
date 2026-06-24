@@ -9,11 +9,11 @@ type Props = {
   workers: Worker[];
   cities: string[];
   places: string[];
-  enums: { transportation: EnumOpt; hebrewLevel: EnumOpt; payType: EnumOpt; schedule: EnumOpt };
+  enums: { transportation: EnumOpt; hebrewLevel: EnumOpt; payType: EnumOpt; schedule: EnumOpt; gender: EnumOpt };
 };
 
 const EMPTY: WorkerFilters = {
-  search: '', cities: [], transportation: [], hebrewLevel: [], payType: [], schedule: [], places: [], active: 'all', ageMin: '', ageMax: '',
+  search: '', cities: [], transportation: [], hebrewLevel: [], payType: [], schedule: [], places: [], active: 'all', ageMin: '', ageMax: '', gender: [],
 };
 
 function Chips({ label, options, selected, onToggle }: { label: string; options: { value: string; label: string }[]; selected: string[]; onToggle: (v: string) => void }) {
@@ -53,6 +53,7 @@ export function WorkersFilter({ workers, cities, places, enums }: Props) {
         <Chips label="Hebrew level" options={[...enums.hebrewLevel]} selected={f.hebrewLevel} onToggle={(v) => toggle('hebrewLevel', v)} />
         <Chips label="Pay" options={[...enums.payType]} selected={f.payType} onToggle={(v) => toggle('payType', v)} />
         <Chips label="Schedule" options={[...enums.schedule]} selected={f.schedule} onToggle={(v) => toggle('schedule', v)} />
+        <Chips label="Gender" options={[...enums.gender]} selected={f.gender} onToggle={(v) => toggle('gender', v)} />
         {cityOpts.length > 0 && <Chips label="City" options={cityOpts} selected={f.cities} onToggle={(v) => toggle('cities', v)} />}
         {placeOpts.length > 0 && <Chips label="Places" options={placeOpts} selected={f.places} onToggle={(v) => toggle('places', v)} />}
         <div className="flex flex-wrap items-end gap-3">
