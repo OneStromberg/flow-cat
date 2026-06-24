@@ -15,11 +15,14 @@ export interface AddWorkerInput {
   payAmount: string;
   schedule: string;
   gender: string;
+  payStructure: string;
+  payRate: string;
 }
 
 const WORKERS_COLUMNS = [
   'phone', 'name', 'greeting', 'places', 'active', 'token', 'teudat_zeut',
   'admin', 'city', 'age', 'transportation', 'hebrew_level', 'pay_type', 'pay_amount', 'schedule', 'gender',
+  'pay_structure', 'pay_rate',
 ];
 
 function inEnum(val: string, list: readonly { value: string }[]): boolean {
@@ -72,6 +75,8 @@ export async function addWorker(
     pay_amount: input.payType === 'amount' ? input.payAmount.trim() : '',
     schedule: input.schedule,
     gender: input.gender,
+    pay_structure: (input.payStructure ?? '').trim(),
+    pay_rate: (input.payRate ?? '').trim(),
   };
 
   const rows = await gateway.readTab('Workers');

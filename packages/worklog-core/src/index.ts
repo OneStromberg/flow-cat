@@ -22,3 +22,4 @@ export { listTemplates, addTemplate, updateTemplate, parseTemplate, WEEKDAYS, ty
 export { listRecurring, addRecurring, removeRecurring, listAssignments, assignManual, removeAssignment, type RecurringAssignment, type ShiftAssignment } from './data/shift-assignments.ts';
 export { generateInstances, listInstances, cancelInstance, type ShiftInstance } from './data/shift-instances.ts';
 export { distanceMeters, withinGeofence, hoursBetween, checkIn, checkOut, adminCorrect, listAttendance, type Attendance } from './data/attendance.ts';
+export { PAY_STRUCTURE, resolveHourlyRate, computePay, listAdjustments, addAdjustment, type WorkedItem, type Adjustment, type PayBreakdown } from './data/payroll.ts';
