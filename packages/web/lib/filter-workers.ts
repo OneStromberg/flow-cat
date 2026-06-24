@@ -11,6 +11,7 @@ export interface WorkerFilters {
   active: 'all' | 'yes' | 'no';
   ageMin: string;
   ageMax: string;
+  gender: string[];
 }
 
 const inSet = (val: string | undefined, set: string[]): boolean => set.length === 0 || set.includes(val ?? '');
@@ -24,6 +25,7 @@ export function filterWorkers(workers: Worker[], f: WorkerFilters): Worker[] {
     if (!inSet(wk.hebrewLevel, f.hebrewLevel)) return false;
     if (!inSet(wk.payType, f.payType)) return false;
     if (!inSet(wk.schedule, f.schedule)) return false;
+    if (!inSet(wk.gender, f.gender)) return false;
     if (f.places.length > 0 && !wk.places.some((p) => f.places.includes(p))) return false;
     if (f.active === 'yes' && !wk.active) return false;
     if (f.active === 'no' && wk.active) return false;

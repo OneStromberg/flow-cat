@@ -6,7 +6,7 @@ import { addWorker } from './add-worker.ts';
 const base = {
   phone: '+1 555-222-0000', teudatZeut: '987654321', name: 'New Guy',
   places: ['Warehouse'], city: 'Eilat', age: '30',
-  transportation: 'car', hebrewLevel: 'speaks_good', payType: 'full', payAmount: '', schedule: 'days',
+  transportation: 'car', hebrewLevel: 'speaks_good', payType: 'full', payAmount: '', schedule: 'days', gender: '',
 };
 
 test('adds a valid worker (header-aligned row, active=yes)', async () => {
@@ -48,4 +48,13 @@ test('rejects a duplicate phone', async () => {
   const r = await addWorker(g, base); // base phone normalizes to 15552220000
   assert.equal(r.ok, false);
   if (!r.ok) assert.match(r.errors.phone, /already exists/);
+});
+
+test('addWorker accepts a valid gender and rejects an invalid one', async () => {
+  const g = createMemoryGateway({ Workers: [['phone','name','places','active']] });
+  const ok = await addWorker(g, { phone: '15551112222', teudatZeut: '1', name: 'A', places: [], city: '', age: '', transportation: '', hebrewLevel: '', payType: '', payAmount: '', schedule: '', gender: 'male' });
+  assert.deepEqual(ok, { ok: true });
+  const bad = await addWorker(g, { phone: '15553334444', teudatZeut: '1', name: 'B', places: [], city: '', age: '', transportation: '', hebrewLevel: '', payType: '', payAmount: '', schedule: '', gender: 'zzz' });
+  assert.equal(bad.ok, false);
+  if (!bad.ok) assert.equal(bad.errors.gender, 'Invalid');
 });

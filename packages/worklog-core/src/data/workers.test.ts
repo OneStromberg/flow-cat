@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createMemoryGateway } from '@scourage/sheets-helper';
-import { findWorker, findWorkerByToken, authenticateWorker, listWorkers } from './workers.ts';
+import { findWorker, findWorkerByToken, authenticateWorker, listWorkers, parseWorker } from './workers.ts';
 
 const gw = () =>
   createMemoryGateway({
@@ -112,4 +112,9 @@ test('listWorkers returns RAW worker places (no master filtering) for admin view
   const all = await listWorkers(g);
   // 'New Site' is NOT in the master Places tab, but the admin view must still show it
   assert.deepEqual(all[0].places, ['Warehouse', 'New Site']);
+});
+
+test('parseWorker reads gender', () => {
+  const w = parseWorker({ phone: '15551230000', name: 'A', places: '', active: 'yes', gender: 'female' }, []);
+  assert.equal(w.gender, 'female');
 });
