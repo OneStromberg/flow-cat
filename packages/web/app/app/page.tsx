@@ -5,6 +5,7 @@ import { loadQuestions, validateQuestions, listWorkerEntries, todayISO } from '@
 import { questionToWidget } from '../../lib/form-widgets';
 import { EntryForm } from './entry-form';
 import { LogoutButton } from './logout-button';
+import { TelegramConnect } from '../components/telegram-connect';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -27,6 +28,7 @@ export default async function AppPage() {
         <h1 className="text-xl font-semibold">{worker.greeting || `Hi ${worker.name}!`}</h1>
         <LogoutButton />
       </div>
+      <TelegramConnect phone={worker.phone} linked={!!worker.telegramChatId} />
 
       <section className="mt-6">
         <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-500">New entry</h2>

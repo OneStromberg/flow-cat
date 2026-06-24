@@ -3,6 +3,7 @@ import { requireAdmin } from '../../lib/session';
 import { getGateway } from '../../lib/sheets';
 import { listWorkers, loadActivePlaces, TRANSPORTATION, HEBREW_LEVEL, PAY_TYPE, SCHEDULE, GENDER } from '@scourage/worklog-core';
 import { WorkersFilter } from './workers-filter';
+import { TelegramConnect } from '../components/telegram-connect';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -23,6 +24,7 @@ export default async function AdminPage() {
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold">Workers</h1>
         <div className="flex items-center gap-2">
+          <TelegramConnect phone={admin.phone} linked={!!admin.telegramChatId} />
           <a href="/admin/places" className="rounded-lg border border-gray-300 px-3 py-2 text-sm">Places</a>
           <a href="/admin/shifts" className="rounded-lg border border-gray-300 px-3 py-2 text-sm">Shifts</a>
           <a href="/admin/attendance" className="rounded-lg border border-gray-300 px-3 py-2 text-sm">Attendance</a>
