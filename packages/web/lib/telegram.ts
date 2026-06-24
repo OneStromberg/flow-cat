@@ -1,5 +1,13 @@
 import type { Worker } from '@scourage/worklog-core';
 
+export async function sendTelegram(chatId: string, text: string): Promise<void> {
+  const token = process.env.TELEGRAM_BOT_TOKEN ?? '';
+  if (!token) return;
+  try {
+    await fetch(buildSendUrl(token), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ chat_id: chatId, text }) });
+  } catch (err) { console.error('sendTelegram failed:', err); }
+}
+
 /** Admin recipients = workers flagged admin who have linked their Telegram chat. */
 export function pickAdminChatIds(workers: Worker[]): string[] {
   return workers
