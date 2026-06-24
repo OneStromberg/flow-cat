@@ -94,3 +94,20 @@ export async function listWorkers(gateway: SheetsGateway): Promise<Worker[]> {
   const objs = rowsToObjects(await gateway.readTab('Workers'));
   return objs.filter((o) => (o.phone ?? '').trim() !== '').map((o) => parseWorker(o, []));
 }
+
+export async function linkTelegramChat(gateway: SheetsGateway, phone: string, chatId: string): Promise<boolean> {
+  const target = normalizePhone(phone);
+  const rows = await gateway.readTab('Workers');
+  if (rows.length === 0) return false;
+  const header = rows[0].map((h) => h.trim());
+  let tgi = header.indexOf('telegram_chat_id');
+  if (tgi < 0) { header.push('telegram_chat_id'); await gateway.writeHeaderRow('Workers', header); tgi = header.length - 1; }
+  const phoneIdx = header.indexOf('phone');
+  const i = rows.findIndex((r, idx) => idx > 0 && normalizePhone(r[phoneIdx] ?? '') === target);
+  if (i < 0) return false;
+  const row = [...rows[i]];
+  while (row.length < header.length) row.push('');
+  row[tgi] = chatId;
+  await gateway.updateRow('Workers', i + 1, row);
+  return true;
+}

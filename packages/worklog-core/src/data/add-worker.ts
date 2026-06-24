@@ -22,7 +22,7 @@ export interface AddWorkerInput {
 const WORKERS_COLUMNS = [
   'phone', 'name', 'greeting', 'places', 'active', 'token', 'teudat_zeut',
   'admin', 'city', 'age', 'transportation', 'hebrew_level', 'pay_type', 'pay_amount', 'schedule', 'gender',
-  'pay_structure', 'pay_rate',
+  'pay_structure', 'pay_rate', 'telegram_chat_id',
 ];
 
 function inEnum(val: string, list: readonly { value: string }[]): boolean {
