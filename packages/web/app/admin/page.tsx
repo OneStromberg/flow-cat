@@ -25,6 +25,7 @@ export default async function AdminPage() {
         <div className="flex items-center gap-2">
           <a href="/admin/places" className="rounded-lg border border-gray-300 px-3 py-2 text-sm">Places</a>
           <a href="/admin/shifts" className="rounded-lg border border-gray-300 px-3 py-2 text-sm">Shifts</a>
+          <a href="/admin/attendance" className="rounded-lg border border-gray-300 px-3 py-2 text-sm">Attendance</a>
           <a href="/admin/add" className="rounded-lg bg-gray-900 px-3 py-2 text-sm text-white">+ Add worker</a>
         </div>
       </div>
