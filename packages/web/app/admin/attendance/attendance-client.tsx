@@ -103,12 +103,12 @@ export function AttendanceClient({ rows }: { rows: Attendance[] }) {
                 </td>
                 <td className="flex gap-2 text-blue-600">
                   {row.checkInPhoto && (
-                    <a href={row.checkInPhoto} target="_blank" rel="noopener noreferrer" className="underline">
+                    <a href={`/api/admin/photo?name=${encodeURIComponent(row.checkInPhoto)}`} target="_blank" rel="noopener noreferrer" className="underline">
                       In
                     </a>
                   )}
                   {row.checkOutPhoto && (
-                    <a href={row.checkOutPhoto} target="_blank" rel="noopener noreferrer" className="underline">
+                    <a href={`/api/admin/photo?name=${encodeURIComponent(row.checkOutPhoto)}`} target="_blank" rel="noopener noreferrer" className="underline">
                       Out
                     </a>
                   )}
