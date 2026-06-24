@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createMemoryGateway } from '@scourage/sheets-helper';
-import { findWorker, findWorkerByToken, authenticateWorker, listWorkers, parseWorker } from './workers.ts';
+import { findWorker, findWorkerByToken, authenticateWorker, listWorkers, parseWorker, linkTelegramChat } from './workers.ts';
 
 const gw = () =>
   createMemoryGateway({
@@ -122,4 +122,13 @@ test('parseWorker reads gender', () => {
 test('parseWorker reads pay_structure and pay_rate', () => {
   const w = parseWorker({ phone:'15551230000', name:'A', places:'', active:'yes', pay_structure:'monthly', pay_rate:'8000' }, []);
   assert.equal(w.payStructure, 'monthly'); assert.equal(w.payRate, '8000');
+});
+
+test('linkTelegramChat writes telegram_chat_id onto the matching worker row', async () => {
+  const g = createMemoryGateway({ Workers: [['phone','name','places','active'], ['15551230000','A','','yes']] });
+  const ok = await linkTelegramChat(g, '+1 555 123 0000', '987654321');
+  assert.equal(ok, true);
+  const w = await findWorker(g, '15551230000');
+  assert.equal(w?.telegramChatId, '987654321');
+  assert.equal(await linkTelegramChat(g, '10000000000', '111'), false); // unknown phone
 });
