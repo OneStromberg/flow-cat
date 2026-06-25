@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation';
 import { requireWorker } from '../../../../lib/session';
-import { getGateway, COMPANY_TZ } from '../../../../lib/sheets';
+import { getRequestGateway, COMPANY_TZ } from '../../../../lib/sheets';
 import { loadQuestions, validateQuestions, getEntry, todayISO, normalizePhone } from '@scourage/worklog-core';
 import { questionToWidget } from '../../../../lib/form-widgets';
 import { EditForm } from './edit-form';
@@ -13,7 +13,7 @@ export default async function EditPage({ params }: { params: Promise<{ id: strin
   if (!worker || !worker.active) redirect('/login');
   const { id } = await params;
 
-  const gw = getGateway();
+  const gw = getRequestGateway();
   const entry = await getEntry(gw, id);
   if (!entry || normalizePhone(entry.phone) !== normalizePhone(worker.phone) || entry.locked || !entry.id) {
     return (

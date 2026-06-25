@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation';
 import { requireWorker } from '../../lib/session';
-import { getGateway, COMPANY_TZ } from '../../lib/sheets';
+import { getRequestGateway, COMPANY_TZ } from '../../lib/sheets';
 import { loadQuestions, validateQuestions, listWorkerEntries, todayISO } from '@scourage/worklog-core';
 import { questionToWidget } from '../../lib/form-widgets';
 import { EntryForm } from './entry-form';
@@ -14,7 +14,7 @@ export default async function AppPage() {
   const worker = await requireWorker();
   if (!worker || !worker.active) redirect('/login');
 
-  const gw = getGateway();
+  const gw = getRequestGateway();
   const questions = await loadQuestions(gw);
   const valid = validateQuestions(questions);
   const entries = await listWorkerEntries(gw, worker.phone);

@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation';
 import { requireAdmin } from '../../../lib/session';
-import { getGateway } from '../../../lib/sheets';
+import { getRequestGateway } from '../../../lib/sheets';
 import {
   listTemplates,
   loadActivePlaces,
@@ -29,7 +29,7 @@ export default async function ShiftsPage() {
   const admin = await requireAdmin();
   if (!admin) redirect('/');
 
-  const gw = getGateway();
+  const gw = getRequestGateway();
   const today = new Date().toISOString().slice(0, 10);
   const horizonEnd = addDays(today, 42);
 
