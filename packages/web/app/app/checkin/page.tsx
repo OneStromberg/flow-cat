@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation';
 import { requireWorker } from '../../../lib/session';
-import { getGateway, COMPANY_TZ } from '../../../lib/sheets';
+import { getRequestGateway, COMPANY_TZ } from '../../../lib/sheets';
 import {
   listInstances,
   listAssignments,
@@ -23,7 +23,7 @@ export default async function CheckinPage() {
   const worker = await requireWorker();
   if (!worker || !worker.active) redirect('/login');
 
-  const gw = getGateway();
+  const gw = getRequestGateway();
   const today = todayISO(COMPANY_TZ);
 
   // Load all today's instances and this worker's active assignments + attendance

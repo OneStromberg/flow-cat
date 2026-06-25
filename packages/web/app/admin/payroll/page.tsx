@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation';
 import { requireAdmin } from '../../../lib/session';
-import { getGateway } from '../../../lib/sheets';
+import { getRequestGateway } from '../../../lib/sheets';
 import {
   listWorkers,
   listTemplates,
@@ -41,7 +41,7 @@ export default async function PayrollPage({
   const from = typeof params.from === 'string' ? params.from : defaults.from;
   const to = typeof params.to === 'string' ? params.to : defaults.to;
 
-  const gw = getGateway();
+  const gw = getRequestGateway();
   const [workers, templates, places, instances] = await Promise.all([
     listWorkers(gw),
     listTemplates(gw),

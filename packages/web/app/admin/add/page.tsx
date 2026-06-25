@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation';
 import { requireAdmin } from '../../../lib/session';
-import { getGateway } from '../../../lib/sheets';
+import { getRequestGateway } from '../../../lib/sheets';
 import { loadActivePlaces, TRANSPORTATION, HEBREW_LEVEL, PAY_TYPE, SCHEDULE, GENDER, PAY_STRUCTURE } from '@scourage/worklog-core';
 import { AddWorkerForm } from './add-worker-form';
 
@@ -10,7 +10,7 @@ export const dynamic = 'force-dynamic';
 export default async function AddWorkerPage() {
   const admin = await requireAdmin();
   if (!admin) redirect('/');
-  const places = await loadActivePlaces(getGateway());
+  const places = await loadActivePlaces(getRequestGateway());
   return (
     <main className="mx-auto max-w-md p-5">
       <div className="flex items-center justify-between">

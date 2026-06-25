@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation';
 import { requireAdmin } from '../../../lib/session';
-import { getGateway } from '../../../lib/sheets';
+import { getRequestGateway } from '../../../lib/sheets';
 import { listAttendance } from '@scourage/worklog-core';
 import { AttendanceClient } from './attendance-client';
 
@@ -28,7 +28,7 @@ export default async function AttendancePage({
   const from = typeof params.from === 'string' ? params.from : formatDate(-14);
   const to = typeof params.to === 'string' ? params.to : formatDate(0);
 
-  const attendance = await listAttendance(getGateway(), { from, to });
+  const attendance = await listAttendance(getRequestGateway(), { from, to });
 
   return (
     <main className="mx-auto max-w-6xl p-5">

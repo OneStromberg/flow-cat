@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation';
 import { requireAdmin } from '../../../lib/session';
-import { getGateway } from '../../../lib/sheets';
+import { getRequestGateway } from '../../../lib/sheets';
 import { listPlaces, wazeUrl, googleMapsUrl } from '@scourage/worklog-core';
 
 export const runtime = 'nodejs';
@@ -9,7 +9,7 @@ export const dynamic = 'force-dynamic';
 export default async function PlacesPage() {
   const admin = await requireAdmin();
   if (!admin) redirect('/');
-  const places = await listPlaces(getGateway());
+  const places = await listPlaces(getRequestGateway());
 
   return (
     <main className="mx-auto max-w-3xl p-5">

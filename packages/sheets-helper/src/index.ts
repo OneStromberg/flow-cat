@@ -2,6 +2,7 @@ export type { SheetsGateway } from './gateway.ts';
 export { rowsToObjects, objectToRow } from './rows.ts';
 export { createMemoryGateway } from './memory-gateway.ts';
 export { createGoogleGateway } from './google-gateway.ts';
+export { createCachingGateway } from './caching-gateway.ts';
 export { ensureTabs } from './ensure-tabs.ts';
 export { parseServiceAccountJson, type ServiceAccountCredentials } from './credentials.ts';
 export { buildSheetsAuth, type SheetsAuthOptions } from './auth.ts';

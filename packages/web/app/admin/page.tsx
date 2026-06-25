@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation';
 import { requireAdmin } from '../../lib/session';
-import { getGateway } from '../../lib/sheets';
+import { getRequestGateway } from '../../lib/sheets';
 import { listWorkers, loadActivePlaces, TRANSPORTATION, HEBREW_LEVEL, PAY_TYPE, SCHEDULE, GENDER } from '@scourage/worklog-core';
 import { WorkersFilter } from './workers-filter';
 import { TelegramConnect } from '../components/telegram-connect';
@@ -12,7 +12,7 @@ export default async function AdminPage() {
   const admin = await requireAdmin();
   if (!admin) redirect('/');
 
-  const gw = getGateway();
+  const gw = getRequestGateway();
   const workers = await listWorkers(gw);
   const activePlaces = await loadActivePlaces(gw);
   const cities = [...new Set(workers.map((w) => w.city ?? '').filter(Boolean))].sort();
