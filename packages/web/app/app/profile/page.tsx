@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic';
 
 export default async function ProfilePage() {
   const worker = await requireWorker();
-  if (!worker) redirect('/login');
+  if (!worker || !worker.active) redirect('/login');
 
   return (
     <main className="mx-auto max-w-md p-5">

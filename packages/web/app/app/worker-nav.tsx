@@ -1,4 +1,5 @@
 'use client';
+import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
 const TABS = [
@@ -14,11 +15,11 @@ export function WorkerNav() {
       {TABS.map((t) => {
         const active = t.exact ? path === t.href : path.startsWith(t.href);
         return (
-          <a key={t.href} href={t.href}
+          <Link key={t.href} href={t.href}
             className={`flex flex-1 flex-col items-center gap-0.5 py-2 text-[11px] ${active ? 'text-gray-900' : 'text-gray-400'}`}>
             <span className="text-lg leading-none">{t.icon}</span>
             <span>{t.label}</span>
-          </a>
+          </Link>
         );
       })}
     </nav>
