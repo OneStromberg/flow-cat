@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react';
 import type { Worker } from '@scourage/worklog-core';
 import { filterWorkers, type WorkerFilters } from '../../lib/filter-workers';
+import { MultiSelectDropdown } from '../components/multi-select-dropdown';
 
 type EnumOpt = readonly { value: string; label: string }[];
 type Props = {
@@ -16,29 +17,9 @@ const EMPTY: WorkerFilters = {
   search: '', cities: [], transportation: [], hebrewLevel: [], payType: [], schedule: [], places: [], active: 'all', ageMin: '', ageMax: '', gender: [],
 };
 
-function Chips({ label, options, selected, onToggle }: { label: string; options: { value: string; label: string }[]; selected: string[]; onToggle: (v: string) => void }) {
-  return (
-    <div>
-      <div className="text-xs font-medium uppercase tracking-wide text-gray-500">{label}</div>
-      <div className="mt-1 flex flex-wrap gap-1.5">
-        {options.map((o) => (
-          <button key={o.value} type="button" onClick={() => onToggle(o.value)}
-            className={`rounded-full border px-2.5 py-1 text-xs ${selected.includes(o.value) ? 'border-gray-900 bg-gray-900 text-white' : 'border-gray-300 text-gray-700'}`}>
-            {o.label}
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-}
 
 export function WorkersFilter({ workers, cities, places, enums }: Props) {
   const [f, setF] = useState<WorkerFilters>(EMPTY);
-  const toggle = (key: keyof WorkerFilters, v: string) =>
-    setF((prev) => {
-      const arr = prev[key] as string[];
-      return { ...prev, [key]: arr.includes(v) ? arr.filter((x) => x !== v) : [...arr, v] };
-    });
 
   const shown = useMemo(() => filterWorkers(workers, f), [workers, f]);
   const cityOpts = cities.map((c) => ({ value: c, label: c }));
@@ -49,13 +30,15 @@ export function WorkersFilter({ workers, cities, places, enums }: Props) {
       <div className="space-y-3 rounded-lg border border-gray-200 p-4">
         <input className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm" placeholder="Search name or phone…"
           value={f.search} onChange={(e) => setF((p) => ({ ...p, search: e.target.value }))} />
-        <Chips label="Transportation" options={[...enums.transportation]} selected={f.transportation} onToggle={(v) => toggle('transportation', v)} />
-        <Chips label="Hebrew level" options={[...enums.hebrewLevel]} selected={f.hebrewLevel} onToggle={(v) => toggle('hebrewLevel', v)} />
-        <Chips label="Pay" options={[...enums.payType]} selected={f.payType} onToggle={(v) => toggle('payType', v)} />
-        <Chips label="Schedule" options={[...enums.schedule]} selected={f.schedule} onToggle={(v) => toggle('schedule', v)} />
-        <Chips label="Gender" options={[...enums.gender]} selected={f.gender} onToggle={(v) => toggle('gender', v)} />
-        {cityOpts.length > 0 && <Chips label="City" options={cityOpts} selected={f.cities} onToggle={(v) => toggle('cities', v)} />}
-        {placeOpts.length > 0 && <Chips label="Places" options={placeOpts} selected={f.places} onToggle={(v) => toggle('places', v)} />}
+        <div className="grid grid-cols-2 gap-2">
+          <MultiSelectDropdown label="Transportation" options={[...enums.transportation]} selected={f.transportation} onChange={(v) => setF((p) => ({ ...p, transportation: v }))} />
+          <MultiSelectDropdown label="Hebrew level" options={[...enums.hebrewLevel]} selected={f.hebrewLevel} onChange={(v) => setF((p) => ({ ...p, hebrewLevel: v }))} />
+          <MultiSelectDropdown label="Pay" options={[...enums.payType]} selected={f.payType} onChange={(v) => setF((p) => ({ ...p, payType: v }))} />
+          <MultiSelectDropdown label="Schedule" options={[...enums.schedule]} selected={f.schedule} onChange={(v) => setF((p) => ({ ...p, schedule: v }))} />
+          <MultiSelectDropdown label="Gender" options={[...enums.gender]} selected={f.gender} onChange={(v) => setF((p) => ({ ...p, gender: v }))} />
+          {cityOpts.length > 0 && <MultiSelectDropdown label="City" options={cityOpts} selected={f.cities} onChange={(v) => setF((p) => ({ ...p, cities: v }))} />}
+          {placeOpts.length > 0 && <MultiSelectDropdown label="Places" options={placeOpts} selected={f.places} onChange={(v) => setF((p) => ({ ...p, places: v }))} />}
+        </div>
         <div className="flex flex-wrap items-end gap-3">
           <label className="text-sm">Age
             <div className="mt-1 flex items-center gap-1">

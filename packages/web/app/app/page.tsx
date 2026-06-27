@@ -4,8 +4,6 @@ import { getRequestGateway, COMPANY_TZ } from '../../lib/sheets';
 import { loadQuestions, validateQuestions, listWorkerEntries, todayISO } from '@scourage/worklog-core';
 import { questionToWidget } from '../../lib/form-widgets';
 import { EntryForm } from './entry-form';
-import { LogoutButton } from './logout-button';
-import { TelegramConnect } from '../components/telegram-connect';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -24,11 +22,7 @@ export default async function AppPage() {
 
   return (
     <main className="mx-auto max-w-md p-5">
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-semibold">{worker.greeting || `Hi ${worker.name}!`}</h1>
-        <LogoutButton />
-      </div>
-      <TelegramConnect phone={worker.phone} linked={!!worker.telegramChatId} />
+      <h1 className="text-xl font-semibold">{worker.greeting || `Hi ${worker.name}!`}</h1>
 
       <section className="mt-6">
         <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-500">New entry</h2>
