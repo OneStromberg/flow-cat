@@ -2,8 +2,12 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import type { ShiftTemplate, Worker, RecurringAssignment } from '@scourage/worklog-core';
-import type { InstanceWithCount } from './page';
+import type { ShiftTemplate, Worker, RecurringAssignment, ShiftInstance } from '@scourage/worklog-core';
+
+// Local stand-in until this file is migrated in a later task
+export interface InstanceWithCount extends ShiftInstance {
+  assignedCount: number;
+}
 
 const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] as const;
 

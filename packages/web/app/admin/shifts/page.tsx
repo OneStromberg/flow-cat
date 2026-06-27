@@ -1,19 +1,14 @@
 import { redirect } from 'next/navigation';
 import { requireAdmin } from '../../../lib/session';
 import { getRequestGateway } from '../../../lib/sheets';
-import {
-  listTemplates,
-  loadActivePlaces,
-  listWorkers,
-  listRecurring,
-  listInstances,
-  listAssignments,
-} from '@scourage/worklog-core';
-import { ShiftsAdmin } from './shifts-admin';
+import { listInstances, listAssignments } from '@scourage/worklog-core';
 import type { ShiftInstance } from '@scourage/worklog-core';
+import { WeekGrid } from './week-grid';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+
+// ── Date helpers ──────────────────────────────────────────────────────────────
 
 function addDays(iso: string, n: number): string {
   const [y, m, d] = iso.split('-').map(Number);
@@ -21,64 +16,88 @@ function addDays(iso: string, n: number): string {
   return dt.toISOString().slice(0, 10);
 }
 
-export interface InstanceWithCount extends ShiftInstance {
-  assignedCount: number;
+/** Return the ISO date of the Sunday on or before the given ISO date. */
+function sundayOf(iso: string): string {
+  const [y, m, d] = iso.split('-').map(Number);
+  const dt = new Date(Date.UTC(y, m - 1, d));
+  return addDays(iso, -dt.getUTCDay());
 }
 
-export default async function ShiftsPage() {
+// ── Types ─────────────────────────────────────────────────────────────────────
+
+export interface InstanceWithAssigned {
+  instance: ShiftInstance;
+  assigned: number;
+}
+
+export interface DayData {
+  date: string;
+  items: InstanceWithAssigned[];
+}
+
+// ── Page ──────────────────────────────────────────────────────────────────────
+
+export default async function ShiftsPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const admin = await requireAdmin();
   if (!admin) redirect('/');
 
-  const gw = getRequestGateway();
-  const today = new Date().toISOString().slice(0, 10);
-  const horizonEnd = addDays(today, 42);
+  const sp = await searchParams;
+  const weekParam = typeof sp.week === 'string' ? sp.week : undefined;
 
-  const [templates, places, workers, allInstances] = await Promise.all([
-    listTemplates(gw),
-    loadActivePlaces(gw),
-    listWorkers(gw),
-    listInstances(gw, { from: today, to: horizonEnd }),
+  const today = new Date().toISOString().slice(0, 10);
+  const weekStart = sundayOf(weekParam ?? today);
+  const weekEnd = addDays(weekStart, 6);
+
+  const weekDays: string[] = [];
+  for (let i = 0; i < 7; i++) weekDays.push(addDays(weekStart, i));
+
+  const prevWeek = addDays(weekStart, -7);
+  const nextWeek = addDays(weekStart, 7);
+
+  const gw = getRequestGateway();
+
+  const [instances, allAssignments] = await Promise.all([
+    listInstances(gw, { from: weekStart, to: weekEnd }),
+    listAssignments(gw, {}),
   ]);
 
-  // For each template load its recurring assignments and filter instances
-  const templateData = await Promise.all(
-    templates.map(async (t) => {
-      const recurring = await listRecurring(gw, t.id);
+  // Build a Set of instance IDs in this week for fast lookup
+  const weekInstanceIds = new Set(instances.map((i) => i.id));
 
-      // Filter instances belonging to this template
-      const tInstances = allInstances.filter(
-        (i) => i.templateId === t.id || i.id.startsWith(t.id + '_'),
-      );
+  // Count assigned (status=assigned) per instanceId for instances in this week
+  const assignedCountMap = new Map<string, number>();
+  for (const a of allAssignments) {
+    if (a.status === 'assigned' && weekInstanceIds.has(a.instanceId)) {
+      assignedCountMap.set(a.instanceId, (assignedCountMap.get(a.instanceId) ?? 0) + 1);
+    }
+  }
 
-      // For each instance get assigned count
-      const instances: InstanceWithCount[] = await Promise.all(
-        tInstances.map(async (inst) => {
-          const assignments = await listAssignments(gw, { instanceId: inst.id });
-          return { ...inst, assignedCount: assignments.length };
-        }),
-      );
+  // Group instances by date
+  const byDate = new Map<string, InstanceWithAssigned[]>();
+  for (const date of weekDays) byDate.set(date, []);
+  for (const inst of instances) {
+    const list = byDate.get(inst.date);
+    if (list) {
+      list.push({ instance: inst, assigned: assignedCountMap.get(inst.id) ?? 0 });
+    }
+  }
 
-      return { templateId: t.id, recurring, instances };
-    }),
-  );
-
-  // Build lookup maps keyed by templateId
-  const recurringByTemplate = Object.fromEntries(
-    templateData.map(({ templateId, recurring }) => [templateId, recurring]),
-  );
-  const instancesByTemplate = Object.fromEntries(
-    templateData.map(({ templateId, instances }) => [templateId, instances]),
-  );
+  const days: DayData[] = weekDays.map((date) => ({
+    date,
+    items: byDate.get(date) ?? [],
+  }));
 
   return (
-    <main className="mx-auto max-w-4xl p-5">
-      <h1 className="text-xl font-semibold">Shift Templates</h1>
-      <ShiftsAdmin
-        templates={templates}
-        places={places}
-        workers={workers}
-        recurringByTemplate={recurringByTemplate}
-        instancesByTemplate={instancesByTemplate}
+    <main className="mx-auto max-w-5xl p-4">
+      <WeekGrid
+        weekStart={weekStart}
+        days={days}
+        prevWeek={prevWeek}
+        nextWeek={nextWeek}
       />
     </main>
   );
