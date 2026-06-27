@@ -25,10 +25,6 @@ export default async function AdminPage() {
         <h1 className="text-xl font-semibold">Workers</h1>
         <div className="flex items-center gap-2">
           <TelegramConnect phone={admin.phone} linked={!!admin.telegramChatId} />
-          <a href="/admin/places" className="rounded-lg border border-gray-300 px-3 py-2 text-sm">Places</a>
-          <a href="/admin/shifts" className="rounded-lg border border-gray-300 px-3 py-2 text-sm">Shifts</a>
-          <a href="/admin/attendance" className="rounded-lg border border-gray-300 px-3 py-2 text-sm">Attendance</a>
-          <a href="/admin/payroll" className="rounded-lg border border-gray-300 px-3 py-2 text-sm">Payroll</a>
           <a href="/admin/add" className="rounded-lg bg-gray-900 px-3 py-2 text-sm text-white">+ Add worker</a>
         </div>
       </div>
