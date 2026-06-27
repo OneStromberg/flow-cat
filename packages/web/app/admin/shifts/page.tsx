@@ -3,25 +3,11 @@ import { requireAdmin } from '../../../lib/session';
 import { getRequestGateway } from '../../../lib/sheets';
 import { listInstances, listAssignments } from '@scourage/worklog-core';
 import type { ShiftInstance } from '@scourage/worklog-core';
-import { WeekGrid } from './week-grid';
+import { addDays, sundayOf } from './date-utils';
+import { WeekList } from './week-list';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
-
-// ── Date helpers ──────────────────────────────────────────────────────────────
-
-function addDays(iso: string, n: number): string {
-  const [y, m, d] = iso.split('-').map(Number);
-  const dt = new Date(Date.UTC(y, m - 1, d + n));
-  return dt.toISOString().slice(0, 10);
-}
-
-/** Return the ISO date of the Sunday on or before the given ISO date. */
-function sundayOf(iso: string): string {
-  const [y, m, d] = iso.split('-').map(Number);
-  const dt = new Date(Date.UTC(y, m - 1, d));
-  return addDays(iso, -dt.getUTCDay());
-}
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -30,8 +16,8 @@ export interface InstanceWithAssigned {
   assigned: number;
 }
 
-export interface DayData {
-  date: string;
+export interface WeekData {
+  weekStart: string;
   items: InstanceWithAssigned[];
 }
 
@@ -46,59 +32,53 @@ export default async function ShiftsPage({
   if (!admin) redirect('/');
 
   const sp = await searchParams;
-  const weekParam = typeof sp.week === 'string' ? sp.week : undefined;
 
   const today = new Date().toISOString().slice(0, 10);
-  const weekStart = sundayOf(weekParam ?? today);
-  const weekEnd = addDays(weekStart, 6);
 
-  const weekDays: string[] = [];
-  for (let i = 0; i < 7; i++) weekDays.push(addDays(weekStart, i));
+  const fromParam = typeof sp.from === 'string' ? sp.from : sundayOf(today);
+  const weeksParam =
+    typeof sp.weeks === 'string'
+      ? Math.min(Math.max(parseInt(sp.weeks, 10) || 8, 1), 52)
+      : 8;
 
-  const prevWeek = addDays(weekStart, -7);
-  const nextWeek = addDays(weekStart, 7);
+  const rangeStart = fromParam;
+  const rangeEnd = addDays(fromParam, weeksParam * 7 - 1);
 
   const gw = getRequestGateway();
 
   const [instances, allAssignments] = await Promise.all([
-    listInstances(gw, { from: weekStart, to: weekEnd }),
+    listInstances(gw, { from: rangeStart, to: rangeEnd }),
     listAssignments(gw, {}),
   ]);
 
-  // Build a Set of instance IDs in this week for fast lookup
-  const weekInstanceIds = new Set(instances.map((i) => i.id));
-
-  // Count assigned (status=assigned) per instanceId for instances in this week
+  // Build assigned-count map for instances in range
+  const rangeInstanceIds = new Set(instances.map((i) => i.id));
   const assignedCountMap = new Map<string, number>();
   for (const a of allAssignments) {
-    if (a.status === 'assigned' && weekInstanceIds.has(a.instanceId)) {
+    if (a.status === 'assigned' && rangeInstanceIds.has(a.instanceId)) {
       assignedCountMap.set(a.instanceId, (assignedCountMap.get(a.instanceId) ?? 0) + 1);
     }
   }
 
-  // Group instances by date
-  const byDate = new Map<string, InstanceWithAssigned[]>();
-  for (const date of weekDays) byDate.set(date, []);
-  for (const inst of instances) {
-    const list = byDate.get(inst.date);
-    if (list) {
-      list.push({ instance: inst, assigned: assignedCountMap.get(inst.id) ?? 0 });
-    }
+  // Build week objects
+  const weeks: WeekData[] = [];
+  for (let w = 0; w < weeksParam; w++) {
+    const weekStart = addDays(fromParam, w * 7);
+    const weekEnd = addDays(weekStart, 6);
+    const items = instances
+      .filter((inst) => inst.date >= weekStart && inst.date <= weekEnd)
+      .sort((a, b) => a.date.localeCompare(b.date) || a.start.localeCompare(b.start))
+      .map((inst) => ({ instance: inst, assigned: assignedCountMap.get(inst.id) ?? 0 }));
+    weeks.push({ weekStart, items });
   }
 
-  const days: DayData[] = weekDays.map((date) => ({
-    date,
-    items: byDate.get(date) ?? [],
-  }));
+  // Nav: earlier = 4 more weeks prepended; loadMore = 8 more weeks appended
+  const earlierHref = `?from=${addDays(fromParam, -28)}&weeks=${weeksParam + 4}`;
+  const loadMoreHref = `?from=${fromParam}&weeks=${weeksParam + 8}`;
 
   return (
-    <main className="mx-auto max-w-5xl p-4">
-      <WeekGrid
-        weekStart={weekStart}
-        days={days}
-        prevWeek={prevWeek}
-        nextWeek={nextWeek}
-      />
+    <main className="mx-auto max-w-xl p-4">
+      <WeekList weeks={weeks} earlierHref={earlierHref} loadMoreHref={loadMoreHref} />
     </main>
   );
 }
