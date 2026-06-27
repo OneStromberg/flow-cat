@@ -1,22 +1,6 @@
 import Link from 'next/link';
 import type { Day } from './page';
-
-// ponytail: simple djb2 hash — good enough for ~8 colors, no crypto needed
-function colorFor(location: string): string {
-  let h = 5381;
-  for (let i = 0; i < location.length; i++) h = ((h << 5) + h) ^ location.charCodeAt(i);
-  const COLORS = [
-    'bg-blue-500 text-white',
-    'bg-emerald-500 text-white',
-    'bg-rose-500 text-white',
-    'bg-amber-500 text-white',
-    'bg-violet-500 text-white',
-    'bg-cyan-600 text-white',
-    'bg-pink-500 text-white',
-    'bg-orange-500 text-white',
-  ];
-  return COLORS[Math.abs(h) % COLORS.length];
-}
+import { colorFor } from './shift-colors';
 
 interface MonthGridProps {
   monthLabel: string;
@@ -28,22 +12,6 @@ interface MonthGridProps {
 export function MonthGrid({ monthLabel, weeks, prevHref, nextHref }: MonthGridProps) {
   return (
     <div>
-      {/* Action buttons */}
-      <div className="mb-4 flex gap-2">
-        <Link
-          href="/admin/shifts/new"
-          className="rounded-lg bg-gray-900 px-3 py-2 text-sm font-medium text-white"
-        >
-          + New shift
-        </Link>
-        <Link
-          href="/admin/shifts/templates"
-          className="rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700"
-        >
-          Templates
-        </Link>
-      </div>
-
       {/* Month nav */}
       <div className="mb-2 flex items-center justify-between">
         <Link href={prevHref} className="px-2 py-1 text-lg text-gray-500 hover:text-gray-900">
