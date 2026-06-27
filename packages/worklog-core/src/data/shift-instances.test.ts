@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createMemoryGateway } from '@scourage/sheets-helper';
-import { generateInstances, listInstances, cancelInstance } from './shift-instances.ts';
+import { generateInstances, listInstances, cancelInstance, updateInstance, applyTemplateEdit } from './shift-instances.ts';
 import { listAssignments } from './shift-assignments.ts';
 
 function seed() {
@@ -114,4 +114,33 @@ test('inactive templates are skipped', async () => {
   const r = await generateInstances(g, '2026-07-01', 7);
   assert.equal(r.instancesCreated, 0);
   assert.equal(r.templatesProcessed, 0);
+});
+
+test('updateInstance overrides one instance row', async () => {
+  const g = createMemoryGateway({ ShiftInstances: [
+    ['id','template_id','location','date','start','end','headcount','status','generated_at'],
+    ['tpl_1_20260701','tpl_1','Site A','2026-07-01','08:00','16:00','1','scheduled',''],
+  ]});
+  const r = await updateInstance(g, 'tpl_1_20260701', { start:'09:00', headcount:'3' });
+  assert.equal(r.ok, true);
+  const i = (await listInstances(g, { from:'2026-07-01', to:'2026-07-01' }))[0];
+  assert.equal(i.start, '09:00'); assert.equal(i.headcount, 3);
+  const bad = await updateInstance(g, 'tpl_1_20260701', { start:'99:99' });
+  assert.equal(bad.ok, false);
+});
+
+test('applyTemplateEdit updates valid future instances and cancels now-invalid ones', async () => {
+  const g = createMemoryGateway({
+    ShiftTemplates: [['id','location','label','days','start','end','headcount','valid_from','valid_to','active','rate'],
+      ['tpl_1','Site A','Day','Wed','10:00','18:00','2','','','yes','']], // edited: now Wed only, 10-18, hc 2
+    ShiftInstances: [['id','template_id','location','date','start','end','headcount','status','generated_at'],
+      ['tpl_1_20260701','tpl_1','Site A','2026-07-01','08:00','16:00','1','scheduled',''],  // Wed → update
+      ['tpl_1_20260703','tpl_1','Site A','2026-07-03','08:00','16:00','1','scheduled','']], // Fri → cancel
+  });
+  const r = await applyTemplateEdit(g, 'tpl_1', '2026-07-01');
+  assert.equal(r.updated, 1); assert.equal(r.cancelled, 1);
+  const ins = await listInstances(g, { from:'2026-07-01', to:'2026-07-31' });
+  const wed = ins.find((i)=>i.id==='tpl_1_20260701'); const fri = ins.find((i)=>i.id==='tpl_1_20260703');
+  assert.equal(wed?.start, '10:00'); assert.equal(wed?.headcount, 2); assert.equal(wed?.status, 'scheduled');
+  assert.equal(fri?.status, 'cancelled');
 });

@@ -1,7 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createMemoryGateway } from '@scourage/sheets-helper';
-import { listTemplates, addTemplate } from './shift-templates.ts';
+import { listTemplates, addTemplate, copyTemplate } from './shift-templates.ts';
+import { listRecurring, addRecurring } from './shift-assignments.ts';
 
 const WEEKDAYS = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
 
@@ -35,4 +36,21 @@ test('addTemplate rejects bad weekday, time, headcount, and identical start/end'
   assert.equal(badHc.ok, false); if (!badHc.ok) assert.ok(badHc.errors.headcount);
   const same = await addTemplate(g, { location:'A', label:'D', days:['Mon'], start:'08:00', end:'08:00', headcount:'1', validFrom:'', validTo:'', rate:'' });
   assert.equal(same.ok, false); if (!same.ok) assert.ok(same.errors.end);
+});
+
+test('copyTemplate duplicates fields with new validity and carries assignments', async () => {
+  const g = createMemoryGateway({
+    ShiftTemplates: [['id','location','label','days','start','end','headcount','valid_from','valid_to','active','rate']],
+    RecurringAssignments: [['template_id','employee_phone','active','created_at']],
+  });
+  const src = await addTemplate(g, { location:'Site A', label:'Day', days:['Mon','Wed'], start:'08:00', end:'16:00', headcount:'2', validFrom:'2026-01-01', validTo:'2026-06-30', rate:'40' });
+  const srcId = src.ok ? src.id : '';
+  await addRecurring(g, srcId, '15551230000');
+  const cp = await copyTemplate(g, srcId, { validFrom:'2026-07-01', validTo:'2026-12-31', carryAssignments:true });
+  assert.equal(cp.ok, true);
+  const newId = cp.ok ? cp.id : '';
+  const t = (await listTemplates(g)).find((x)=>x.id===newId)!;
+  assert.deepEqual(t.days, ['Mon','Wed']); assert.equal(t.start,'08:00'); assert.equal(t.validFrom,'2026-07-01'); assert.equal(t.rate,'40');
+  const rec = (await listRecurring(g, newId)).filter((r)=>r.active);
+  assert.equal(rec.length, 1); assert.equal(rec[0].employeePhone, '15551230000');
 });

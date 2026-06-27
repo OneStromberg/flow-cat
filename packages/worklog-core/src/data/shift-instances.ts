@@ -83,6 +83,81 @@ export async function listInstances(
     }));
 }
 
+const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
+
+export async function updateInstance(
+  gateway: SheetsGateway,
+  id: string,
+  fields: { date?: string; start?: string; end?: string; headcount?: string },
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const rows = await gateway.readTab('ShiftInstances');
+  if (!rows.length) return { ok: false, error: 'Not found' };
+  const header = rows[0].map((h) => h.trim());
+  const i = rows.findIndex((r, idx) => idx > 0 && (r[header.indexOf('id')] ?? '').trim() === id);
+  if (i < 0) return { ok: false, error: 'Not found' };
+
+  if (fields.start !== undefined && !TIME_RE.test(fields.start)) return { ok: false, error: 'Invalid start time' };
+  if (fields.end !== undefined && !TIME_RE.test(fields.end)) return { ok: false, error: 'Invalid end time' };
+  if (fields.headcount !== undefined) {
+    const hc = Number(fields.headcount);
+    if (!Number.isInteger(hc) || hc < 1) return { ok: false, error: 'headcount must be a positive integer' };
+  }
+
+  const newRow = [...rows[i]];
+  if (fields.date !== undefined) newRow[header.indexOf('date')] = fields.date;
+  if (fields.start !== undefined) newRow[header.indexOf('start')] = fields.start;
+  if (fields.end !== undefined) newRow[header.indexOf('end')] = fields.end;
+  if (fields.headcount !== undefined) newRow[header.indexOf('headcount')] = fields.headcount;
+  await gateway.updateRow('ShiftInstances', i + 1, newRow); // updateRow is 1-based
+  return { ok: true };
+}
+
+export async function applyTemplateEdit(
+  gateway: SheetsGateway,
+  templateId: string,
+  today: string,
+): Promise<{ updated: number; cancelled: number }> {
+  const templates = await listTemplates(gateway);
+  const tpl = templates.find((t) => t.id === templateId);
+  if (!tpl) return { updated: 0, cancelled: 0 };
+
+  const rows = await gateway.readTab('ShiftInstances');
+  if (!rows.length) return { updated: 0, cancelled: 0 };
+  const header = rows[0].map((h) => h.trim());
+
+  let updated = 0;
+  let cancelled = 0;
+
+  for (let i = 1; i < rows.length; i++) {
+    const row = rows[i];
+    if ((row[header.indexOf('template_id')] ?? '').trim() !== templateId) continue;
+    const date = (row[header.indexOf('date')] ?? '').trim();
+    if (date < today) continue;
+    if ((row[header.indexOf('status')] ?? '').trim() !== 'scheduled') continue;
+
+    const wd = weekday(date);
+    const validFromOk = !tpl.validFrom || date >= tpl.validFrom;
+    const validToOk = !tpl.validTo || date <= tpl.validTo;
+    const valid = tpl.days.includes(wd) && validFromOk && validToOk;
+
+    const newRow = [...row];
+    if (valid) {
+      newRow[header.indexOf('location')] = tpl.location;
+      newRow[header.indexOf('start')] = tpl.start;
+      newRow[header.indexOf('end')] = tpl.end;
+      newRow[header.indexOf('headcount')] = String(tpl.headcount);
+      // status stays 'scheduled'
+      updated++;
+    } else {
+      newRow[header.indexOf('status')] = 'cancelled';
+      cancelled++;
+    }
+    await gateway.updateRow('ShiftInstances', i + 1, newRow); // updateRow is 1-based
+  }
+
+  return { updated, cancelled };
+}
+
 export async function cancelInstance(gateway: SheetsGateway, id: string): Promise<void> {
   const rows = await gateway.readTab('ShiftInstances');
   if (!rows.length) return;

@@ -1,4 +1,5 @@
 import { objectToRow, rowsToObjects, type SheetsGateway } from '@scourage/sheets-helper';
+import { listRecurring, addRecurring } from './shift-assignments.ts';
 
 export const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] as const;
 
@@ -78,6 +79,40 @@ export async function addTemplate(gateway: SheetsGateway, input: AddTemplateInpu
   const header = await ensureHeader(gateway);
   await gateway.appendRow('ShiftTemplates', objectToRow(recordOf(id, input), header));
   return { ok: true as const, id };
+}
+
+export async function copyTemplate(
+  gateway: SheetsGateway,
+  templateId: string,
+  opts: { validFrom: string; validTo: string; carryAssignments: boolean },
+): Promise<{ ok: true; id: string } | { ok: false; errors: Record<string, string> }> {
+  const templates = await listTemplates(gateway);
+  const src = templates.find((t) => t.id === templateId);
+  if (!src) return { ok: false, errors: { id: 'Not found' } };
+
+  const result = await addTemplate(gateway, {
+    location: src.location,
+    label: src.label,
+    days: src.days,
+    start: src.start,
+    end: src.end,
+    headcount: String(src.headcount),
+    validFrom: opts.validFrom,
+    validTo: opts.validTo,
+    rate: src.rate,
+  });
+  if (!result.ok) return result;
+
+  const newId = result.id;
+
+  if (opts.carryAssignments) {
+    const recs = (await listRecurring(gateway, templateId)).filter((r) => r.active);
+    for (const r of recs) {
+      await addRecurring(gateway, newId, r.employeePhone);
+    }
+  }
+
+  return { ok: true, id: newId };
 }
 
 export async function updateTemplate(gateway: SheetsGateway, id: string, input: AddTemplateInput) {
