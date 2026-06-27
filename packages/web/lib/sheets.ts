@@ -1,5 +1,7 @@
 import 'server-only';
-import { createGoogleGateway, createCachingGateway, parseServiceAccountJson, type SheetsGateway } from '@scourage/sheets-helper';
+import { createGoogleGateway, createCachingGateway, createTtlCachingGateway, parseServiceAccountJson, type SheetsGateway } from '@scourage/sheets-helper';
+
+const READ_CACHE_TTL_MS = 10_000;
 
 let cached: SheetsGateway | null = null;
 
@@ -9,7 +11,12 @@ export function getGateway(): SheetsGateway {
   const spreadsheetId = process.env.SHEETS_SPREADSHEET_ID;
   if (!json) throw new Error('Missing GOOGLE_SERVICE_ACCOUNT_JSON');
   if (!spreadsheetId) throw new Error('Missing SHEETS_SPREADSHEET_ID');
-  cached = createGoogleGateway({ credentials: parseServiceAccountJson(json), spreadsheetId });
+  // Cross-request read cache (writes invalidate) caps the Sheets per-minute read
+  // quota during bursts of navigation; the per-instance singleton shares it.
+  cached = createTtlCachingGateway(
+    createGoogleGateway({ credentials: parseServiceAccountJson(json), spreadsheetId }),
+    READ_CACHE_TTL_MS,
+  );
   return cached;
 }
 
