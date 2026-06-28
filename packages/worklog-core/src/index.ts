@@ -4,6 +4,7 @@ export { TRANSPORTATION, HEBREW_LEVEL, PAY_TYPE, SCHEDULE, GENDER } from './data
 export { generateToken } from './data/tokens.ts';
 export { loadActivePlaces, listPlaces, addPlace, wazeUrl, googleMapsUrl } from './data/places.ts';
 export type { Place, AddPlaceInput } from './data/places.ts';
+export { loadCities } from './data/cities.ts';
 export { appendWorkLog } from './data/worklogs.ts';
 export { normalizePhone } from './data/phone.ts';
 export type { Question, QuestionType } from './questions/types.ts';
