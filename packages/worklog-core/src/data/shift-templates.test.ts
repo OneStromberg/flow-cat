@@ -87,7 +87,7 @@ test('addTemplate rejects dayTimes where any one entry is invalid even if others
   const r = await addTemplate(g, { location:'A', label:'D', days:[], start:'', end:'', headcount:'1', validFrom:'', validTo:'', rate:'', instructions:'',
     dayTimes:[{day:'Sun',start:'09:00',end:'19:00'},{day:'Mon',start:'25:00',end:'19:00'}] });
   assert.equal(r.ok, false);
-  if (!r.ok) assert.ok(r.errors.days);
+  if (!r.ok) assert.ok(r.errors.dayTimes);
 });
 
 test('parseTemplate sets start/end from dayTimes[0] for new-format templates', async () => {
