@@ -86,21 +86,21 @@ export async function addTemplate(gateway: SheetsGateway, input: AddTemplateInpu
 export async function copyTemplate(
   gateway: SheetsGateway,
   templateId: string,
-  opts: { validFrom: string; validTo: string; carryAssignments: boolean },
+  opts: { location?: string; validFrom?: string; validTo?: string; carryAssignments: boolean },
 ): Promise<{ ok: true; id: string } | { ok: false; errors: Record<string, string> }> {
   const templates = await listTemplates(gateway);
   const src = templates.find((t) => t.id === templateId);
   if (!src) return { ok: false, errors: { id: 'Not found' } };
 
   const result = await addTemplate(gateway, {
-    location: src.location,
+    location: opts.location ?? src.location,
     label: src.label,
     days: src.days,
     start: src.start,
     end: src.end,
     headcount: String(src.headcount),
-    validFrom: opts.validFrom,
-    validTo: opts.validTo,
+    validFrom: opts.validFrom ?? src.validFrom,
+    validTo: opts.validTo ?? src.validTo,
     rate: src.rate,
     instructions: src.instructions,
   });

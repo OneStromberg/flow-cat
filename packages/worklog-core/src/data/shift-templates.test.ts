@@ -46,6 +46,15 @@ test('addTemplate stores instructions; round-trips', async () => {
   assert.equal(t.instructions, 'Patrol the perimeter hourly. Log entries.');
 });
 
+test('copyTemplate to another location keeps schedule + instructions, new location', async () => {
+  const g = createMemoryGateway({ ShiftTemplates: [['id','location','label','days','start','end','headcount','valid_from','valid_to','active','rate','instructions']], RecurringAssignments: [['template_id','employee_phone','active','created_at']] });
+  const src = await addTemplate(g, { location:'Site A', label:'Guard 1', days:['Sun','Mon'], start:'09:00', end:'19:00', headcount:'1', validFrom:'2026-01-01', validTo:'2026-12-31', rate:'40', instructions:'patrol' });
+  const cp = await copyTemplate(g, src.ok?src.id:'', { location:'Site B', carryAssignments:false });
+  assert.equal(cp.ok, true);
+  const t = (await listTemplates(g)).find((x)=>x.id===(cp.ok?cp.id:''))!;
+  assert.equal(t.location, 'Site B'); assert.equal(t.instructions, 'patrol'); assert.equal(t.validFrom, '2026-01-01'); assert.deepEqual(t.days, ['Sun','Mon']);
+});
+
 test('copyTemplate duplicates fields with new validity and carries assignments', async () => {
   const g = createMemoryGateway({
     ShiftTemplates: [['id','location','label','days','start','end','headcount','valid_from','valid_to','active','rate']],

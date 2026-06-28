@@ -337,13 +337,13 @@ function RecurringEditor({
   );
 }
 
-// ── Copy to period ────────────────────────────────────────────────────────────
+// ── Copy to another location ──────────────────────────────────────────────────
 
-function CopyToPeriod({ templateId }: { templateId: string }) {
+function CopyToLocation({ template, places }: { template: ShiftTemplate; places: string[] }) {
   const router = useRouter();
-  const [validFrom, setValidFrom] = useState('');
-  const [validTo, setValidTo] = useState('');
-  const [carryAssignments, setCarryAssignments] = useState(true);
+  const otherPlaces = places.filter((p) => p !== template.location);
+  const [location, setLocation] = useState(otherPlaces[0] ?? '');
+  const [carryAssignments, setCarryAssignments] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -354,15 +354,11 @@ function CopyToPeriod({ templateId }: { templateId: string }) {
       const res = await fetch('/api/admin/shifts/copy', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ templateId, validFrom, validTo, carryAssignments }),
+        body: JSON.stringify({ templateId: template.id, location, carryAssignments }),
       });
       const data = await res.json();
       if (res.ok && data.ok) {
-        if (data.id) {
-          router.push(`/admin/shifts/templates/${data.id}`);
-        } else {
-          router.push('/admin/shifts/templates');
-        }
+        router.push(`/admin/shifts/templates/${data.id}`);
       } else {
         setError(
           data.errors
@@ -379,29 +375,22 @@ function CopyToPeriod({ templateId }: { templateId: string }) {
 
   return (
     <section className="rounded-xl border border-gray-200 p-4">
-      <h2 className="text-base font-semibold text-gray-800">Copy to period</h2>
+      <h2 className="text-base font-semibold text-gray-800">Copy to another location</h2>
       <p className="mt-1 text-sm text-gray-500">
-        Creates a new template with the same settings but different valid dates.
+        Creates a new template with the same schedule at a different location.
       </p>
-      <div className="mt-3 grid grid-cols-2 gap-4">
-        <div>
-          <label className={labelClass}>Valid from</label>
-          <input
-            className={inputClass}
-            type="date"
-            value={validFrom}
-            onChange={(e) => setValidFrom(e.target.value)}
-          />
-        </div>
-        <div>
-          <label className={labelClass}>Valid to</label>
-          <input
-            className={inputClass}
-            type="date"
-            value={validTo}
-            onChange={(e) => setValidTo(e.target.value)}
-          />
-        </div>
+      <div className="mt-3">
+        <label className={labelClass}>Location</label>
+        <select
+          className={inputClass}
+          value={location}
+          onChange={(e) => setLocation(e.target.value)}
+        >
+          <option value="">Choose…</option>
+          {otherPlaces.map((p) => (
+            <option key={p} value={p}>{p}</option>
+          ))}
+        </select>
       </div>
       <label className="mt-3 flex cursor-pointer items-center gap-2 text-sm">
         <input
@@ -415,7 +404,7 @@ function CopyToPeriod({ templateId }: { templateId: string }) {
       {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
       <button
         onClick={handleCopy}
-        disabled={!validFrom || !validTo || busy}
+        disabled={!location || busy}
         className="mt-4 w-full rounded-lg bg-gray-900 px-4 py-3 text-base font-medium text-white disabled:opacity-50"
       >
         {busy ? 'Copying…' : 'Copy template'}
@@ -506,7 +495,7 @@ export function TemplateDetail({
 
       <EditTemplateForm template={template} places={places} />
       <RecurringEditor template={template} workers={workers} recurring={recurring} />
-      <CopyToPeriod templateId={template.id} />
+      <CopyToLocation template={template} places={places} />
       <UpcomingInstances instances={instances} />
     </main>
   );
