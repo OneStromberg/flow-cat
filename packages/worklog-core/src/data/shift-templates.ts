@@ -41,13 +41,15 @@ export function parseTemplate(o: Record<string, string>): ShiftTemplate {
   const rawDayTimes = (o.day_times ?? '').trim();
   const dayTimes = rawDayTimes ? parseDayTimes(rawDayTimes) : rawDays.map((day) => ({ day, start, end }));
   const days = dayTimes.map((d) => d.day);
+  const effectiveStart = rawDayTimes ? (dayTimes[0]?.start ?? '') : start;
+  const effectiveEnd = rawDayTimes ? (dayTimes[0]?.end ?? '') : end;
   return {
     id: (o.id ?? '').trim(),
     location: (o.location ?? '').trim(),
     label: (o.label ?? '').trim(),
     days,
-    start,
-    end,
+    start: effectiveStart,
+    end: effectiveEnd,
     headcount: Number((o.headcount ?? '0').trim()) || 0,
     validFrom: (o.valid_from ?? '').trim(),
     validTo: (o.valid_to ?? '').trim(),
@@ -67,10 +69,10 @@ function validate(input: AddTemplateInput): Record<string, string> {
   const e: Record<string, string> = {};
   if (!input.location.trim()) e.location = 'Required';
   if (input.dayTimes?.length) {
-    const valid = input.dayTimes.filter(
-      (dt) => (WEEKDAYS as readonly string[]).includes(dt.day) && TIME_RE.test(dt.start) && TIME_RE.test(dt.end) && dt.start !== dt.end
+    const hasInvalid = input.dayTimes.some(
+      (dt) => !(WEEKDAYS as readonly string[]).includes(dt.day) || !TIME_RE.test(dt.start) || !TIME_RE.test(dt.end) || dt.start === dt.end
     );
-    if (valid.length === 0) e.days = 'Pick at least one valid day/time entry';
+    if (hasInvalid) e.days = 'Pick at least one valid day/time entry';
   } else {
     if (input.days.length === 0 || !input.days.every((d) => (WEEKDAYS as readonly string[]).includes(d))) e.days = 'Pick at least one weekday';
     if (!TIME_RE.test(input.start)) e.start = 'Use HH:MM';

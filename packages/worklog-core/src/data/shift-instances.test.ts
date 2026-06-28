@@ -129,6 +129,21 @@ test('updateInstance overrides one instance row', async () => {
   assert.equal(bad.ok, false);
 });
 
+test('generateInstances uses per-day times', async () => {
+  const g = createMemoryGateway({
+    ShiftTemplates: [['id','location','label','days','start','end','headcount','valid_from','valid_to','active','rate','instructions','day_times'],
+      ['t1','A','Day','Wed,Fri','09:00','19:00','1','','','yes','','','Wed=09:00-19:00;Fri=08:00-15:00']],
+    RecurringAssignments: [['template_id','employee_phone','active','created_at']],
+    ShiftInstances: [['id','template_id','location','date','start','end','headcount','status','generated_at']],
+    ShiftAssignments: [['instance_id','employee_phone','source','status','assigned_at','assigned_by']],
+  });
+  await generateInstances(g, '2026-07-01', 7); // Wed 07-01, Fri 07-03
+  const ins = await listInstances(g, { from:'2026-07-01', to:'2026-07-10' });
+  const wed = ins.find(i=>i.date==='2026-07-01'); const fri = ins.find(i=>i.date==='2026-07-03');
+  assert.equal(wed?.start, '09:00'); assert.equal(wed?.end, '19:00');
+  assert.equal(fri?.start, '08:00'); assert.equal(fri?.end, '15:00');
+});
+
 test('applyTemplateEdit updates valid future instances and cancels now-invalid ones', async () => {
   const g = createMemoryGateway({
     ShiftTemplates: [['id','location','label','days','start','end','headcount','valid_from','valid_to','active','rate'],
