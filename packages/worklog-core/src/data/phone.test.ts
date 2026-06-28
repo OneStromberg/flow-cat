@@ -14,3 +14,12 @@ test('drops a leading 00 international prefix', () => {
 test('empty stays empty', () => {
   assert.equal(normalizePhone(''), '');
 });
+
+test('canonicalizes Israeli numbers to 972…', () => {
+  assert.equal(normalizePhone('050-123-4567'), '972501234567');
+  assert.equal(normalizePhone('0501234567'), '972501234567');
+  assert.equal(normalizePhone('+972 50 123 4567'), '972501234567');
+  assert.equal(normalizePhone('00972501234567'), '972501234567');
+  assert.equal(normalizePhone('972501234567'), '972501234567');
+  assert.equal(normalizePhone('15551230000'), '15551230000'); // non-0-leading untouched
+});
