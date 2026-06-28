@@ -76,7 +76,7 @@ export default async function PayrollPage({
       });
 
       const breakdown = computePay(
-        w.payStructure ?? 'hourly',
+        (w.payStructure || 'hourly'),
         Number(w.payRate) || 0,
         items,
         adjustments
@@ -87,7 +87,7 @@ export default async function PayrollPage({
       return {
         phone: w.phone,
         name: w.name,
-        structure: w.payStructure ?? 'hourly',
+        structure: (w.payStructure || 'hourly'),
         hours: totalHours,
         gross: breakdown.gross,
         bonuses: breakdown.bonuses,
