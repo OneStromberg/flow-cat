@@ -72,7 +72,7 @@ function validate(input: AddTemplateInput): Record<string, string> {
     const hasInvalid = input.dayTimes.some(
       (dt) => !(WEEKDAYS as readonly string[]).includes(dt.day) || !TIME_RE.test(dt.start) || !TIME_RE.test(dt.end) || dt.start === dt.end
     );
-    if (hasInvalid) e.days = 'Pick at least one valid day/time entry';
+    if (hasInvalid) e.dayTimes = 'Each enabled day needs a valid start and end (HH:MM), and they must differ.';
   } else {
     if (input.days.length === 0 || !input.days.every((d) => (WEEKDAYS as readonly string[]).includes(d))) e.days = 'Pick at least one weekday';
     if (!TIME_RE.test(input.start)) e.start = 'Use HH:MM';
