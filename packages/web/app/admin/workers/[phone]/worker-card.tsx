@@ -8,6 +8,7 @@ type EnumOpt = readonly { value: string; label: string }[];
 type Props = {
   worker: Worker;
   places: string[];
+  cities: string[];
   enums: {
     gender: EnumOpt;
     transportation: EnumOpt;
@@ -18,7 +19,7 @@ type Props = {
   };
 };
 
-export function WorkerCard({ worker, places, enums }: Props) {
+export function WorkerCard({ worker, places, cities, enums }: Props) {
   const router = useRouter();
 
   const [v, setV] = useState({
@@ -102,6 +103,12 @@ export function WorkerCard({ worker, places, enums }: Props) {
     </div>
   );
 
+  const selectWithFallback = (k: keyof typeof v, label: string, opts: string[]) => {
+    const allOpts = v[k] && !opts.includes(v[k]) ? [v[k], ...opts] : opts;
+    const enumOpts = allOpts.map(c => ({ value: c, label: c })) as EnumOpt;
+    return select(k, label, enumOpts);
+  };
+
   return (
     <form className="mt-6 space-y-4" onSubmit={submit}>
       {input('name', 'Name')}
@@ -117,7 +124,7 @@ export function WorkerCard({ worker, places, enums }: Props) {
           ))}
         </div>
       </div>
-      {input('city', 'City')}
+      {selectWithFallback('city', 'City', cities)}
       {input('age', 'Age', 'number')}
       {select('transportation', 'Transportation', enums.transportation)}
       {select('gender', 'Gender', enums.gender)}

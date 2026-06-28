@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 
 type EnumOpt = readonly { value: string; label: string }[];
-type Props = { places: string[]; enums: { transportation: EnumOpt; hebrewLevel: EnumOpt; payType: EnumOpt; schedule: EnumOpt; gender: EnumOpt; payStructure: EnumOpt } };
+type Props = { places: string[]; cities: string[]; enums: { transportation: EnumOpt; hebrewLevel: EnumOpt; payType: EnumOpt; schedule: EnumOpt; gender: EnumOpt; payStructure: EnumOpt } };
 
 const FIELDS0 = {
   phone: '', teudatZeut: '', name: '', city: '', age: '',
@@ -12,7 +12,7 @@ const FIELDS0 = {
   payStructure: '', payRate: '',
 };
 
-export function AddWorkerForm({ places, enums }: Props) {
+export function AddWorkerForm({ places, cities, enums }: Props) {
   const router = useRouter();
   const [v, setV] = useState({ ...FIELDS0 });
   const [selPlaces, setSelPlaces] = useState<string[]>([]);
@@ -84,7 +84,7 @@ export function AddWorkerForm({ places, enums }: Props) {
           ))}
         </div>
       </div>
-      {input('city', 'City')}
+      {select('city', 'City', cities.map(c => ({ value: c, label: c })) as EnumOpt)}
       {input('age', 'Age', 'number')}
       {select('transportation', 'Transportation', enums.transportation)}
       {select('gender', 'Gender', enums.gender)}
