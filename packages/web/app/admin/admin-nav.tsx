@@ -8,6 +8,7 @@ const TABS = [
   { href: '/admin/places', label: 'Places', icon: '📍' },
   { href: '/admin/attendance', label: 'Attendance', icon: '✅' },
   { href: '/admin/payroll', label: 'Payroll', icon: '💰' },
+  { href: '/admin/conflicts', label: 'Conflicts', icon: '⚠️' },
 ];
 
 export function AdminNav() {
