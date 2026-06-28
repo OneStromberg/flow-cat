@@ -191,7 +191,8 @@ function getPosition(): Promise<{ lat: number; lng: number }> {
           reject(new Error('Geolocation error'));
         }
       },
-      { timeout: 10000 },
+      // High-accuracy GPS, fresh fix (no cached position), 10s ceiling.
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 },
     );
   });
 }
