@@ -15,7 +15,10 @@ export default async function PlacesPage() {
     <main className="mx-auto max-w-3xl p-5">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold">Places</h1>
-        <a href="/admin/places/add" className="rounded-lg bg-gray-900 px-3 py-2 text-sm text-white">+ Add place</a>
+        <div className="flex items-center gap-2">
+          <a href="/admin/map" className="rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-700">🗺 Map</a>
+          <a href="/admin/places/add" className="rounded-lg bg-gray-900 px-3 py-2 text-sm text-white">+ Add place</a>
+        </div>
       </div>
       <table className="mt-6 w-full text-sm">
         <thead>
