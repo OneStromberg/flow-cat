@@ -116,7 +116,7 @@ export function CheckinClient({ items, workerName }: CheckinClientProps) {
       </div>
 
       <ul className="divide-y divide-gray-200 rounded-lg border border-gray-200">
-        {items.map(({ instance, attendance }) => {
+        {items.map(({ instance, attendance, role, instructions }) => {
           const isOpen = attendance?.status === 'open';
           const isClosed = attendance?.status === 'closed' || attendance?.status === 'corrected';
           const busyKey = instance.id + (isOpen ? ':out' : ':in');
@@ -129,6 +129,14 @@ export function CheckinClient({ items, workerName }: CheckinClientProps) {
                 <div className="mt-0.5 text-sm text-gray-500">
                   {instance.start} – {instance.end}
                 </div>
+                {role && (
+                  <div className="mt-1 text-sm font-bold text-gray-800">{role}</div>
+                )}
+                {instructions && (
+                  <div className="mt-1 whitespace-pre-wrap text-sm text-gray-600">
+                    <span className="font-medium">Instructions: </span>{instructions}
+                  </div>
+                )}
                 {isOpen && attendance?.checkInAt && (
                   <div className="mt-1 text-xs text-green-700">
                     Checked in at {formatTime(attendance.checkInAt)}

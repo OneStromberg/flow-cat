@@ -12,6 +12,8 @@ interface Props {
   instance: ShiftInstance;
   assignments: AssignmentWithName[];
   workers: Worker[];
+  role: string;
+  instructions: string;
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -32,7 +34,7 @@ async function apiPost(
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export function InstanceDetail({ instance, assignments, workers }: Props) {
+export function InstanceDetail({ instance, assignments, workers, role, instructions }: Props) {
   const router = useRouter();
   const cancelled = instance.status === 'cancelled';
 
@@ -141,6 +143,14 @@ export function InstanceDetail({ instance, assignments, workers }: Props) {
             >
               {instance.date} · {instance.start}–{instance.end} · ×{instance.headcount}
             </p>
+            {role && (
+              <p className="mt-1 text-sm font-bold text-gray-800">{role}</p>
+            )}
+            {instructions && (
+              <p className="mt-1 whitespace-pre-wrap text-sm text-gray-600">
+                <span className="font-medium">Instructions: </span>{instructions}
+              </p>
+            )}
           </div>
           {cancelled && (
             <span className="shrink-0 rounded bg-red-100 px-2 py-0.5 text-xs font-medium text-red-600">

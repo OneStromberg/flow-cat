@@ -1,7 +1,7 @@
 import { notFound, redirect } from 'next/navigation';
 import { requireAdmin } from '../../../../../lib/session';
 import { getRequestGateway } from '../../../../../lib/sheets';
-import { listInstances, listAssignments, listWorkers } from '@scourage/worklog-core';
+import { listInstances, listAssignments, listWorkers, listTemplates } from '@scourage/worklog-core';
 import type { ShiftInstance, ShiftAssignment, Worker } from '@scourage/worklog-core';
 import { InstanceDetail } from './instance-detail';
 
@@ -23,14 +23,17 @@ export default async function InstancePage({
   const { id } = await params;
   const gw = getRequestGateway();
 
-  const [allInstances, assignments, workers] = await Promise.all([
+  const [allInstances, assignments, workers, templates] = await Promise.all([
     listInstances(gw, { from: '0000-01-01', to: '9999-12-31' }),
     listAssignments(gw, { instanceId: id }),
     listWorkers(gw),
+    listTemplates(gw),
   ]);
 
   const instance: ShiftInstance | undefined = allInstances.find((i) => i.id === id);
   if (!instance) notFound();
+
+  const tpl = templates.find((t) => t.id === instance.templateId);
 
   const workerByPhone = new Map<string, Worker>(workers.map((w) => [w.phone, w]));
 
@@ -45,6 +48,8 @@ export default async function InstancePage({
         instance={instance}
         assignments={assignmentsWithNames}
         workers={workers}
+        role={tpl?.label ?? ''}
+        instructions={tpl?.instructions ?? ''}
       />
     </main>
   );
