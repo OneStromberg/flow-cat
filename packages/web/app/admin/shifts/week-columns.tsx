@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import type { ShiftInstance } from '@scourage/worklog-core';
-import { colorFor } from './shift-colors';
+import { shiftStatusColor, shiftColorChipClass } from '../../../lib/shift-colors';
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -15,9 +15,10 @@ interface WeekColumnsProps {
   days: { date: string; items: { instance: ShiftInstance; assigned: number }[] }[];
   prevHref: string;
   nextHref: string;
+  nowISO: string;
 }
 
-export function WeekColumns({ weekStart, days, prevHref, nextHref }: WeekColumnsProps) {
+export function WeekColumns({ weekStart, days, prevHref, nextHref, nowISO }: WeekColumnsProps) {
   return (
     <div>
       {/* Week nav */}
@@ -47,11 +48,21 @@ export function WeekColumns({ weekStart, days, prevHref, nextHref }: WeekColumns
                   {items.map(({ instance, assigned }) => {
                     const cancelled = instance.status === 'cancelled';
                     const understaffed = !cancelled && assigned < instance.headcount;
+                    const color = shiftStatusColor({
+                      status: instance.status,
+                      assigned,
+                      headcount: instance.headcount,
+                      date: instance.date,
+                      start: instance.start,
+                      end: instance.end,
+                      nowISO,
+                    });
+                    const chipClass = shiftColorChipClass(color);
                     return (
                       <Link
                         key={instance.id}
                         href={`/admin/shifts/instances/${instance.id}`}
-                        className={`block rounded p-1.5 text-xs leading-tight border-l-4 bg-gray-50 ${cancelled ? 'opacity-50 line-through border-gray-300' : `border-transparent ${colorFor(instance.location)}`}`}
+                        className={`block rounded p-1.5 text-xs leading-tight border-l-4 ${cancelled ? 'opacity-50 line-through border-gray-300 bg-gray-50' : `border-transparent ${chipClass}`}`}
                       >
                         <div className="font-medium truncate">{instance.location || '—'}</div>
                         <div className="text-[10px] opacity-80">{instance.start}–{instance.end}</div>

@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import type { ShiftInstance } from '@scourage/worklog-core';
-import { colorFor } from './shift-colors';
+import { shiftStatusColor, shiftColorChipClass } from '../../../lib/shift-colors';
 
 const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -11,14 +11,21 @@ function fmtDate(iso: string) {
   return `${WEEKDAYS[dow]}, ${MONTHS[m - 1]} ${d}`;
 }
 
+/** Map status color → dot bg class for the day-list bullet. */
+function dotBgClass(chipClass: string): string {
+  // chipClass starts with 'bg-...' — extract just the bg portion
+  return chipClass.split(' ')[0];
+}
+
 interface DayListProps {
   date: string;
   items: { instance: ShiftInstance; assigned: number; workerNames: string[] }[];
   prevHref: string;
   nextHref: string;
+  nowISO: string;
 }
 
-export function DayList({ date, items, prevHref, nextHref }: DayListProps) {
+export function DayList({ date, items, prevHref, nextHref, nowISO }: DayListProps) {
   return (
     <div>
       {/* Day nav */}
@@ -35,6 +42,16 @@ export function DayList({ date, items, prevHref, nextHref }: DayListProps) {
           {items.map(({ instance, assigned, workerNames }) => {
             const cancelled = instance.status === 'cancelled';
             const understaffed = !cancelled && assigned < instance.headcount;
+            const color = shiftStatusColor({
+              status: instance.status,
+              assigned,
+              headcount: instance.headcount,
+              date: instance.date,
+              start: instance.start,
+              end: instance.end,
+              nowISO,
+            });
+            const chipClass = shiftColorChipClass(color);
             return (
               <Link
                 key={instance.id}
@@ -42,7 +59,7 @@ export function DayList({ date, items, prevHref, nextHref }: DayListProps) {
                 className={`block rounded-lg border p-3 ${cancelled ? 'opacity-50 border-gray-200' : 'border-gray-200 hover:border-gray-400'}`}
               >
                 <div className="flex items-start gap-2">
-                  <span className={`mt-0.5 h-3 w-3 flex-shrink-0 rounded-full ${cancelled ? 'bg-gray-300' : colorFor(instance.location).split(' ')[0]}`} />
+                  <span className={`mt-0.5 h-3 w-3 flex-shrink-0 rounded-full ${dotBgClass(chipClass)}`} />
                   <div className="min-w-0 flex-1">
                     <div className={`font-semibold text-sm ${cancelled ? 'line-through text-gray-400' : 'text-gray-900'}`}>
                       {instance.location || '—'}
