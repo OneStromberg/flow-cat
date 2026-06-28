@@ -1,7 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createMemoryGateway } from '@scourage/sheets-helper';
-import { addWorker } from './add-worker.ts';
+import { addWorker, updateWorker } from './add-worker.ts';
+import { findWorker } from './workers.ts';
 
 const base = {
   phone: '+1 555-222-0000', teudatZeut: '987654321', name: 'New Guy',
@@ -49,6 +50,22 @@ test('rejects a duplicate phone', async () => {
   const r = await addWorker(g, base); // base phone normalizes to 15552220000
   assert.equal(r.ok, false);
   if (!r.ok) assert.match(r.errors.phone, /already exists/);
+});
+
+test('updateWorker edits an existing worker by phone (incl pay structure)', async () => {
+  const g = createMemoryGateway({ Workers: [
+    ['phone','name','places','active','teudat_zeut','admin','pay_structure','pay_rate'],
+    ['972501234567','Ilya','Lod','yes','9','','monthly','37'],
+  ]});
+  const r = await updateWorker(g, '0501234567', {
+    teudatZeut:'9', name:'Ilya', places:['Lod'], city:'', age:'', transportation:'', hebrewLevel:'',
+    payType:'', payAmount:'', schedule:'', gender:'', payStructure:'hourly', payRate:'37', active:true, admin:false,
+  });
+  assert.equal(r.ok, true);
+  const w = await findWorker(g, '972501234567');
+  assert.equal(w?.payStructure, 'hourly'); assert.equal(w?.payRate, '37'); assert.equal(w?.active, true);
+  const miss = await updateWorker(g, '10000000000', { /* ...same shape... */ } as any);
+  assert.equal(miss.ok, false);
 });
 
 test('addWorker accepts a valid gender and rejects an invalid one', async () => {
