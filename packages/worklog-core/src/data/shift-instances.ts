@@ -124,6 +124,7 @@ export async function applyTemplateEdit(
   const rows = await gateway.readTab('ShiftInstances');
   if (!rows.length) return { updated: 0, cancelled: 0 };
   const header = rows[0].map((h) => h.trim());
+  const dayMap = new Map(tpl.dayTimes.map((d) => [d.day, d]));
 
   let updated = 0;
   let cancelled = 0;
@@ -136,15 +137,16 @@ export async function applyTemplateEdit(
     if ((row[header.indexOf('status')] ?? '').trim() !== 'scheduled') continue;
 
     const wd = weekday(date);
+    const dt = dayMap.get(wd);
     const validFromOk = !tpl.validFrom || date >= tpl.validFrom;
     const validToOk = !tpl.validTo || date <= tpl.validTo;
-    const valid = tpl.days.includes(wd) && validFromOk && validToOk;
+    const valid = !!dt && validFromOk && validToOk;
 
     const newRow = [...row];
     if (valid) {
       newRow[header.indexOf('location')] = tpl.location;
-      newRow[header.indexOf('start')] = tpl.start;
-      newRow[header.indexOf('end')] = tpl.end;
+      newRow[header.indexOf('start')] = dt!.start;
+      newRow[header.indexOf('end')] = dt!.end;
       newRow[header.indexOf('headcount')] = String(tpl.headcount);
       // status stays 'scheduled'
       updated++;
@@ -205,6 +207,7 @@ export async function generateInstances(
   for (const tpl of templates) {
     // Load active recurring assignments for this template
     const recurring = (await listRecurring(gateway, tpl.id)).filter((r) => r.active);
+    const dayMap = new Map(tpl.dayTimes.map((d) => [d.day, d]));
 
     for (let offset = 0; offset < horizonDays; offset++) {
       const date = addDays(today, offset);
@@ -213,9 +216,10 @@ export async function generateInstances(
       if (tpl.validFrom && date < tpl.validFrom) continue;
       if (tpl.validTo && date > tpl.validTo) continue;
 
-      // Check weekday
+      // Check weekday via dayMap (covers both legacy and per-day templates)
       const wd = weekday(date);
-      if (!tpl.days.includes(wd)) continue;
+      const dt = dayMap.get(wd);
+      if (!dt) continue;
 
       const instanceId = `${tpl.id}_${compact(date)}`;
 
@@ -226,8 +230,8 @@ export async function generateInstances(
           template_id: tpl.id,
           location: tpl.location,
           date,
-          start: tpl.start,
-          end: tpl.end,
+          start: dt.start,
+          end: dt.end,
           headcount: String(tpl.headcount),
           status: 'scheduled',
           generated_at: new Date().toISOString(),

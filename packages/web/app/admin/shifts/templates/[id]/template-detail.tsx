@@ -6,24 +6,45 @@ import Link from 'next/link';
 import type { ShiftTemplate, Worker, RecurringAssignment } from '@scourage/worklog-core';
 import type { InstanceWithCount } from './page';
 
-const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] as const;
-
 const inputClass = 'mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-base';
 const labelClass = 'block text-sm font-medium text-gray-700';
+const smInp = 'rounded-lg border border-gray-300 px-2 py-2 text-base';
 
 // ── Edit form ─────────────────────────────────────────────────────────────────
 
-type FormFields = {
-  location: string;
-  label: string;
-  start: string;
-  end: string;
-  headcount: string;
-  rate: string;
-  instructions: string;
-  validFrom: string;
-  validTo: string;
-};
+const DAY_ORDER = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as const;
+type Day = (typeof DAY_ORDER)[number];
+type DayState = { on: boolean; start: string; end: string };
+type DayGrid = Record<Day, DayState>;
+type RecurMode = 'forever' | 'nweeks' | 'fromto';
+
+function todayStr(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function addDays(dateStr: string, n: number): string {
+  const d = new Date(dateStr + 'T00:00:00Z');
+  d.setUTCDate(d.getUTCDate() + n);
+  return d.toISOString().slice(0, 10);
+}
+
+function initGrid(template: ShiftTemplate): DayGrid {
+  const dayMap = new Map(template.dayTimes.map((dt) => [dt.day, dt]));
+  return Object.fromEntries(
+    DAY_ORDER.map((d) => {
+      const dt = dayMap.get(d);
+      return [d, { on: Boolean(dt), start: dt?.start ?? '', end: dt?.end ?? '' }];
+    }),
+  ) as DayGrid;
+}
+
+function initRecur(template: ShiftTemplate): { mode: RecurMode; startDate: string; fromDate: string; toDate: string; nWeeks: string } {
+  const hasTo = Boolean(template.validTo);
+  if (hasTo) {
+    return { mode: 'fromto', startDate: todayStr(), fromDate: template.validFrom || todayStr(), toDate: template.validTo, nWeeks: '4' };
+  }
+  return { mode: 'forever', startDate: template.validFrom || todayStr(), fromDate: todayStr(), toDate: '', nWeeks: '4' };
+}
 
 function EditTemplateForm({
   template,
@@ -33,38 +54,81 @@ function EditTemplateForm({
   places: string[];
 }) {
   const router = useRouter();
-  const [v, setV] = useState<FormFields>({
-    location: template.location,
-    label: template.label,
-    start: template.start,
-    end: template.end,
-    headcount: String(template.headcount),
-    rate: template.rate != null ? String(template.rate) : '',
-    instructions: template.instructions ?? '',
-    validFrom: template.validFrom ?? '',
-    validTo: template.validTo ?? '',
-  });
-  const [days, setDays] = useState<string[]>([...template.days]);
+
+  // base fields
+  const [location, setLocation] = useState(template.location);
+  const [label, setLabel] = useState(template.label);
+  const [headcount, setHeadcount] = useState(String(template.headcount));
+  const [rate, setRate] = useState(template.rate != null ? String(template.rate) : '');
+  const [instructions, setInstructions] = useState(template.instructions ?? '');
+
+  // per-day grid — prefilled from template.dayTimes
+  const [grid, setGrid] = useState<DayGrid>(() => initGrid(template));
+  const [defStart, setDefStart] = useState('09:00');
+  const [defEnd, setDefEnd] = useState('17:00');
+
+  // recurrence — inferred from validFrom/validTo
+  const initR = initRecur(template);
+  const [recurMode, setRecurMode] = useState<RecurMode>(initR.mode);
+  const [startDate, setStartDate] = useState(initR.startDate);
+  const [nWeeks, setNWeeks] = useState(initR.nWeeks);
+  const [fromDate, setFromDate] = useState(initR.fromDate);
+  const [toDate, setToDate] = useState(initR.toDate);
+
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [fatal, setFatal] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [saved, setSaved] = useState(false);
 
-  const set = (k: keyof FormFields, val: string) => setV((p) => ({ ...p, [k]: val }));
-  const toggleDay = (d: string) =>
-    setDays((prev) => (prev.includes(d) ? prev.filter((x) => x !== d) : [...prev, d]));
+  function toggleDay(day: Day) {
+    setGrid((g) => ({ ...g, [day]: { ...g[day], on: !g[day].on } }));
+  }
+  function setDayField(day: Day, field: 'start' | 'end', val: string) {
+    setGrid((g) => ({ ...g, [day]: { ...g[day], [field]: val } }));
+  }
+  function applyDefaults() {
+    setGrid((g) => {
+      const next = { ...g };
+      for (const d of DAY_ORDER) {
+        if (next[d].on) next[d] = { ...next[d], start: defStart, end: defEnd };
+      }
+      return next;
+    });
+  }
+
+  function getDateRange(): { validFrom: string; validTo: string } {
+    if (recurMode === 'forever') return { validFrom: startDate, validTo: '' };
+    if (recurMode === 'nweeks') {
+      const n = parseInt(nWeeks, 10) || 1;
+      return { validFrom: startDate, validTo: addDays(startDate, n * 7 - 1) };
+    }
+    return { validFrom: fromDate, validTo: toDate };
+  }
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    setBusy(true);
     setErrors({});
     setFatal(null);
     setSaved(false);
+
+    const enabled = DAY_ORDER.filter((d) => grid[d].on);
+    const clientErrors: Record<string, string> = {};
+    if (enabled.length === 0) clientErrors.dayTimes = 'Select at least one day.';
+    for (const d of enabled) {
+      if (!grid[d].start || !grid[d].end)
+        clientErrors.dayTimes = `${d} is enabled but missing a start or end time.`;
+    }
+    if (Object.keys(clientErrors).length) { setErrors(clientErrors); return; }
+
+    const dayTimes = enabled.map((d) => ({ day: d, start: grid[d].start, end: grid[d].end }));
+    const { validFrom, validTo } = getDateRange();
+
+    setBusy(true);
     try {
       const res = await fetch(`/api/admin/shifts/${template.id}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...v, days }),
+        body: JSON.stringify({ location, label, headcount, rate, instructions, validFrom, validTo, dayTimes }),
       });
       const data = await res.json();
       if (res.ok && data.ok) {
@@ -89,7 +153,7 @@ function EditTemplateForm({
         {/* Location */}
         <div>
           <label className={labelClass}>Location</label>
-          <select className={inputClass} value={v.location} onChange={(e) => set('location', e.target.value)}>
+          <select className={inputClass} value={location} onChange={(e) => setLocation(e.target.value)}>
             <option value="">Choose…</option>
             {places.map((p) => (
               <option key={p} value={p}>{p}</option>
@@ -104,54 +168,159 @@ function EditTemplateForm({
           <input
             className={inputClass}
             type="text"
-            value={v.label}
-            onChange={(e) => set('label', e.target.value)}
+            value={label}
+            onChange={(e) => setLabel(e.target.value)}
           />
           {errors.label && <p className="mt-1 text-sm text-red-600">{errors.label}</p>}
         </div>
 
-        {/* Weekday checkboxes */}
-        <div>
-          <label className={labelClass}>Days</label>
-          <div className="mt-1 flex flex-wrap gap-3">
-            {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((d) => (
-              <label key={d} className="flex cursor-pointer items-center gap-1.5 text-sm">
-                <input
-                  type="checkbox"
-                  checked={days.includes(d)}
-                  onChange={() => toggleDay(d)}
-                  className="h-4 w-4 rounded border-gray-300"
-                />
-                {d}
-              </label>
-            ))}
+        {/* Per-day weekday grid */}
+        <fieldset>
+          <legend className="text-sm font-medium text-gray-700">Schedule</legend>
+          <div className="mt-2 flex flex-wrap items-center gap-2 rounded-lg bg-gray-50 px-3 py-2">
+            <span className="text-xs text-gray-500">Default:</span>
+            <input
+              type="time"
+              value={defStart}
+              onChange={(e) => setDefStart(e.target.value)}
+              className={smInp + ' w-28'}
+              aria-label="Default start time"
+            />
+            <span className="text-xs text-gray-400">–</span>
+            <input
+              type="time"
+              value={defEnd}
+              onChange={(e) => setDefEnd(e.target.value)}
+              className={smInp + ' w-28'}
+              aria-label="Default end time"
+            />
+            <button
+              type="button"
+              onClick={applyDefaults}
+              className="rounded-md bg-gray-200 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-300"
+            >
+              Apply to checked days
+            </button>
           </div>
-          {errors.days && <p className="mt-1 text-sm text-red-600">{errors.days}</p>}
-        </div>
+          <div className="mt-3 space-y-2">
+            {DAY_ORDER.map((day) => {
+              const row = grid[day];
+              return (
+                <div key={day} className="flex items-center gap-3">
+                  <label className="flex w-14 shrink-0 cursor-pointer items-center gap-1.5 text-sm font-medium text-gray-700">
+                    <input
+                      type="checkbox"
+                      checked={row.on}
+                      onChange={() => toggleDay(day)}
+                      className="h-5 w-5 rounded border-gray-300"
+                    />
+                    {day}
+                  </label>
+                  <input
+                    type="time"
+                    value={row.start}
+                    disabled={!row.on}
+                    onChange={(e) => setDayField(day, 'start', e.target.value)}
+                    className={smInp + ' w-full disabled:opacity-40'}
+                    aria-label={`${day} start`}
+                  />
+                  <span className="shrink-0 text-xs text-gray-400">–</span>
+                  <input
+                    type="time"
+                    value={row.end}
+                    disabled={!row.on}
+                    onChange={(e) => setDayField(day, 'end', e.target.value)}
+                    className={smInp + ' w-full disabled:opacity-40'}
+                    aria-label={`${day} end`}
+                  />
+                </div>
+              );
+            })}
+          </div>
+          {errors.dayTimes && <p className="mt-2 text-sm text-red-600">{errors.dayTimes}</p>}
+        </fieldset>
 
-        {/* Start / End */}
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className={labelClass}>Start</label>
-            <input
-              className={inputClass}
-              type="time"
-              value={v.start}
-              onChange={(e) => set('start', e.target.value)}
-            />
-            {errors.start && <p className="mt-1 text-sm text-red-600">{errors.start}</p>}
-          </div>
-          <div>
-            <label className={labelClass}>End</label>
-            <input
-              className={inputClass}
-              type="time"
-              value={v.end}
-              onChange={(e) => set('end', e.target.value)}
-            />
-            {errors.end && <p className="mt-1 text-sm text-red-600">{errors.end}</p>}
-          </div>
-        </div>
+        {/* Recurrence picker */}
+        <fieldset>
+          <legend className="text-sm font-medium text-gray-700">Recurrence</legend>
+          <select
+            className={inputClass}
+            value={recurMode}
+            onChange={(e) => setRecurMode(e.target.value as RecurMode)}
+          >
+            <option value="forever">Forever</option>
+            <option value="nweeks">For N weeks</option>
+            <option value="fromto">Date range</option>
+          </select>
+
+          {recurMode === 'forever' && (
+            <div className="mt-3">
+              <label className="block text-sm text-gray-600">Starting from</label>
+              <input
+                type="date"
+                className={inputClass}
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+              />
+            </div>
+          )}
+
+          {recurMode === 'nweeks' && (
+            <div className="mt-3 space-y-3">
+              <div className="flex items-center gap-3">
+                <div className="flex-1">
+                  <label className="block text-sm text-gray-600">Starting from</label>
+                  <input
+                    type="date"
+                    className={inputClass}
+                    value={startDate}
+                    onChange={(e) => setStartDate(e.target.value)}
+                  />
+                </div>
+                <div className="w-24">
+                  <label className="block text-sm text-gray-600">Weeks</label>
+                  <input
+                    type="number"
+                    min={1}
+                    className={inputClass}
+                    value={nWeeks}
+                    onChange={(e) => setNWeeks(e.target.value)}
+                  />
+                </div>
+              </div>
+              {startDate && nWeeks && (
+                <p className="text-xs text-gray-500">
+                  Valid until {addDays(startDate, (parseInt(nWeeks, 10) || 1) * 7 - 1)}
+                </p>
+              )}
+            </div>
+          )}
+
+          {recurMode === 'fromto' && (
+            <div className="mt-3 grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm text-gray-600">From</label>
+                <input
+                  type="date"
+                  className={inputClass}
+                  value={fromDate}
+                  onChange={(e) => setFromDate(e.target.value)}
+                />
+                {errors.validFrom && <p className="mt-1 text-sm text-red-600">{errors.validFrom}</p>}
+              </div>
+              <div>
+                <label className="block text-sm text-gray-600">To</label>
+                <input
+                  type="date"
+                  className={inputClass}
+                  value={toDate}
+                  onChange={(e) => setToDate(e.target.value)}
+                />
+                {errors.validTo && <p className="mt-1 text-sm text-red-600">{errors.validTo}</p>}
+              </div>
+            </div>
+          )}
+        </fieldset>
 
         {/* Headcount */}
         <div>
@@ -160,8 +329,8 @@ function EditTemplateForm({
             className={inputClass}
             type="number"
             min={1}
-            value={v.headcount}
-            onChange={(e) => set('headcount', e.target.value)}
+            value={headcount}
+            onChange={(e) => setHeadcount(e.target.value)}
           />
           {errors.headcount && <p className="mt-1 text-sm text-red-600">{errors.headcount}</p>}
         </div>
@@ -173,8 +342,8 @@ function EditTemplateForm({
             className={inputClass}
             type="number"
             min={0}
-            value={v.rate}
-            onChange={(e) => set('rate', e.target.value)}
+            value={rate}
+            onChange={(e) => setRate(e.target.value)}
           />
           {errors.rate && <p className="mt-1 text-sm text-red-600">{errors.rate}</p>}
         </div>
@@ -185,34 +354,10 @@ function EditTemplateForm({
           <textarea
             className={inputClass}
             rows={3}
-            value={v.instructions}
-            onChange={(e) => set('instructions', e.target.value)}
+            value={instructions}
+            onChange={(e) => setInstructions(e.target.value)}
           />
           {errors.instructions && <p className="mt-1 text-sm text-red-600">{errors.instructions}</p>}
-        </div>
-
-        {/* Valid from / to */}
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label className={labelClass}>Valid from</label>
-            <input
-              className={inputClass}
-              type="date"
-              value={v.validFrom}
-              onChange={(e) => set('validFrom', e.target.value)}
-            />
-            {errors.validFrom && <p className="mt-1 text-sm text-red-600">{errors.validFrom}</p>}
-          </div>
-          <div>
-            <label className={labelClass}>Valid to</label>
-            <input
-              className={inputClass}
-              type="date"
-              value={v.validTo}
-              onChange={(e) => set('validTo', e.target.value)}
-            />
-            {errors.validTo && <p className="mt-1 text-sm text-red-600">{errors.validTo}</p>}
-          </div>
         </div>
 
         {fatal && <p className="text-sm text-red-600">{fatal}</p>}
