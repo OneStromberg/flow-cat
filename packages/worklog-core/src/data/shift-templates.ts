@@ -142,6 +142,7 @@ export async function copyTemplate(
     validTo: opts.validTo ?? src.validTo,
     rate: src.rate,
     instructions: src.instructions,
+    dayTimes: src.dayTimes,
   });
   if (!result.ok) return result;
 

@@ -36,6 +36,9 @@ export async function POST(req: Request, context: { params: Promise<{ id: string
     validTo: str(b.validTo),
     rate: str(b.rate),
     instructions: str(b.instructions),
+    dayTimes: Array.isArray(b.dayTimes)
+      ? (b.dayTimes as any[]).map((d) => ({ day: str(d?.day), start: str(d?.start), end: str(d?.end) })).filter((d) => d.day)
+      : undefined,
   };
 
   try {
