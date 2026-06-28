@@ -4,7 +4,12 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { Attendance } from '@scourage/worklog-core';
 
-export function AttendanceClient({ rows }: { rows: Attendance[] }) {
+interface AttendanceRow extends Attendance {
+  workerName: string;
+  location: string;
+}
+
+export function AttendanceClient({ rows }: { rows: AttendanceRow[] }) {
   const router = useRouter();
   const [saving, setSaving] = useState<string | null>(null);
   const [editedHours, setEditedHours] = useState<Record<string, string>>({});
@@ -47,8 +52,8 @@ export function AttendanceClient({ rows }: { rows: Attendance[] }) {
         <thead>
           <tr className="border-b text-left text-gray-500">
             <th className="py-2">Date</th>
-            <th>Employee Phone</th>
-            <th>Instance ID</th>
+            <th>Worker</th>
+            <th>Location</th>
             <th>Check-in Time</th>
             <th>Check-out Time</th>
             <th>Hours</th>
@@ -65,8 +70,8 @@ export function AttendanceClient({ rows }: { rows: Attendance[] }) {
             return (
               <tr key={row.id} className="border-b">
                 <td className="py-2">{row.date}</td>
-                <td>{row.employeePhone}</td>
-                <td className="text-gray-600 text-xs">{row.instanceId}</td>
+                <td>{row.workerName}</td>
+                <td>{row.location}</td>
                 <td>{row.checkInAt}</td>
                 <td>{row.checkOutAt || '—'}</td>
                 <td>
