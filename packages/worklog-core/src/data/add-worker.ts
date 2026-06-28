@@ -89,3 +89,85 @@ export async function addWorker(
   await gateway.appendRow('Workers', objectToRow(record, header));
   return { ok: true };
 }
+
+export interface UpdateWorkerInput {
+  teudatZeut: string;
+  name: string;
+  places: string[];
+  city: string;
+  age: string;
+  transportation: string;
+  hebrewLevel: string;
+  payType: string;
+  payAmount: string;
+  schedule: string;
+  gender: string;
+  payStructure: string;
+  payRate: string;
+  active: boolean;
+  admin: boolean;
+}
+
+export async function updateWorker(
+  gateway: SheetsGateway,
+  phone: string,
+  input: UpdateWorkerInput,
+): Promise<{ ok: true } | { ok: false; errors: Record<string, string> }> {
+  // Find the row first — not-found is returned before any field validation.
+  const rows = await gateway.readTab('Workers');
+  const header = rows[0].map((h) => h.trim());
+  const target = normalizePhone(phone);
+  const phoneIdx = header.indexOf('phone');
+  const i = rows.findIndex((r, idx) => idx > 0 && normalizePhone(r[phoneIdx] ?? '') === target);
+  if (i < 0) return { ok: false, errors: { phone: 'Not found' } };
+
+  const errors: Record<string, string> = {};
+
+  if (!input.teudatZeut.trim()) errors.teudatZeut = 'Required';
+  if (!input.name.trim()) errors.name = 'Required';
+  if (input.age.trim() && !Number.isFinite(Number(input.age))) errors.age = 'Must be a number';
+  if (!inEnum(input.transportation, TRANSPORTATION)) errors.transportation = 'Invalid';
+  if (!inEnum(input.hebrewLevel, HEBREW_LEVEL)) errors.hebrewLevel = 'Invalid';
+  if (!inEnum(input.payType, PAY_TYPE)) errors.payType = 'Invalid';
+  if (!inEnum(input.schedule, SCHEDULE)) errors.schedule = 'Invalid';
+  if (!inEnum(input.gender, GENDER)) errors.gender = 'Invalid';
+  if (input.payType === 'amount' && (!input.payAmount.trim() || !Number.isFinite(Number(input.payAmount)))) {
+    errors.payAmount = 'Enter an amount';
+  }
+
+  if (Object.keys(errors).length) return { ok: false, errors };
+
+  const existing = rows[i];
+  const get = (col: string) => existing[header.indexOf(col)] ?? '';
+
+  const fullHeader = [...header];
+  for (const col of WORKERS_COLUMNS) if (!fullHeader.includes(col)) fullHeader.push(col);
+  if (fullHeader.length !== header.length) {
+    await gateway.writeHeaderRow('Workers', fullHeader);
+  }
+
+  const record: Record<string, string> = {
+    phone: target,
+    name: input.name.trim(),
+    greeting: get('greeting'),
+    places: input.places.join(', '),
+    active: input.active ? 'yes' : 'no',
+    token: get('token'),
+    teudat_zeut: input.teudatZeut.trim(),
+    admin: input.admin ? 'yes' : '',
+    city: input.city.trim(),
+    age: input.age.trim(),
+    transportation: input.transportation,
+    hebrew_level: input.hebrewLevel,
+    pay_type: input.payType,
+    pay_amount: input.payType === 'amount' ? input.payAmount.trim() : '',
+    schedule: input.schedule,
+    gender: input.gender,
+    pay_structure: (input.payStructure ?? '').trim(),
+    pay_rate: (input.payRate ?? '').trim(),
+    telegram_chat_id: get('telegram_chat_id'),
+  };
+
+  await gateway.updateRow('Workers', i + 1, objectToRow(record, fullHeader));
+  return { ok: true };
+}

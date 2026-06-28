@@ -1,0 +1,150 @@
+'use client';
+
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import type { Worker } from '@scourage/worklog-core';
+
+type EnumOpt = readonly { value: string; label: string }[];
+type Props = {
+  worker: Worker;
+  places: string[];
+  enums: {
+    gender: EnumOpt;
+    transportation: EnumOpt;
+    hebrewLevel: EnumOpt;
+    payType: EnumOpt;
+    schedule: EnumOpt;
+    payStructure: EnumOpt;
+  };
+};
+
+export function WorkerCard({ worker, places, enums }: Props) {
+  const router = useRouter();
+
+  const [v, setV] = useState({
+    name: worker.name ?? '',
+    teudatZeut: worker.teudatZeut ?? '',
+    city: worker.city ?? '',
+    age: worker.age ?? '',
+    transportation: worker.transportation ?? '',
+    hebrewLevel: worker.hebrewLevel ?? '',
+    payType: worker.payType ?? '',
+    payAmount: worker.payAmount ?? '',
+    schedule: worker.schedule ?? '',
+    gender: worker.gender ?? '',
+    payStructure: worker.payStructure ?? '',
+    payRate: worker.payRate ?? '',
+  });
+  const [selPlaces, setSelPlaces] = useState<string[]>(worker.places ?? []);
+  const [active, setActive] = useState(worker.active ?? false);
+  const [isAdmin, setIsAdmin] = useState(worker.admin ?? false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [fatal, setFatal] = useState<string | null>(null);
+  const [saved, setSaved] = useState(false);
+  const [busy, setBusy] = useState(false);
+
+  const set = (k: keyof typeof v, val: string) => { setV((p) => ({ ...p, [k]: val })); setSaved(false); };
+  const togglePlace = (p: string) => { setSelPlaces((prev) => (prev.includes(p) ? prev.filter((x) => x !== p) : [...prev, p])); setSaved(false); };
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    setBusy(true);
+    setErrors({});
+    setFatal(null);
+    setSaved(false);
+    try {
+      const res = await fetch(`/api/admin/workers/${worker.phone}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...v, places: selPlaces, active, admin: isAdmin }),
+      });
+      const data = await res.json();
+      if (res.ok && data.ok) {
+        setSaved(true);
+        router.refresh();
+      } else if (res.status === 400 && data.errors) {
+        setErrors(data.errors);
+      } else {
+        setFatal('Could not save. Please try again.');
+      }
+    } catch {
+      setFatal('Network error. Please try again.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const input = (k: keyof typeof v, label: string, type = 'text') => (
+    <div>
+      <label className="block text-sm font-medium text-gray-700">{label}</label>
+      <input
+        className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-base"
+        type={type}
+        value={v[k]}
+        onChange={(e) => set(k, e.target.value)}
+      />
+      {errors[k] && <p className="mt-1 text-sm text-red-600">{errors[k]}</p>}
+    </div>
+  );
+
+  const select = (k: keyof typeof v, label: string, opts: EnumOpt) => (
+    <div>
+      <label className="block text-sm font-medium text-gray-700">{label}</label>
+      <select
+        className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-base"
+        value={v[k]}
+        onChange={(e) => set(k, e.target.value)}
+      >
+        <option value="">Choose…</option>
+        {opts.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+      </select>
+      {errors[k] && <p className="mt-1 text-sm text-red-600">{errors[k]}</p>}
+    </div>
+  );
+
+  return (
+    <form className="mt-6 space-y-4" onSubmit={submit}>
+      {input('name', 'Name')}
+      {input('teudatZeut', 'Teudat zeut')}
+      <div>
+        <label className="block text-sm font-medium text-gray-700">Allowed places</label>
+        <div className="mt-1 flex flex-wrap gap-1.5">
+          {places.map((p) => (
+            <button key={p} type="button" onClick={() => togglePlace(p)}
+              className={`rounded-full border px-2.5 py-1 text-sm ${selPlaces.includes(p) ? 'border-gray-900 bg-gray-900 text-white' : 'border-gray-300 text-gray-700'}`}>
+              {p}
+            </button>
+          ))}
+        </div>
+      </div>
+      {input('city', 'City')}
+      {input('age', 'Age', 'number')}
+      {select('transportation', 'Transportation', enums.transportation)}
+      {select('gender', 'Gender', enums.gender)}
+      {select('hebrewLevel', 'Hebrew level', enums.hebrewLevel)}
+      {select('payType', 'Pay eligibility', enums.payType)}
+      {v.payType === 'amount' && input('payAmount', 'Amount', 'number')}
+      {select('payStructure', 'Pay structure', enums.payStructure)}
+      {input('payRate', 'Pay rate', 'number')}
+      {select('schedule', 'Schedule', enums.schedule)}
+
+      <div className="flex items-center gap-6 pt-2">
+        <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
+          <input type="checkbox" className="h-4 w-4 rounded border-gray-300" checked={active} onChange={(e) => { setActive(e.target.checked); setSaved(false); }} />
+          Active
+        </label>
+        <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
+          <input type="checkbox" className="h-4 w-4 rounded border-gray-300" checked={isAdmin} onChange={(e) => { setIsAdmin(e.target.checked); setSaved(false); }} />
+          Admin
+        </label>
+      </div>
+
+      {fatal && <p className="text-sm text-red-600">{fatal}</p>}
+      {saved && <p className="text-sm text-green-600">Saved ✓</p>}
+      <button type="submit" disabled={busy}
+        className="w-full rounded-lg bg-gray-900 px-4 py-3 text-base font-medium text-white disabled:opacity-50">
+        {busy ? 'Saving…' : 'Save changes'}
+      </button>
+    </form>
+  );
+}

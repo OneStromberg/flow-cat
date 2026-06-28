@@ -65,7 +65,7 @@ export function WorkersFilter({ workers, cities, places, enums }: Props) {
           <tbody>
             {shown.map((wk) => (
               <tr key={wk.phone} className="border-t border-gray-100">
-                <td className="p-2 font-medium">{wk.name}{wk.admin ? ' ★' : ''}</td>
+                <td className="p-2 font-medium"><a href={`/admin/workers/${wk.phone}`} className="underline hover:text-gray-600">{wk.name}{wk.admin ? ' ★' : ''}</a></td>
                 <td className="p-2">{wk.phone}</td>
                 <td className="p-2">{wk.city}</td>
                 <td className="p-2">{wk.age}</td>
