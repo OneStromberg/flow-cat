@@ -14,6 +14,7 @@ const FORM0 = {
   validFrom: '',
   validTo: '',
   rate: '',
+  instructions: '',
 };
 
 type Props = {
@@ -158,6 +159,18 @@ export function AddTemplateForm({ places }: Props) {
           onChange={(e) => set('rate', e.target.value)}
         />
         {errors.rate && <p className="mt-1 text-sm text-red-600">{errors.rate}</p>}
+      </div>
+
+      {/* Instructions */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700">Instructions (tasks for this role)</label>
+        <textarea
+          className={inputClass}
+          rows={3}
+          value={v.instructions}
+          onChange={(e) => set('instructions', e.target.value)}
+        />
+        {errors.instructions && <p className="mt-1 text-sm text-red-600">{errors.instructions}</p>}
       </div>
 
       {/* Valid from / to */}

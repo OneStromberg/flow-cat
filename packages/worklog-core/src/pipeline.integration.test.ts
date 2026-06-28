@@ -35,7 +35,7 @@ test('END-TO-END: worker → place → shift → generate → check-in/out → p
   // 2. A recurring Wednesday day-shift at Site A, 1 person, no shift rate (→ falls to worker rate).
   const t = await addTemplate(g, {
     location: 'Site A', label: 'Day', days: ['Wed'], start: '08:00', end: '16:00',
-    headcount: '1', validFrom: '', validTo: '', rate: '',
+    headcount: '1', validFrom: '', validTo: '', rate: '', instructions: '',
   });
   assert.equal(t.ok, true);
   const tplId = t.ok ? t.id : '';

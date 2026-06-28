@@ -20,6 +20,7 @@ type FormFields = {
   end: string;
   headcount: string;
   rate: string;
+  instructions: string;
   validFrom: string;
   validTo: string;
 };
@@ -39,6 +40,7 @@ function EditTemplateForm({
     end: template.end,
     headcount: String(template.headcount),
     rate: template.rate != null ? String(template.rate) : '',
+    instructions: template.instructions ?? '',
     validFrom: template.validFrom ?? '',
     validTo: template.validTo ?? '',
   });
@@ -175,6 +177,18 @@ function EditTemplateForm({
             onChange={(e) => set('rate', e.target.value)}
           />
           {errors.rate && <p className="mt-1 text-sm text-red-600">{errors.rate}</p>}
+        </div>
+
+        {/* Instructions */}
+        <div>
+          <label className={labelClass}>Instructions (tasks for this role)</label>
+          <textarea
+            className={inputClass}
+            rows={3}
+            value={v.instructions}
+            onChange={(e) => set('instructions', e.target.value)}
+          />
+          {errors.instructions && <p className="mt-1 text-sm text-red-600">{errors.instructions}</p>}
         </div>
 
         {/* Valid from / to */}

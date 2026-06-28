@@ -6,15 +6,15 @@ export const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] as con
 export interface ShiftTemplate {
   id: string; location: string; label: string; days: string[];
   start: string; end: string; headcount: number; validFrom: string; validTo: string; active: boolean;
-  rate: string;
+  rate: string; instructions: string;
 }
 export interface AddTemplateInput {
   location: string; label: string; days: string[];
   start: string; end: string; headcount: string; validFrom: string; validTo: string;
-  rate: string;
+  rate: string; instructions: string;
 }
 
-const TEMPLATE_COLUMNS = ['id', 'location', 'label', 'days', 'start', 'end', 'headcount', 'valid_from', 'valid_to', 'active', 'rate'];
+const TEMPLATE_COLUMNS = ['id', 'location', 'label', 'days', 'start', 'end', 'headcount', 'valid_from', 'valid_to', 'active', 'rate', 'instructions'];
 const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -31,6 +31,7 @@ export function parseTemplate(o: Record<string, string>): ShiftTemplate {
     validTo: (o.valid_to ?? '').trim(),
     active: (o.active ?? '').trim().toLowerCase() !== 'no',
     rate: (o.rate ?? '').trim(),
+    instructions: (o.instructions ?? '').trim(),
   };
 }
 
@@ -60,6 +61,7 @@ function recordOf(id: string, input: AddTemplateInput): Record<string, string> {
     start: input.start, end: input.end, headcount: String(Number(input.headcount)),
     valid_from: input.validFrom.trim(), valid_to: input.validTo.trim(), active: 'yes',
     rate: (input.rate ?? '').trim(),
+    instructions: (input.instructions ?? '').trim(),
   };
 }
 
@@ -100,6 +102,7 @@ export async function copyTemplate(
     validFrom: opts.validFrom,
     validTo: opts.validTo,
     rate: src.rate,
+    instructions: src.instructions,
   });
   if (!result.ok) return result;
 
