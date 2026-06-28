@@ -26,3 +26,4 @@ export { distanceMeters, withinGeofence, hoursBetween, checkIn, checkOut, adminC
 export { instancesOverlap, findConflicts, type ShiftWindow, type Conflict } from './data/conflicts.ts';
 export { PAY_STRUCTURE, resolveHourlyRate, computePay, listAdjustments, addAdjustment, type WorkedItem, type Adjustment, type PayBreakdown } from './data/payroll.ts';
 export { findMissedCheckins, listSentAlerts, recordAlerts, type MissedEvent } from './data/missed-checkins.ts';
+export { LEAVE_TYPES, addLeave, listLeave, setLeaveStatus, isOnLeave, type Leave } from './data/leave.ts';
