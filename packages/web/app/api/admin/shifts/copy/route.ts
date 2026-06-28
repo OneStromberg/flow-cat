@@ -18,13 +18,12 @@ export async function POST(req: Request) {
   const str = (v: unknown) => (typeof v === 'string' ? v : '');
 
   const templateId = str(b.templateId);
-  const validFrom = str(b.validFrom);
-  const validTo = str(b.validTo);
+  const location = str(b.location);
   const carryAssignments = !!b.carryAssignments;
 
   try {
     const gw = getGateway();
-    const r = await copyTemplate(gw, templateId, { validFrom, validTo, carryAssignments });
+    const r = await copyTemplate(gw, templateId, { location, carryAssignments });
     if (!r.ok) return Response.json({ errors: r.errors }, { status: 400 });
     const today = new Date().toISOString().slice(0, 10);
     await generateInstances(gw, today);
