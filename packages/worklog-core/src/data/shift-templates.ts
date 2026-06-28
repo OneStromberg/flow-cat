@@ -3,35 +3,58 @@ import { listRecurring, addRecurring } from './shift-assignments.ts';
 
 export const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] as const;
 
+export interface DayTime { day: string; start: string; end: string }
+
 export interface ShiftTemplate {
   id: string; location: string; label: string; days: string[];
   start: string; end: string; headcount: number; validFrom: string; validTo: string; active: boolean;
-  rate: string; instructions: string;
+  rate: string; instructions: string; dayTimes: DayTime[];
 }
 export interface AddTemplateInput {
   location: string; label: string; days: string[];
   start: string; end: string; headcount: string; validFrom: string; validTo: string;
-  rate: string; instructions: string;
+  rate: string; instructions: string; dayTimes?: DayTime[];
 }
 
-const TEMPLATE_COLUMNS = ['id', 'location', 'label', 'days', 'start', 'end', 'headcount', 'valid_from', 'valid_to', 'active', 'rate', 'instructions'];
+const TEMPLATE_COLUMNS = ['id', 'location', 'label', 'days', 'start', 'end', 'headcount', 'valid_from', 'valid_to', 'active', 'rate', 'instructions', 'day_times'];
 const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
+const serializeDayTimes = (dts: DayTime[]) => dts.map((d) => `${d.day}=${d.start}-${d.end}`).join(';');
+
+function parseDayTimes(s: string): DayTime[] {
+  return s.split(';').map((seg) => {
+    const eq = seg.indexOf('=');
+    if (eq < 0) return null;
+    const day = seg.slice(0, eq).trim();
+    const times = seg.slice(eq + 1).trim();
+    const dash = times.indexOf('-');
+    if (dash < 0) return null;
+    return { day, start: times.slice(0, dash), end: times.slice(dash + 1) };
+  }).filter((x): x is DayTime => x !== null);
+}
+
 export function parseTemplate(o: Record<string, string>): ShiftTemplate {
+  const rawDays = (o.days ?? '').split(',').map((s) => s.trim()).filter(Boolean);
+  const start = (o.start ?? '').trim();
+  const end = (o.end ?? '').trim();
+  const rawDayTimes = (o.day_times ?? '').trim();
+  const dayTimes = rawDayTimes ? parseDayTimes(rawDayTimes) : rawDays.map((day) => ({ day, start, end }));
+  const days = dayTimes.map((d) => d.day);
   return {
     id: (o.id ?? '').trim(),
     location: (o.location ?? '').trim(),
     label: (o.label ?? '').trim(),
-    days: (o.days ?? '').split(',').map((s) => s.trim()).filter(Boolean),
-    start: (o.start ?? '').trim(),
-    end: (o.end ?? '').trim(),
+    days,
+    start,
+    end,
     headcount: Number((o.headcount ?? '0').trim()) || 0,
     validFrom: (o.valid_from ?? '').trim(),
     validTo: (o.valid_to ?? '').trim(),
     active: (o.active ?? '').trim().toLowerCase() !== 'no',
     rate: (o.rate ?? '').trim(),
     instructions: (o.instructions ?? '').trim(),
+    dayTimes,
   };
 }
 
@@ -43,10 +66,17 @@ export async function listTemplates(gateway: SheetsGateway): Promise<ShiftTempla
 function validate(input: AddTemplateInput): Record<string, string> {
   const e: Record<string, string> = {};
   if (!input.location.trim()) e.location = 'Required';
-  if (input.days.length === 0 || !input.days.every((d) => (WEEKDAYS as readonly string[]).includes(d))) e.days = 'Pick at least one weekday';
-  if (!TIME_RE.test(input.start)) e.start = 'Use HH:MM';
-  if (!TIME_RE.test(input.end)) e.end = 'Use HH:MM';
-  else if (input.start === input.end) e.end = "Start and end can't be the same";
+  if (input.dayTimes?.length) {
+    const valid = input.dayTimes.filter(
+      (dt) => (WEEKDAYS as readonly string[]).includes(dt.day) && TIME_RE.test(dt.start) && TIME_RE.test(dt.end) && dt.start !== dt.end
+    );
+    if (valid.length === 0) e.days = 'Pick at least one valid day/time entry';
+  } else {
+    if (input.days.length === 0 || !input.days.every((d) => (WEEKDAYS as readonly string[]).includes(d))) e.days = 'Pick at least one weekday';
+    if (!TIME_RE.test(input.start)) e.start = 'Use HH:MM';
+    if (!TIME_RE.test(input.end)) e.end = 'Use HH:MM';
+    else if (input.start === input.end) e.end = "Start and end can't be the same";
+  }
   const hc = Number(input.headcount);
   if (!Number.isInteger(hc) || hc < 1) e.headcount = 'Must be a positive whole number';
   if (input.validFrom && !DATE_RE.test(input.validFrom)) e.validFrom = 'Use YYYY-MM-DD';
@@ -56,12 +86,19 @@ function validate(input: AddTemplateInput): Record<string, string> {
 }
 
 function recordOf(id: string, input: AddTemplateInput): Record<string, string> {
+  const effective: DayTime[] = input.dayTimes?.length
+    ? input.dayTimes
+    : input.days.map((d) => ({ day: d, start: input.start, end: input.end }));
   return {
-    id, location: input.location.trim(), label: input.label.trim(), days: input.days.join(','),
-    start: input.start, end: input.end, headcount: String(Number(input.headcount)),
+    id, location: input.location.trim(), label: input.label.trim(),
+    days: effective.map((d) => d.day).join(','),
+    start: effective[0]?.start ?? '',
+    end: effective[0]?.end ?? '',
+    headcount: String(Number(input.headcount)),
     valid_from: input.validFrom.trim(), valid_to: input.validTo.trim(), active: 'yes',
     rate: (input.rate ?? '').trim(),
     instructions: (input.instructions ?? '').trim(),
+    day_times: serializeDayTimes(effective),
   };
 }
 
