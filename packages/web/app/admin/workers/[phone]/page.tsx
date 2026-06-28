@@ -2,7 +2,7 @@ import { redirect, notFound } from 'next/navigation';
 import Link from 'next/link';
 import { requireAdmin } from '../../../../lib/session';
 import { getRequestGateway } from '../../../../lib/sheets';
-import { findWorker, loadActivePlaces, GENDER, TRANSPORTATION, HEBREW_LEVEL, PAY_TYPE, SCHEDULE, PAY_STRUCTURE } from '@scourage/worklog-core';
+import { findWorker, loadActivePlaces, loadCities, GENDER, TRANSPORTATION, HEBREW_LEVEL, PAY_TYPE, SCHEDULE, PAY_STRUCTURE } from '@scourage/worklog-core';
 import { WorkerCard } from './worker-card';
 
 export const runtime = 'nodejs';
@@ -18,6 +18,7 @@ export default async function WorkerPage({ params }: { params: Promise<{ phone: 
   if (!worker) notFound();
 
   const places = await loadActivePlaces(gw);
+  const cities = await loadCities(gw);
 
   return (
     <main className="mx-auto max-w-lg px-4 py-8">
@@ -37,6 +38,7 @@ export default async function WorkerPage({ params }: { params: Promise<{ phone: 
       <WorkerCard
         worker={worker}
         places={places}
+        cities={cities}
         enums={{
           gender: GENDER,
           transportation: TRANSPORTATION,
