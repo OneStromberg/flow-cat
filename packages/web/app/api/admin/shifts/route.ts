@@ -26,6 +26,7 @@ export async function POST(req: Request) {
     validFrom: str(b.validFrom),
     validTo: str(b.validTo),
     rate: str(b.rate),
+    instructions: str(b.instructions),
   };
 
   try {
