@@ -11,6 +11,7 @@ const TABS = [
   { href: '/admin/conflicts', label: 'Conflicts', icon: '⚠️' },
   { href: '/admin/leave', label: 'Leave', icon: '🏖' },
   { href: '/admin/broadcast', label: 'Broadcast', icon: '📣' },
+  { href: '/admin/reports', label: 'Reports', icon: '📊' },
 ];
 
 export function AdminNav() {
