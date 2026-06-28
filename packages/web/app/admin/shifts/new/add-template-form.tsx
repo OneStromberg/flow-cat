@@ -95,7 +95,7 @@ export function AddTemplateForm({ places }: Props) {
       <div>
         <label className="block text-sm font-medium text-gray-700">Days</label>
         <div className="mt-1 flex flex-wrap gap-2">
-          {WEEKDAYS.map((d) => (
+          {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((d) => (
             <label key={d} className="flex cursor-pointer items-center gap-1.5 text-sm">
               <input
                 type="checkbox"

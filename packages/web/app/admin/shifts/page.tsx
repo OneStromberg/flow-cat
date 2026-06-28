@@ -34,7 +34,10 @@ export default async function ShiftsPage({
 
   const sp = await searchParams;
 
-  const today = new Date().toISOString().slice(0, 10);
+  const nowFull = new Date().toISOString();
+  // Slice to minute precision for lexicographic time comparisons in shiftStatusColor
+  const nowISO = nowFull.slice(0, 16); // YYYY-MM-DDTHH:MM
+  const today = nowFull.slice(0, 10);
 
   const rawView = typeof sp.view === 'string' ? sp.view : 'month';
   const view = rawView === 'day' || rawView === 'week' ? rawView : 'month';
@@ -160,6 +163,7 @@ export default async function ShiftsPage({
             weeks={weeks}
             prevHref={`?view=month&month=${prevMonth}`}
             nextHref={`?view=month&month=${nextMonth}`}
+            nowISO={nowISO}
           />
         );
       })()}
@@ -178,6 +182,7 @@ export default async function ShiftsPage({
             days={days}
             prevHref={`?view=week&date=${prevWeek}`}
             nextHref={`?view=week&date=${nextWeek}`}
+            nowISO={nowISO}
           />
         );
       })()}
@@ -197,6 +202,7 @@ export default async function ShiftsPage({
             items={items}
             prevHref={`?view=day&date=${prevDay}`}
             nextHref={`?view=day&date=${nextDay}`}
+            nowISO={nowISO}
           />
         );
       })()}

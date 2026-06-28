@@ -112,7 +112,7 @@ function EditTemplateForm({
         <div>
           <label className={labelClass}>Days</label>
           <div className="mt-1 flex flex-wrap gap-3">
-            {WEEKDAYS.map((d) => (
+            {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((d) => (
               <label key={d} className="flex cursor-pointer items-center gap-1.5 text-sm">
                 <input
                   type="checkbox"

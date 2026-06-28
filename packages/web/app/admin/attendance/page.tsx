@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation';
 import { requireAdmin } from '../../../lib/session';
 import { getRequestGateway } from '../../../lib/sheets';
-import { listAttendance } from '@scourage/worklog-core';
+import { listAttendance, listWorkers, listInstances } from '@scourage/worklog-core';
 import { AttendanceClient } from './attendance-client';
 
 export const runtime = 'nodejs';
@@ -28,7 +28,25 @@ export default async function AttendancePage({
   const from = typeof params.from === 'string' ? params.from : formatDate(-14);
   const to = typeof params.to === 'string' ? params.to : formatDate(0);
 
-  const attendance = await listAttendance(getRequestGateway(), { from, to });
+  const gw = getRequestGateway();
+  const [attendance, workers, instances] = await Promise.all([
+    listAttendance(gw, { from, to }),
+    listWorkers(gw),
+    listInstances(gw, { from: '0000-01-01', to: '9999-12-31' }),
+  ]);
+
+  // Build phone → name map from workers
+  const phoneToName = new Map(workers.map((w) => [w.phone, w.name]));
+
+  // Build instanceId → location map from instances
+  const instanceToLocation = new Map(instances.map((i) => [i.id, i.location]));
+
+  // Enrich attendance rows with workerName and location
+  const rows = attendance.map((row) => ({
+    ...row,
+    workerName: phoneToName.get(row.employeePhone) || '—',
+    location: instanceToLocation.get(row.instanceId) || '—',
+  }));
 
   return (
     <main className="mx-auto max-w-6xl p-5">
@@ -36,7 +54,7 @@ export default async function AttendancePage({
         <h1 className="text-xl font-semibold">Attendance</h1>
       </div>
 
-      <AttendanceClient rows={attendance} />
+      <AttendanceClient rows={rows} />
     </main>
   );
 }

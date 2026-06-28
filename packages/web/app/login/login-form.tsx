@@ -40,6 +40,7 @@ export function LoginForm() {
         <label className="block text-sm font-medium text-gray-700">Phone</label>
         <input className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-3 text-base" type="tel"
           value={phone} onChange={(e) => setPhone(e.target.value)} autoComplete="tel" />
+        <p className="mt-1 text-xs text-gray-500">Enter your phone — e.g. 050-123-4567 or +972 50 123 4567</p>
       </div>
       <div>
         <label className="block text-sm font-medium text-gray-700">Teudat zeut</label>

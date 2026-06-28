@@ -134,19 +134,15 @@ export function CheckinClient({ items, workerName }: CheckinClientProps) {
                     Checked in at {formatTime(attendance.checkInAt)}
                   </div>
                 )}
-                {isClosed && attendance?.hours && (
+                {isClosed && attendance?.checkInAt && attendance?.checkOutAt && (
                   <div className="mt-1 text-xs text-gray-500">
-                    Completed · {attendance.hours}h
+                    Checked in {formatTime(attendance.checkInAt)} → out {formatTime(attendance.checkOutAt)}{attendance.hours ? ` · ${attendance.hours}h` : ''}
                   </div>
                 )}
               </div>
 
               <div className="flex-shrink-0">
-                {isClosed ? (
-                  <span className="inline-flex items-center rounded-full bg-green-100 px-3 py-1 text-xs font-medium text-green-800">
-                    Done
-                  </span>
-                ) : isOpen ? (
+                {isOpen ? (
                   <button
                     disabled={isBusy}
                     onClick={() => handleAction(instance.id, 'out')}

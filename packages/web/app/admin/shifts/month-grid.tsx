@@ -1,15 +1,16 @@
 import Link from 'next/link';
 import type { Day } from './page';
-import { colorFor } from './shift-colors';
+import { shiftStatusColor, shiftColorChipClass } from '../../../lib/shift-colors';
 
 interface MonthGridProps {
   monthLabel: string;
   weeks: Day[][];
   prevHref: string;
   nextHref: string;
+  nowISO: string;
 }
 
-export function MonthGrid({ monthLabel, weeks, prevHref, nextHref }: MonthGridProps) {
+export function MonthGrid({ monthLabel, weeks, prevHref, nextHref, nowISO }: MonthGridProps) {
   return (
     <div>
       {/* Month nav */}
@@ -60,9 +61,18 @@ export function MonthGrid({ monthLabel, weeks, prevHref, nextHref }: MonthGridPr
                 {day.items.slice(0, MAX).map(({ instance, assigned }) => {
                   const cancelled = instance.status === 'cancelled';
                   const understaffed = !cancelled && assigned < instance.headcount;
+                  const color = shiftStatusColor({
+                    status: instance.status,
+                    assigned,
+                    headcount: instance.headcount,
+                    date: instance.date,
+                    start: instance.start,
+                    end: instance.end,
+                    nowISO,
+                  });
                   const colorClass = cancelled
-                    ? 'bg-gray-200 text-gray-400 line-through'
-                    : colorFor(instance.location);
+                    ? 'bg-gray-300 text-gray-500 line-through'
+                    : shiftColorChipClass(color);
                   return (
                     <Link
                       key={instance.id}
