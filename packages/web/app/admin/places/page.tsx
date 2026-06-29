@@ -35,7 +35,9 @@ export default async function PlacesPage() {
             const hasCoords = p.lat !== '' && p.lng !== '';
             return (
               <tr key={p.name} className="border-b">
-                <td className="py-2 font-medium">{p.name}</td>
+                <td className="py-2 font-medium">
+                  <a href={`/admin/places/${encodeURIComponent(p.name)}`} className="hover:underline text-blue-700">{p.name}</a>
+                </td>
                 <td className="text-gray-600">{p.client || '—'}</td>
                 <td className="text-gray-600">{p.address || '—'}</td>
                 <td>{p.active ? 'yes' : 'no'}</td>
