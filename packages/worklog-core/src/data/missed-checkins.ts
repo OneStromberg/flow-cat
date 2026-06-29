@@ -1,4 +1,6 @@
 import { objectToRow, rowsToObjects, type SheetsGateway } from '@scourage/sheets-helper';
+import { localWallClockToUTC } from '../time/dates';
+import { listPlaces, placeGraceMins } from './places';
 
 export interface MissedEvent {
   instanceId: string;
@@ -12,17 +14,17 @@ const ALERTS_COLUMNS = ['instance_id', 'employee_phone', 'type', 'sent_at'];
 
 // ── Date helpers ───────────────────────────────────────────────────────────────
 
-function startMs(date: string, start: string): number {
-  return Date.parse(`${date}T${start}:00Z`);
+function startMs(date: string, start: string, tz: string): number {
+  return Date.parse(localWallClockToUTC(date, start, tz));
 }
 
-function endMs(date: string, start: string, end: string): number {
+function endMs(date: string, start: string, end: string, tz: string): number {
   const useNextDay = end < start;
   const [y, m, d] = date.split('-').map(Number);
   const endDate = useNextDay
     ? new Date(Date.UTC(y, m - 1, d + 1)).toISOString().slice(0, 10)
     : date;
-  return Date.parse(`${endDate}T${end}:00Z`);
+  return Date.parse(localWallClockToUTC(endDate, end, tz));
 }
 
 // ── Public API ─────────────────────────────────────────────────────────────────
@@ -30,16 +32,19 @@ function endMs(date: string, start: string, end: string): number {
 export async function findMissedCheckins(
   gateway: SheetsGateway,
   nowISO: string,
-  graceMins = 10,
+  defaultGraceMins = 10,
+  tz = 'UTC',
 ): Promise<MissedEvent[]> {
   const now = Date.parse(nowISO);
-  const grace = graceMins * 60000;
 
-  const [instanceObjs, assignObjs, attObjs] = await Promise.all([
+  const [instanceObjs, assignObjs, attObjs, places] = await Promise.all([
     rowsToObjects(await gateway.readTab('ShiftInstances')),
     rowsToObjects(await gateway.readTab('ShiftAssignments')),
     rowsToObjects(await gateway.readTab('Attendance')),
+    listPlaces(gateway),
   ]);
+
+  const placeByName = new Map(places.map((p) => [p.name, p]));
 
   // Index instances by id (skip cancelled)
   const instanceById = new Map<string, Record<string, string>>();
@@ -81,11 +86,12 @@ export async function findMissedCheckins(
     const location = (inst.location ?? '').trim();
     if (!date || !start || !end) continue;
 
+    const grace = placeGraceMins(placeByName.get(location), defaultGraceMins) * 60000;
     const key = `${instanceId}|${phone}`;
     const attRecords = attByKey.get(key) ?? [];
 
     // Missed check-in: grace passed and no attendance record at all
-    const inStart = startMs(date, start);
+    const inStart = startMs(date, start, tz);
     if (now > inStart + grace && attRecords.length === 0) {
       missed.push({
         instanceId,
@@ -97,7 +103,7 @@ export async function findMissedCheckins(
     }
 
     // Missed check-out: grace after end passed and has an open attendance record
-    const inEnd = endMs(date, start, end);
+    const inEnd = endMs(date, start, end, tz);
     if (now > inEnd + grace) {
       const openRecord = attRecords.find((a) => (a.status ?? '').trim() === 'open');
       if (openRecord) {

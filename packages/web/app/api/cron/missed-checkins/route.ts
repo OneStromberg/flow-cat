@@ -1,4 +1,4 @@
-import { getGateway } from '../../../../lib/sheets';
+import { getGateway, COMPANY_TZ } from '../../../../lib/sheets';
 import { findMissedCheckins, listSentAlerts, recordAlerts, listWorkers } from '@scourage/worklog-core';
 import { notifyAdmins, pickAdminChatIds } from '../../../../lib/telegram';
 
@@ -18,7 +18,7 @@ export async function GET(req: Request) {
   const now = new Date().toISOString();
 
   try {
-    const missed = await findMissedCheckins(gw, now);
+    const missed = await findMissedCheckins(gw, now, 10, COMPANY_TZ);
     const sent = await listSentAlerts(gw);
     const fresh = missed.filter(m => !sent.has(`${m.instanceId}|${m.employeePhone}|${m.type}`));
 
