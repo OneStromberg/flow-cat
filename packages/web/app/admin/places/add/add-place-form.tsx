@@ -7,7 +7,7 @@ const KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ?? '';
 
 type Mode = 'search' | 'pin';
 type Selected = { name: string; lat: string; lng: string; placeId: string; address: string };
-type Extra = { client: string; contact: string; baseRate: string; geofenceRadiusM: string; requiredAttributes: string; notes: string };
+type Extra = { client: string; contact: string; baseRate: string; geofenceRadiusM: string; requiredAttributes: string; notes: string; graceMins: string };
 
 declare global {
   interface Window { google?: any }
@@ -83,6 +83,17 @@ function ExtraFields({ extra, setExtra }: { extra: Extra; setExtra: (e: Extra) =
         />
       </div>
       <div>
+        <label className="block text-sm font-medium text-gray-700">Grace minutes (missed-checkin alert)</label>
+        <input
+          type="number"
+          value={extra.graceMins}
+          onChange={(e) => setExtra({ ...extra, graceMins: e.target.value })}
+          className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm placeholder-gray-400"
+          placeholder="Default: 10"
+          min="0"
+        />
+      </div>
+      <div>
         <label className="block text-sm font-medium text-gray-700">Required attributes</label>
         <input
           type="text"
@@ -108,7 +119,7 @@ export function AddPlaceForm() {
   const [pinName, setPinName] = useState('');
   const [pinLat, setPinLat] = useState('');
   const [pinLng, setPinLng] = useState('');
-  const [extra, setExtra] = useState<Extra>({ client: '', contact: '', baseRate: '', geofenceRadiusM: '100', requiredAttributes: '', notes: '' });
+  const [extra, setExtra] = useState<Extra>({ client: '', contact: '', baseRate: '', geofenceRadiusM: '100', requiredAttributes: '', notes: '', graceMins: '' });
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
