@@ -98,7 +98,7 @@ export async function POST(req: Request) {
         ])
       );
 
-      const activeWorkers = workers.filter((w) => w.active);
+      const activeWorkers = workers.filter((w) => w.active && (!employeePhone || w.phone === employeePhone));
       rows = await Promise.all(
         activeWorkers.map(async (w) => {
           const adjustments = await listAdjustments(gw, { employeePhone: w.phone, from, to });
