@@ -240,13 +240,11 @@ export async function adminCorrect(
   if (fields.checkInAt !== undefined) newRow[idxCheckInAt] = fields.checkInAt;
   if (fields.checkOutAt !== undefined) newRow[idxCheckOutAt] = fields.checkOutAt;
 
-  // Recompute hours if both timestamps are present; else use provided hours
-  const finalCheckIn = newRow[idxCheckInAt] ?? '';
-  const finalCheckOut = newRow[idxCheckOutAt] ?? '';
-  if (finalCheckIn && finalCheckOut) {
-    newRow[idxHours] = String(hoursBetween(finalCheckIn, finalCheckOut));
-  } else if (fields.hours !== undefined) {
+  // An explicit hours override always wins; otherwise recompute from both timestamps.
+  if (fields.hours !== undefined) {
     newRow[idxHours] = fields.hours;
+  } else if ((newRow[idxCheckInAt] ?? '') && (newRow[idxCheckOutAt] ?? '')) {
+    newRow[idxHours] = String(hoursBetween(newRow[idxCheckInAt], newRow[idxCheckOutAt]));
   }
 
   newRow[idxStatus] = 'corrected';
