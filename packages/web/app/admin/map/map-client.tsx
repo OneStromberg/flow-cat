@@ -56,6 +56,14 @@ function buildInfoHtml(m: MapMarker): string {
   `;
 }
 
+// ponytail: static style array, no UI toggle.
+const MINIMAL_STYLE = [
+  { featureType: 'poi', stylers: [{ visibility: 'off' }] },
+  { featureType: 'poi.business', stylers: [{ visibility: 'off' }] },
+  { featureType: 'transit', stylers: [{ visibility: 'off' }] },
+  { featureType: 'road', elementType: 'labels.icon', stylers: [{ visibility: 'off' }] },
+];
+
 export function MapClient({ markers }: { markers: MapMarker[] }) {
   const mapDivRef = useRef<HTMLDivElement>(null);
 
@@ -75,6 +83,7 @@ export function MapClient({ markers }: { markers: MapMarker[] }) {
         mapInstance = new Map(mapDivRef.current, {
           center: { lat: 31.5, lng: 34.8 },
           zoom: 7,
+          styles: MINIMAL_STYLE,
         });
 
         if (markers.length > 0) {
