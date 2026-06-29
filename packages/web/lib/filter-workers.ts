@@ -17,9 +17,9 @@ export interface WorkerFilters {
 const inSet = (val: string | undefined, set: string[]): boolean => set.length === 0 || set.includes(val ?? '');
 
 export function filterWorkers(workers: Worker[], f: WorkerFilters): Worker[] {
-  const search = f.search.trim().toLowerCase();
+  const search = f.search.trim().toLowerCase().normalize('NFC');
   return workers.filter((wk) => {
-    if (search && !`${wk.name} ${wk.phone}`.toLowerCase().includes(search)) return false;
+    if (search && !`${wk.name} ${wk.phone}`.toLowerCase().normalize('NFC').includes(search)) return false;
     if (!inSet(wk.city, f.cities)) return false;
     if (!inSet(wk.transportation, f.transportation)) return false;
     if (!inSet(wk.hebrewLevel, f.hebrewLevel)) return false;

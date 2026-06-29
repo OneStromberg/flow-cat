@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createMemoryGateway } from '@scourage/sheets-helper';
-import { distanceMeters, withinGeofence, hoursBetween, checkIn, checkOut, listAttendance } from './attendance.ts';
+import { createMemoryGateway, rowsToObjects } from '@scourage/sheets-helper';
+import { distanceMeters, withinGeofence, hoursBetween, checkIn, checkOut, listAttendance, adminCorrect } from './attendance.ts';
 
 test('distanceMeters ~ haversine (Tel Aviv ~ 1 deg lat ≈ 111km)', () => {
   const d = distanceMeters(32.0, 34.0, 33.0, 34.0);
@@ -34,4 +34,35 @@ test('checkIn then checkOut computes hours and closes; double check-in rejected'
   assert.equal(co.ok, true); if (co.ok) assert.equal(co.hours, '8');
   const list = await listAttendance(g, { employeePhone:'15551230000' });
   assert.equal(list.length, 1); assert.equal(list[0].status, 'closed'); assert.equal(list[0].hours, '8');
+});
+test('adminCorrect uses an explicit hours override on a closed row', async () => {
+  const g = createMemoryGateway({ Attendance: [
+    ['id','instance_id','employee_phone','date','check_in_at','check_in_lat','check_in_lng','check_in_photo','check_in_in_geofence','check_out_at','check_out_lat','check_out_lng','check_out_photo','check_out_in_geofence','hours','status'],
+    ['a1','i1','p1','2026-07-01','2026-07-01T08:00:00.000Z','','','','no','2026-07-01T16:00:00.000Z','','','','no','8','closed'],
+  ]});
+  const r = await adminCorrect(g, 'a1', { hours: '5' });
+  assert.equal(r.ok, true);
+  const row = rowsToObjects(g.dump()['Attendance']).find((o) => o.id === 'a1');
+  assert.ok(row);
+  assert.equal(row.hours, '5');
+});
+test('checkIn blocks a new worker once headcount is reached', async () => {
+  const g = createMemoryGateway({
+    ShiftInstances: [['id','template_id','location','date','start','end','headcount','status','generated_at'],
+      ['i1','t1','Site A','2026-07-01','08:00','16:00','1','scheduled','']],
+    Attendance: [['id','instance_id','employee_phone','date','check_in_at','check_in_lat','check_in_lng','check_in_photo','check_in_in_geofence','check_out_at','check_out_lat','check_out_lng','check_out_photo','check_out_in_geofence','hours','status'],
+      ['a1','i1','p1','2026-07-01','2026-07-01T08:00:00.000Z','','','','yes','','','','','','','open']],
+  });
+  const blocked = await checkIn(g, { instanceId:'i1', employeePhone:'p2', at:'2026-07-01T08:05:00.000Z', lat:'', lng:'', photo:'', inGeofence:true });
+  assert.deepEqual(blocked, { ok:false, error:'shift is full' });
+});
+test('checkIn allows up to headcount distinct workers', async () => {
+  const g = createMemoryGateway({
+    ShiftInstances: [['id','template_id','location','date','start','end','headcount','status','generated_at'],
+      ['i1','t1','Site A','2026-07-01','08:00','16:00','2','scheduled','']],
+    Attendance: [['id','instance_id','employee_phone','date','check_in_at','check_in_lat','check_in_lng','check_in_photo','check_in_in_geofence','check_out_at','check_out_lat','check_out_lng','check_out_photo','check_out_in_geofence','hours','status']],
+  });
+  assert.equal((await checkIn(g, { instanceId:'i1', employeePhone:'p1', at:'2026-07-01T08:00:00.000Z', lat:'', lng:'', photo:'', inGeofence:true })).ok, true);
+  assert.equal((await checkIn(g, { instanceId:'i1', employeePhone:'p2', at:'2026-07-01T08:00:00.000Z', lat:'', lng:'', photo:'', inGeofence:true })).ok, true);
+  assert.equal((await checkIn(g, { instanceId:'i1', employeePhone:'p3', at:'2026-07-01T08:00:00.000Z', lat:'', lng:'', photo:'', inGeofence:true })).ok, false);
 });

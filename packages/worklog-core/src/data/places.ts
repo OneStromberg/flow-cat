@@ -24,6 +24,7 @@ export interface Place {
   baseRate: string;
   requiredAttributes: string[];
   notes: string;
+  graceMins: string;
 }
 
 export interface AddPlaceInput {
@@ -38,9 +39,10 @@ export interface AddPlaceInput {
   baseRate: string;
   requiredAttributes: string;
   notes: string;
+  graceMins: string;
 }
 
-const PLACES_COLUMNS = ['place_name', 'active', 'lat', 'lng', 'place_id', 'address', 'client', 'geofence_radius_m', 'contact', 'base_rate', 'required_attributes', 'notes'];
+const PLACES_COLUMNS = ['place_name', 'active', 'lat', 'lng', 'place_id', 'address', 'client', 'geofence_radius_m', 'contact', 'base_rate', 'required_attributes', 'notes', 'grace_mins'];
 
 export function wazeUrl(lat: string, lng: string): string {
   return `https://waze.com/ul?ll=${lat},${lng}&navigate=yes`;
@@ -68,11 +70,17 @@ export async function listPlaces(gateway: SheetsGateway): Promise<Place[]> {
       baseRate: (o.base_rate ?? '').trim(),
       requiredAttributes: (o.required_attributes ?? '').split(',').map((s) => s.trim()).filter(Boolean),
       notes: (o.notes ?? '').trim(),
+      graceMins: (o.grace_mins ?? '').trim(),
     }));
 }
 
 function numeric(s: string): boolean {
   return s.trim() !== '' && Number.isFinite(Number(s));
+}
+
+export function placeGraceMins(place: { graceMins?: string } | undefined, def = 10): number {
+  const n = Number((place?.graceMins ?? '').trim());
+  return Number.isFinite(n) && n > 0 ? n : def;
 }
 
 export async function addPlace(
@@ -109,6 +117,7 @@ export async function addPlace(
     base_rate: input.baseRate.trim(),
     required_attributes: input.requiredAttributes.trim(),
     notes: input.notes.trim(),
+    grace_mins: input.graceMins.trim(),
   };
 
   const rows = await gateway.readTab('Places');

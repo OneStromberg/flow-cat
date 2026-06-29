@@ -13,6 +13,7 @@ const inactive = `${base} border border-gray-300 text-gray-700`;
 
 const LEGEND = [
   { bg: 'bg-emerald-500', label: 'Assigned' },
+  { bg: 'bg-orange-500',  label: 'Assigned, not checked in' },
   { bg: 'bg-amber-400',   label: 'Upcoming, needs staff' },
   { bg: 'bg-rose-500',    label: 'Ongoing/past, needs staff' },
   { bg: 'bg-gray-300',    label: 'Cancelled' },

@@ -36,3 +36,15 @@ test('checked in → no missed check-in; missed check-OUT after end+grace while 
   const outM = await findMissedCheckins(g, '2026-07-01T16:20:00.000Z', 10); // 20min after 16:00 end, still open
   assert.equal(outM.length, 1); assert.equal(outM[0].type, 'out');
 });
+
+test('start time is interpreted in the given tz (Jerusalem)', async () => {
+  const g = seed({ Places: [
+    ['place_name','active','lat','lng','place_id','address','client','geofence_radius_m','contact','base_rate','required_attributes','notes','grace_mins'],
+    ['Site A','yes','','','','','','100','','','','',''],
+  ]});
+  // 08:20 Jerusalem (IDT, UTC+3) = 05:20 UTC; >10min after 05:00 UTC start
+  const m = await findMissedCheckins(g, '2026-07-01T05:20:00.000Z', 10, 'Asia/Jerusalem');
+  assert.equal(m.length, 1); assert.equal(m[0].type, 'in');
+  // 08:05 Jerusalem = 05:05 UTC; within grace → not missed
+  assert.equal((await findMissedCheckins(g, '2026-07-01T05:05:00.000Z', 10, 'Asia/Jerusalem')).length, 0);
+});

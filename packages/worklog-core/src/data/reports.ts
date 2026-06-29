@@ -57,6 +57,16 @@ export function attendanceExceptions(
   return results;
 }
 
+export function filterAttendanceForReport(
+  att: Attendance[],
+  instLocById: Map<string, string>,
+  f: { location?: string; employeePhone?: string },
+): Attendance[] {
+  return att.filter((a) =>
+    (!f.location || instLocById.get(a.instanceId) === f.location) &&
+    (!f.employeePhone || a.employeePhone === f.employeePhone));
+}
+
 export async function writeReportTab(
   gateway: SheetsGateway,
   tab: string,

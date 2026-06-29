@@ -19,6 +19,7 @@ export async function POST(req: Request) {
   const input: AddPlaceInput = {
     name: str(b.name), lat: str(b.lat), lng: str(b.lng), placeId: str(b.placeId), address: str(b.address),
     client: str(b.client), geofenceRadiusM: str(b.geofenceRadiusM), contact: str(b.contact), baseRate: str(b.baseRate), requiredAttributes: str(b.requiredAttributes), notes: str(b.notes),
+    graceMins: str(b.graceMins ?? b.grace_mins),
   };
 
   try {

@@ -141,6 +141,19 @@ export async function checkIn(
     return { ok: false, error: 'already checked in' };
   }
 
+  // Headcount cap: distinct workers already on this instance must not exceed headcount.
+  const headcount = Number((instance.headcount ?? '').trim());
+  if (Number.isFinite(headcount) && headcount > 0) {
+    const workersOnInstance = new Set(
+      attRows
+        .filter((o) => (o.instance_id ?? '').trim() === params.instanceId && (o.employee_phone ?? '').trim() !== '')
+        .map((o) => (o.employee_phone ?? '').trim()),
+    );
+    if (!workersOnInstance.has(params.employeePhone) && workersOnInstance.size >= headcount) {
+      return { ok: false, error: 'shift is full' };
+    }
+  }
+
   const header = await ensureAttHeader(gateway);
   const id = 'att_' + crypto.randomUUID().slice(0, 8);
 
@@ -240,13 +253,11 @@ export async function adminCorrect(
   if (fields.checkInAt !== undefined) newRow[idxCheckInAt] = fields.checkInAt;
   if (fields.checkOutAt !== undefined) newRow[idxCheckOutAt] = fields.checkOutAt;
 
-  // Recompute hours if both timestamps are present; else use provided hours
-  const finalCheckIn = newRow[idxCheckInAt] ?? '';
-  const finalCheckOut = newRow[idxCheckOutAt] ?? '';
-  if (finalCheckIn && finalCheckOut) {
-    newRow[idxHours] = String(hoursBetween(finalCheckIn, finalCheckOut));
-  } else if (fields.hours !== undefined) {
+  // An explicit hours override always wins; otherwise recompute from both timestamps.
+  if (fields.hours !== undefined) {
     newRow[idxHours] = fields.hours;
+  } else if ((newRow[idxCheckInAt] ?? '') && (newRow[idxCheckOutAt] ?? '')) {
+    newRow[idxHours] = String(hoursBetween(newRow[idxCheckInAt], newRow[idxCheckOutAt]));
   }
 
   newRow[idxStatus] = 'corrected';

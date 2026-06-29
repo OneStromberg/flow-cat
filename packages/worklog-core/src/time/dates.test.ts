@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { todayISO, yesterdayISO, resolveTypedDate } from './dates.ts';
+import { todayISO, yesterdayISO, resolveTypedDate, localWallClockToUTC } from './dates.ts';
 
 const now = new Date('2026-06-20T09:00:00Z'); // fixed clock
 const tz = 'Asia/Jerusalem';
@@ -21,4 +21,11 @@ test('rejects malformed dates', () => {
 
 test('rejects future dates', () => {
   assert.deepEqual(resolveTypedDate('25/06/2026', tz, now), { ok: false, reason: 'future' });
+});
+
+test('localWallClockToUTC converts Jerusalem wall-clock to UTC instant', () => {
+  assert.equal(localWallClockToUTC('2026-07-01', '08:00', 'Asia/Jerusalem'), '2026-07-01T05:00:00.000Z');
+  assert.equal(localWallClockToUTC('2026-01-01', '08:00', 'Asia/Jerusalem'), '2026-01-01T06:00:00.000Z');
+  assert.equal(localWallClockToUTC('2026-07-01', '08:00', 'UTC'), '2026-07-01T08:00:00.000Z');
+  assert.equal(localWallClockToUTC('bad', '08:00', 'UTC'), '');
 });

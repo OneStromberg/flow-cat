@@ -8,9 +8,10 @@ interface MonthGridProps {
   prevHref: string;
   nextHref: string;
   nowISO: string;
+  tz: string;
 }
 
-export function MonthGrid({ monthLabel, weeks, prevHref, nextHref, nowISO }: MonthGridProps) {
+export function MonthGrid({ monthLabel, weeks, prevHref, nextHref, nowISO, tz }: MonthGridProps) {
   return (
     <div>
       {/* Month nav */}
@@ -58,17 +59,19 @@ export function MonthGrid({ monthLabel, weeks, prevHref, nextHref, nowISO }: Mon
 
               {/* Shift chips */}
               <div className="mt-0.5 space-y-px">
-                {day.items.slice(0, MAX).map(({ instance, assigned }) => {
+                {day.items.slice(0, MAX).map(({ instance, assigned, checkedIn, graceMins }) => {
                   const cancelled = instance.status === 'cancelled';
                   const understaffed = !cancelled && assigned < instance.headcount;
                   const color = shiftStatusColor({
                     status: instance.status,
                     assigned,
                     headcount: instance.headcount,
+                    checkedIn,
                     date: instance.date,
                     start: instance.start,
-                    end: instance.end,
                     nowISO,
+                    tz,
+                    graceMins,
                   });
                   const colorClass = cancelled
                     ? 'bg-gray-300 text-gray-500 line-through'

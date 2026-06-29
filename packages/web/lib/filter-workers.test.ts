@@ -41,3 +41,12 @@ test('filters by gender (OR within, AND across)', () => {
   ] as any;
   assert.deepEqual(filterWorkers(ws, base).map((w:any)=>w.phone), ['1']);
 });
+
+test('search matches names regardless of unicode normalization (e.g., café)', () => {
+  // "café" with precomposed é (NFC)
+  const composed = 'café'.normalize('NFC');
+  const ws = [w({ name: composed, phone: '972500000000' })] as any;
+  // "café" with e + combining acute accent (NFD)
+  const query = 'café'.normalize('NFD');
+  assert.equal(filterWorkers(ws, { ...empty, search: query }).length, 1);
+});

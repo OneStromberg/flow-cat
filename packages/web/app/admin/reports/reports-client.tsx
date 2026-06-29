@@ -46,11 +46,18 @@ interface ReportResult {
   rows: string[][];
 }
 
-export function ReportsClient() {
+interface ReportsClientProps {
+  locationNames: string[];
+  workerOptions: { phone: string; name: string }[];
+}
+
+export function ReportsClient({ locationNames, workerOptions }: ReportsClientProps) {
   const defaults = currentMonthRange();
   const [type, setType] = useState<ReportType>('hours_employee');
   const [from, setFrom] = useState(defaults.from);
   const [to, setTo] = useState(defaults.to);
+  const [location, setLocation] = useState('');
+  const [employeePhone, setEmployeePhone] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<ReportResult | null>(null);
@@ -63,7 +70,7 @@ export function ReportsClient() {
       const res = await fetch('/api/admin/reports', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type, from, to }),
+        body: JSON.stringify({ type, from, to, location, employeePhone }),
       });
       const data = await res.json();
       if (!res.ok || !data.ok) {
@@ -110,6 +117,32 @@ export function ReportsClient() {
             onChange={(e) => setTo(e.target.value)}
             className="rounded border border-gray-300 px-3 py-2 text-sm"
           />
+        </div>
+        <div className="flex flex-col gap-1">
+          <label className="text-sm font-medium text-gray-700">Location</label>
+          <select
+            value={location}
+            onChange={(e) => setLocation(e.target.value)}
+            className="rounded border border-gray-300 px-3 py-2 text-sm"
+          >
+            <option value="">All</option>
+            {locationNames.map((l) => (
+              <option key={l} value={l}>{l}</option>
+            ))}
+          </select>
+        </div>
+        <div className="flex flex-col gap-1">
+          <label className="text-sm font-medium text-gray-700">Employee</label>
+          <select
+            value={employeePhone}
+            onChange={(e) => setEmployeePhone(e.target.value)}
+            className="rounded border border-gray-300 px-3 py-2 text-sm"
+          >
+            <option value="">All</option>
+            {workerOptions.map((w) => (
+              <option key={w.phone} value={w.phone}>{w.name}</option>
+            ))}
+          </select>
         </div>
         <button
           onClick={generate}
