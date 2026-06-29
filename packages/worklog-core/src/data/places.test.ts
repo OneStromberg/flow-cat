@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createMemoryGateway } from '@scourage/sheets-helper';
-import { listPlaces, addPlace, wazeUrl, googleMapsUrl } from './places.ts';
+import { listPlaces, addPlace, wazeUrl, googleMapsUrl, placeGraceMins } from './places.ts';
 
 test('wazeUrl builds a navigate link', () => {
   assert.equal(wazeUrl('32.08', '34.78'), 'https://waze.com/ul?ll=32.08,34.78&navigate=yes');
@@ -31,14 +31,14 @@ test('listPlaces parses rows including coordless legacy places', async () => {
   });
   const ps = await listPlaces(g);
   assert.equal(ps.length, 2);
-  assert.deepEqual(ps[0], { name: 'Warehouse', active: true, lat: '32.1', lng: '34.8', placeId: 'ChIJ1', address: '1 St', client: '', geofenceRadiusM: '100', contact: '', baseRate: '', requiredAttributes: [], notes: '' });
+  assert.deepEqual(ps[0], { name: 'Warehouse', active: true, lat: '32.1', lng: '34.8', placeId: 'ChIJ1', address: '1 St', client: '', geofenceRadiusM: '100', contact: '', baseRate: '', requiredAttributes: [], notes: '', graceMins: '' });
   assert.equal(ps[1].active, false);
   assert.equal(ps[1].lat, '');
 });
 
 test('addPlace appends an aligned row with active=yes', async () => {
   const g = createMemoryGateway({ Places: [['place_name', 'active']] });
-  const r = await addPlace(g, { name: '  New Site ', lat: '32.5', lng: '34.9', placeId: 'ChIJnew', address: '5 Rd', client: '', geofenceRadiusM: '', contact: '', baseRate: '', requiredAttributes: '', notes: '' });
+  const r = await addPlace(g, { name: '  New Site ', lat: '32.5', lng: '34.9', placeId: 'ChIJnew', address: '5 Rd', client: '', geofenceRadiusM: '', contact: '', baseRate: '', requiredAttributes: '', notes: '', graceMins: '' });
   assert.deepEqual(r, { ok: true });
   const rows = g.dump().Places;
   const header = rows[0];
@@ -54,22 +54,22 @@ test('addPlace appends an aligned row with active=yes', async () => {
 
 test('addPlace rejects missing name and missing/non-numeric coords', async () => {
   const g = createMemoryGateway({ Places: [['place_name', 'active']] });
-  const noName = await addPlace(g, { name: '', lat: '1', lng: '2', placeId: '', address: '', client: '', geofenceRadiusM: '', contact: '', baseRate: '', requiredAttributes: '', notes: '' });
+  const noName = await addPlace(g, { name: '', lat: '1', lng: '2', placeId: '', address: '', client: '', geofenceRadiusM: '', contact: '', baseRate: '', requiredAttributes: '', notes: '', graceMins: '' });
   assert.equal(noName.ok, false);
   if (!noName.ok) assert.equal(noName.errors.name, 'Required');
 
-  const badLat = await addPlace(g, { name: 'X', lat: 'abc', lng: '2', placeId: '', address: '', client: '', geofenceRadiusM: '', contact: '', baseRate: '', requiredAttributes: '', notes: '' });
+  const badLat = await addPlace(g, { name: 'X', lat: 'abc', lng: '2', placeId: '', address: '', client: '', geofenceRadiusM: '', contact: '', baseRate: '', requiredAttributes: '', notes: '', graceMins: '' });
   assert.equal(badLat.ok, false);
   if (!badLat.ok) assert.equal(badLat.errors.lat, 'Select a place from the list');
 
-  const noLng = await addPlace(g, { name: 'X', lat: '1', lng: '', placeId: '', address: '', client: '', geofenceRadiusM: '', contact: '', baseRate: '', requiredAttributes: '', notes: '' });
+  const noLng = await addPlace(g, { name: 'X', lat: '1', lng: '', placeId: '', address: '', client: '', geofenceRadiusM: '', contact: '', baseRate: '', requiredAttributes: '', notes: '', graceMins: '' });
   assert.equal(noLng.ok, false);
   if (!noLng.ok) assert.equal(noLng.errors.lng, 'Select a place from the list');
 });
 
 test('addPlace rejects duplicate place name (case-insensitive)', async () => {
   const g = createMemoryGateway({ Places: [['place_name', 'active'], ['Warehouse', 'yes']] });
-  const r = await addPlace(g, { name: '  warehouse ', lat: '1', lng: '2', placeId: '', address: '', client: '', geofenceRadiusM: '', contact: '', baseRate: '', requiredAttributes: '', notes: '' });
+  const r = await addPlace(g, { name: '  warehouse ', lat: '1', lng: '2', placeId: '', address: '', client: '', geofenceRadiusM: '', contact: '', baseRate: '', requiredAttributes: '', notes: '', graceMins: '' });
   assert.equal(r.ok, false);
   if (!r.ok) assert.equal(r.errors.name, 'A place with this name already exists');
 });
@@ -92,13 +92,20 @@ test('listPlaces parses new location fields and defaults geofence to 100', async
 
 test('addPlace stores new fields and rejects non-numeric radius/rate', async () => {
   const g = createMemoryGateway({ Places: [['place_name','active']] });
-  const ok = await addPlace(g, { name:'Site B', lat:'1', lng:'2', placeId:'', address:'', client:'Beta', geofenceRadiusM:'150', contact:'Eli', baseRate:'50', requiredAttributes:'car', notes:'gate 2' });
+  const ok = await addPlace(g, { name:'Site B', lat:'1', lng:'2', placeId:'', address:'', client:'Beta', geofenceRadiusM:'150', contact:'Eli', baseRate:'50', requiredAttributes:'car', notes:'gate 2', graceMins: '' });
   assert.deepEqual(ok, { ok: true });
   const rows = g.dump().Places; const h = rows[0]; const r = rows[rows.length-1];
   assert.equal(r[h.indexOf('client')], 'Beta');
   assert.equal(r[h.indexOf('geofence_radius_m')], '150');
   assert.equal(r[h.indexOf('required_attributes')], 'car');
-  const bad = await addPlace(g, { name:'Site C', lat:'1', lng:'2', placeId:'', address:'', client:'', geofenceRadiusM:'wide', contact:'', baseRate:'', requiredAttributes:'', notes:'' });
+  const bad = await addPlace(g, { name:'Site C', lat:'1', lng:'2', placeId:'', address:'', client:'', geofenceRadiusM:'wide', contact:'', baseRate:'', requiredAttributes:'', notes:'', graceMins: '' });
   assert.equal(bad.ok, false);
   if (!bad.ok) assert.equal(bad.errors.geofenceRadiusM, 'Must be a number');
+});
+
+test('placeGraceMins falls back to default when blank/invalid', () => {
+  assert.equal(placeGraceMins({ graceMins: '15' }), 15);
+  assert.equal(placeGraceMins({ graceMins: '' }), 10);
+  assert.equal(placeGraceMins({ graceMins: 'x' }, 10), 10);
+  assert.equal(placeGraceMins(undefined), 10);
 });

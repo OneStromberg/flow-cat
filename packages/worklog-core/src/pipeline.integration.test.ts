@@ -28,7 +28,7 @@ test('END-TO-END: worker → place → shift → generate → check-in/out → p
   assert.equal(w.ok, true);
   const p = await addPlace(g, {
     name: 'Site A', lat: '32.08', lng: '34.78', placeId: 'x', address: 'addr', client: 'Acme',
-    geofenceRadiusM: '100', contact: 'Eli', baseRate: '40', requiredAttributes: 'car', notes: '',
+    geofenceRadiusM: '100', contact: 'Eli', baseRate: '40', requiredAttributes: 'car', notes: '', graceMins: '',
   });
   assert.equal(p.ok, true);
 
