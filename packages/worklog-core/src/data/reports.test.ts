@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createMemoryGateway } from '@scourage/sheets-helper';
-import { hoursByEmployee, hoursByLocation, attendanceExceptions, writeReportTab } from './reports.ts';
+import { hoursByEmployee, hoursByLocation, attendanceExceptions, writeReportTab, filterAttendanceForReport } from './reports.ts';
 
 const att = (over={}) => ({ id:'a', instanceId:'i1', employeePhone:'p1', date:'2026-07-01', checkInAt:'2026-07-01T08:10:00.000Z', checkInLat:'', checkInLng:'', checkInPhoto:'', checkInInGeofence:true, checkOutAt:'2026-07-01T16:00:00.000Z', checkOutLat:'', checkOutLng:'', checkOutPhoto:'', checkOutInGeofence:true, hours:'8', status:'closed', ...over });
 
@@ -23,6 +23,16 @@ test('attendanceExceptions flags out-of-zone and late', () => {
   const ex = attendanceExceptions([late, ooz] as any, inst as any, { from:'2026-07-01', to:'2026-07-31' });
   assert.ok(ex.some(e=>e.kind==='late'));
   assert.ok(ex.some(e=>e.kind==='out_of_zone'));
+});
+test('filterAttendanceForReport scopes by location and employee', () => {
+  const att = [
+    { id:'a', instanceId:'i1', employeePhone:'p1' },
+    { id:'b', instanceId:'i2', employeePhone:'p2' },
+  ] as any;
+  const loc = new Map([['i1','Site A'],['i2','Site B']]);
+  assert.equal(filterAttendanceForReport(att, loc, { location:'Site A' }).length, 1);
+  assert.equal(filterAttendanceForReport(att, loc, { employeePhone:'p2' }).length, 1);
+  assert.equal(filterAttendanceForReport(att, loc, {}).length, 2);
 });
 test('writeReportTab writes header + rows to a new tab', async () => {
   const g = createMemoryGateway({});

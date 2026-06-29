@@ -27,4 +27,4 @@ export { instancesOverlap, findConflicts, type ShiftWindow, type Conflict } from
 export { PAY_STRUCTURE, resolveHourlyRate, computePay, listAdjustments, addAdjustment, type WorkedItem, type Adjustment, type PayBreakdown } from './data/payroll.ts';
 export { findMissedCheckins, listSentAlerts, recordAlerts, type MissedEvent } from './data/missed-checkins.ts';
 export { LEAVE_TYPES, addLeave, listLeave, setLeaveStatus, isOnLeave, type Leave } from './data/leave.ts';
-export { hoursByEmployee, hoursByLocation, attendanceExceptions, writeReportTab } from './data/reports.ts';
+export { hoursByEmployee, hoursByLocation, attendanceExceptions, writeReportTab, filterAttendanceForReport } from './data/reports.ts';

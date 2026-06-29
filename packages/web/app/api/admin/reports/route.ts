@@ -13,6 +13,7 @@ import {
   hoursByLocation,
   attendanceExceptions,
   writeReportTab,
+  filterAttendanceForReport,
   type WorkedItem,
 } from '@scourage/worklog-core';
 
@@ -36,6 +37,8 @@ export async function POST(req: Request) {
   const type = b.type as string;
   const from = typeof b.from === 'string' ? b.from : '';
   const to = typeof b.to === 'string' ? b.to : '';
+  const location = typeof b.location === 'string' ? b.location : '';
+  const employeePhone = typeof b.employeePhone === 'string' ? b.employeePhone : '';
 
   if (!(VALID_TYPES as readonly string[]).includes(type)) {
     return Response.json({ error: 'invalid type' }, { status: 400 });
@@ -56,24 +59,26 @@ export async function POST(req: Request) {
     const instLocById = new Map(instances.map((i) => [i.id, i.location]));
     const instById = new Map(instances.map((i) => [i.id, i]));
 
+    const filteredAtt = filterAttendanceForReport(att, instLocById, { location: location || undefined, employeePhone: employeePhone || undefined });
+
     let header: string[];
     let rows: string[][];
 
     if (type === 'hours_employee') {
       header = ['Worker', 'Hours'];
-      rows = hoursByEmployee(att, { from, to }).map(({ employeePhone, hours }) => [
+      rows = hoursByEmployee(filteredAtt, { from, to }).map(({ employeePhone, hours }) => [
         nameByPhone.get(employeePhone) ?? employeePhone,
         String(hours),
       ]);
     } else if (type === 'hours_location') {
       header = ['Location', 'Hours'];
-      rows = hoursByLocation(att, instLocById, { from, to }).map(({ location, hours }) => [
+      rows = hoursByLocation(filteredAtt, instLocById, { from, to }).map(({ location, hours }) => [
         location,
         String(hours),
       ]);
     } else if (type === 'exceptions') {
       header = ['Worker', 'Date', 'Location', 'Issue'];
-      rows = attendanceExceptions(att, instById, { from, to }).map(
+      rows = attendanceExceptions(filteredAtt, instById, { from, to }).map(
         ({ employeePhone, date, location, kind }) => [
           nameByPhone.get(employeePhone) ?? employeePhone,
           date,
@@ -98,7 +103,7 @@ export async function POST(req: Request) {
         activeWorkers.map(async (w) => {
           const adjustments = await listAdjustments(gw, { employeePhone: w.phone, from, to });
 
-          const workerAtt = att.filter(
+          const workerAtt = filteredAtt.filter(
             (a) =>
               a.employeePhone === w.phone &&
               (a.status === 'closed' || a.status === 'corrected')
