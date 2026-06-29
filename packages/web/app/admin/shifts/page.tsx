@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation';
 import { requireAdmin } from '../../../lib/session';
-import { getRequestGateway } from '../../../lib/sheets';
-import { listInstances, listAssignments, listWorkers } from '@scourage/worklog-core';
+import { getRequestGateway, COMPANY_TZ } from '../../../lib/sheets';
+import { listInstances, listAssignments, listWorkers, listAttendance, listPlaces, placeGraceMins } from '@scourage/worklog-core';
 import type { ShiftInstance } from '@scourage/worklog-core';
 import { addDays, sundayOf } from './date-utils';
 import { MonthGrid } from './month-grid';
@@ -19,7 +19,7 @@ export interface Day {
   dayNum: number;
   inMonth: boolean;
   isToday: boolean;
-  items: { instance: ShiftInstance; assigned: number }[];
+  items: { instance: ShiftInstance; assigned: number; checkedIn: number; graceMins: number }[];
 }
 
 // ── Page ──────────────────────────────────────────────────────────────────────
@@ -35,8 +35,7 @@ export default async function ShiftsPage({
   const sp = await searchParams;
 
   const nowFull = new Date().toISOString();
-  // Slice to minute precision for lexicographic time comparisons in shiftStatusColor
-  const nowISO = nowFull.slice(0, 16); // YYYY-MM-DDTHH:MM
+  const nowISO = nowFull; // full ISO instant for shiftStatusColor
   const today = nowFull.slice(0, 10);
 
   const rawView = typeof sp.view === 'string' ? sp.view : 'month';
@@ -71,10 +70,12 @@ export default async function ShiftsPage({
   // ── Fetch ───────────────────────────────────────────────────────────────────
   const gw = getRequestGateway();
 
-  const [instances, allAssignments, workers] = await Promise.all([
+  const [instances, allAssignments, workers, attendance, places] = await Promise.all([
     listInstances(gw, { from, to }),
     listAssignments(gw, {}),
     view === 'day' ? listWorkers(gw) : Promise.resolve(null),
+    listAttendance(gw, { from, to }),
+    listPlaces(gw),
   ]);
 
   // ── Assigned-count map ──────────────────────────────────────────────────────
@@ -84,6 +85,26 @@ export default async function ShiftsPage({
     if (a.status === 'assigned' && rangeInstanceIds.has(a.instanceId)) {
       assignedCountMap.set(a.instanceId, (assignedCountMap.get(a.instanceId) ?? 0) + 1);
     }
+  }
+
+  // ── Checked-in count map (distinct workers with an attendance row) ───────────
+  const checkedInMap = new Map<string, number>();
+  {
+    const sets = new Map<string, Set<string>>();
+    for (const a of attendance) {
+      if (rangeInstanceIds.has(a.instanceId) && a.employeePhone) {
+        const s = sets.get(a.instanceId) ?? new Set<string>();
+        s.add(a.employeePhone);
+        sets.set(a.instanceId, s);
+      }
+    }
+    for (const [id, s] of sets) checkedInMap.set(id, s.size);
+  }
+
+  // ── Grace-mins by location ───────────────────────────────────────────────────
+  const graceByLocation = new Map<string, number>();
+  for (const p of places) {
+    graceByLocation.set(p.name, placeGraceMins(p, 10));
   }
 
   // ── Worker names map (day view only) ────────────────────────────────────────
@@ -101,9 +122,14 @@ export default async function ShiftsPage({
   }
 
   // ── Group by date ───────────────────────────────────────────────────────────
-  const byDate = new Map<string, { instance: ShiftInstance; assigned: number }[]>();
+  const byDate = new Map<string, { instance: ShiftInstance; assigned: number; checkedIn: number; graceMins: number }[]>();
   for (const inst of instances) {
-    const entry = { instance: inst, assigned: assignedCountMap.get(inst.id) ?? 0 };
+    const entry = {
+      instance: inst,
+      assigned: assignedCountMap.get(inst.id) ?? 0,
+      checkedIn: checkedInMap.get(inst.id) ?? 0,
+      graceMins: graceByLocation.get(inst.location) ?? 10,
+    };
     const list = byDate.get(inst.date) ?? [];
     list.push(entry);
     byDate.set(inst.date, list);
@@ -164,6 +190,7 @@ export default async function ShiftsPage({
             prevHref={`?view=month&month=${prevMonth}`}
             nextHref={`?view=month&month=${nextMonth}`}
             nowISO={nowISO}
+            tz={COMPANY_TZ}
           />
         );
       })()}
@@ -183,15 +210,18 @@ export default async function ShiftsPage({
             prevHref={`?view=week&date=${prevWeek}`}
             nextHref={`?view=week&date=${nextWeek}`}
             nowISO={nowISO}
+            tz={COMPANY_TZ}
           />
         );
       })()}
 
       {view === 'day' && (() => {
         const baseItems = byDate.get(date) ?? [];
-        const items = baseItems.map(({ instance, assigned }) => ({
+        const items = baseItems.map(({ instance, assigned, checkedIn, graceMins }) => ({
           instance,
           assigned,
+          checkedIn,
+          graceMins,
           workerNames: workerNamesMap.get(instance.id) ?? [],
         }));
         const prevDay = addDays(date, -1);
@@ -203,6 +233,7 @@ export default async function ShiftsPage({
             prevHref={`?view=day&date=${prevDay}`}
             nextHref={`?view=day&date=${nextDay}`}
             nowISO={nowISO}
+            tz={COMPANY_TZ}
           />
         );
       })()}

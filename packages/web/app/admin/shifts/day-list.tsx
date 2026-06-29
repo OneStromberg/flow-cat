@@ -19,13 +19,14 @@ function dotBgClass(chipClass: string): string {
 
 interface DayListProps {
   date: string;
-  items: { instance: ShiftInstance; assigned: number; workerNames: string[] }[];
+  items: { instance: ShiftInstance; assigned: number; checkedIn: number; graceMins: number; workerNames: string[] }[];
   prevHref: string;
   nextHref: string;
   nowISO: string;
+  tz: string;
 }
 
-export function DayList({ date, items, prevHref, nextHref, nowISO }: DayListProps) {
+export function DayList({ date, items, prevHref, nextHref, nowISO, tz }: DayListProps) {
   return (
     <div>
       {/* Day nav */}
@@ -39,17 +40,19 @@ export function DayList({ date, items, prevHref, nextHref, nowISO }: DayListProp
         <p className="text-center text-sm text-gray-400 py-8">No shifts this day.</p>
       ) : (
         <div className="space-y-3">
-          {items.map(({ instance, assigned, workerNames }) => {
+          {items.map(({ instance, assigned, checkedIn, graceMins, workerNames }) => {
             const cancelled = instance.status === 'cancelled';
             const understaffed = !cancelled && assigned < instance.headcount;
             const color = shiftStatusColor({
               status: instance.status,
               assigned,
               headcount: instance.headcount,
+              checkedIn,
               date: instance.date,
               start: instance.start,
-              end: instance.end,
               nowISO,
+              tz,
+              graceMins,
             });
             const chipClass = shiftColorChipClass(color);
             return (
