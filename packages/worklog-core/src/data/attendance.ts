@@ -141,6 +141,19 @@ export async function checkIn(
     return { ok: false, error: 'already checked in' };
   }
 
+  // Headcount cap: distinct workers already on this instance must not exceed headcount.
+  const headcount = Number((instance.headcount ?? '').trim());
+  if (Number.isFinite(headcount) && headcount > 0) {
+    const workersOnInstance = new Set(
+      attRows
+        .filter((o) => (o.instance_id ?? '').trim() === params.instanceId && (o.employee_phone ?? '').trim() !== '')
+        .map((o) => (o.employee_phone ?? '').trim()),
+    );
+    if (!workersOnInstance.has(params.employeePhone) && workersOnInstance.size >= headcount) {
+      return { ok: false, error: 'shift is full' };
+    }
+  }
+
   const header = await ensureAttHeader(gateway);
   const id = 'att_' + crypto.randomUUID().slice(0, 8);
 
