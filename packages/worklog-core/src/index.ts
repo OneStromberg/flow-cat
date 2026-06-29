@@ -11,7 +11,7 @@ export type { Question, QuestionType } from './questions/types.ts';
 export { loadQuestions } from './questions/load-questions.ts';
 export { validateQuestions } from './questions/validate-config.ts';
 export { parseClockTime, computeHours } from './time/clock.ts';
-export { todayISO, yesterdayISO, resolveTypedDate } from './time/dates.ts';
+export { todayISO, yesterdayISO, resolveTypedDate, localWallClockToUTC } from './time/dates.ts';
 export { buildWorklogRecord } from './submit/build-record.ts';
 export { validateAnswers } from './submit/validate-answers.ts';
 export { submitWorklog } from './submit/submit-worklog.ts';

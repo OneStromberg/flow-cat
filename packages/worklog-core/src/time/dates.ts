@@ -35,3 +35,35 @@ export function resolveTypedDate(
   if (iso > todayISO(tz, now)) return { ok: false, reason: 'future' };
   return { ok: true, iso };
 }
+
+function wallClockISO(d: Date, tz: string): string {
+  const p = new Intl.DateTimeFormat('en-CA', {
+    timeZone: tz,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+  })
+    .formatToParts(d)
+    .reduce(
+      (a, x) => {
+        (a as any)[x.type] = x.value;
+        return a;
+      },
+      {} as Record<string, string>,
+    );
+  const hour = p.hour === '24' ? '00' : p.hour;
+  return `${p.year}-${p.month}-${p.day}T${hour}:${p.minute}:${p.second}`;
+}
+
+// ponytail: ignores the once-a-year DST transition hour; not worth a tz lib for shift logic.
+export function localWallClockToUTC(date: string, hhmm: string, tz: string): string {
+  const asUTC = Date.parse(`${date}T${hhmm}:00Z`);
+  if (Number.isNaN(asUTC)) return '';
+  const probe = new Date(asUTC);
+  const offset = Date.parse(wallClockISO(probe, tz) + 'Z') - Date.parse(wallClockISO(probe, 'UTC') + 'Z');
+  return new Date(asUTC - offset).toISOString();
+}
