@@ -131,7 +131,6 @@ export function WorkerCard({ worker, places, cities, enums }: Props) {
       {select('hebrewLevel', 'Hebrew level', enums.hebrewLevel)}
       {select('payType', 'Pay eligibility', enums.payType)}
       {v.payType === 'amount' && input('payAmount', 'Amount', 'number')}
-      {select('payStructure', 'Pay structure', enums.payStructure)}
       {input('payRate', 'Pay rate', 'number')}
       {select('schedule', 'Schedule', enums.schedule)}
 

@@ -122,7 +122,7 @@ export async function POST(req: Request) {
           });
 
           const breakdown = computePay(
-            w.payStructure || 'hourly',
+            'hourly',
             Number(w.payRate) || 0,
             items,
             adjustments
@@ -132,7 +132,7 @@ export async function POST(req: Request) {
 
           return [
             w.name,
-            w.payStructure || 'hourly',
+            'hourly',
             String(totalHours),
             String(breakdown.gross),
             String(breakdown.bonuses),
