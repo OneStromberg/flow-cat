@@ -10,7 +10,8 @@ export const dynamic = 'force-dynamic';
 export default async function ShiftTemplatesPage() {
   const admin = await requireAdmin();
   if (!admin) redirect('/');
-  const templates = await listTemplates(getRequestGateway());
+  const allTemplates = await listTemplates(getRequestGateway());
+  const templates = allTemplates.filter((t) => t.active);
 
   return (
     <main className="mx-auto max-w-2xl p-5">
@@ -39,9 +40,6 @@ export default async function ShiftTemplatesPage() {
                 <span className="text-gray-500">{t.days.join(',')}</span>
                 <span className="text-gray-500">{t.start}–{t.end}</span>
                 <span className="text-gray-500">×{t.headcount}</span>
-                {!t.active && (
-                  <span className="ml-auto text-xs text-gray-400">(inactive)</span>
-                )}
               </Link>
             </li>
           ))}
