@@ -65,7 +65,15 @@ export default async function PlaceDetailPage({ params }: { params: Promise<{ na
       </Link>
 
       <div className="mt-6">
-        <h1 className="text-2xl font-bold text-gray-900">{place.name}</h1>
+        <div className="flex items-center justify-between">
+          <h1 className="text-2xl font-bold text-gray-900">{place.name}</h1>
+          <Link
+            href={`/admin/places/${encodedName}/edit`}
+            className="text-sm text-blue-600 underline hover:text-blue-800"
+          >
+            Edit place
+          </Link>
+        </div>
         {place.notes && <p className="mt-2 text-sm text-gray-600">{place.notes}</p>}
       </div>
 
