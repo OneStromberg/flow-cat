@@ -12,7 +12,7 @@ function fmtMonDay(iso: string) {
 
 interface WeekColumnsProps {
   weekStart: string; // YYYY-MM-DD (Sunday)
-  days: { date: string; items: { instance: ShiftInstance; assigned: number; checkedIn: number; graceMins: number }[] }[];
+  days: { date: string; items: { instance: ShiftInstance; assigned: number; presentNow: number; end: string; graceMins: number }[] }[];
   prevHref: string;
   nextHref: string;
   nowISO: string;
@@ -46,16 +46,17 @@ export function WeekColumns({ weekStart, days, prevHref, nextHref, nowISO, tz }:
                 <p className="text-center text-sm text-gray-300">—</p>
               ) : (
                 <div className="space-y-1">
-                  {items.map(({ instance, assigned, checkedIn, graceMins }) => {
+                  {items.map(({ instance, assigned, presentNow, end, graceMins }) => {
                     const cancelled = instance.status === 'cancelled';
                     const understaffed = !cancelled && assigned < instance.headcount;
                     const color = shiftStatusColor({
                       status: instance.status,
                       assigned,
                       headcount: instance.headcount,
-                      checkedIn,
+                      presentNow,
                       date: instance.date,
                       start: instance.start,
+                      end,
                       nowISO,
                       tz,
                       graceMins,
