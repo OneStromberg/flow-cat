@@ -19,7 +19,7 @@ export interface Day {
   dayNum: number;
   inMonth: boolean;
   isToday: boolean;
-  items: { instance: ShiftInstance; assigned: number; checkedIn: number; graceMins: number }[];
+  items: { instance: ShiftInstance; assigned: number; presentNow: number; end: string; graceMins: number }[];
 }
 
 // ── Page ──────────────────────────────────────────────────────────────────────
@@ -38,8 +38,8 @@ export default async function ShiftsPage({
   const nowISO = nowFull; // full ISO instant for shiftStatusColor
   const today = nowFull.slice(0, 10);
 
-  const rawView = typeof sp.view === 'string' ? sp.view : 'month';
-  const view = rawView === 'day' || rawView === 'week' ? rawView : 'month';
+  const rawView = typeof sp.view === 'string' ? sp.view : 'week';
+  const view = rawView === 'day' || rawView === 'month' ? rawView : 'week';
 
   // anchor date for day/week; month string for month view
   const date = typeof sp.date === 'string' ? sp.date : today;
@@ -87,18 +87,18 @@ export default async function ShiftsPage({
     }
   }
 
-  // ── Checked-in count map (distinct workers with an attendance row) ───────────
-  const checkedInMap = new Map<string, number>();
+  // ── Present-now count map (distinct workers with an OPEN attendance row) ──────
+  const presentNowMap = new Map<string, number>();
   {
     const sets = new Map<string, Set<string>>();
     for (const a of attendance) {
-      if (rangeInstanceIds.has(a.instanceId) && a.employeePhone) {
+      if (a.status === 'open' && rangeInstanceIds.has(a.instanceId) && a.employeePhone) {
         const s = sets.get(a.instanceId) ?? new Set<string>();
         s.add(a.employeePhone);
         sets.set(a.instanceId, s);
       }
     }
-    for (const [id, s] of sets) checkedInMap.set(id, s.size);
+    for (const [id, s] of sets) presentNowMap.set(id, s.size);
   }
 
   // ── Grace-mins by location ───────────────────────────────────────────────────
@@ -122,12 +122,13 @@ export default async function ShiftsPage({
   }
 
   // ── Group by date ───────────────────────────────────────────────────────────
-  const byDate = new Map<string, { instance: ShiftInstance; assigned: number; checkedIn: number; graceMins: number }[]>();
+  const byDate = new Map<string, { instance: ShiftInstance; assigned: number; presentNow: number; end: string; graceMins: number }[]>();
   for (const inst of instances) {
     const entry = {
       instance: inst,
       assigned: assignedCountMap.get(inst.id) ?? 0,
-      checkedIn: checkedInMap.get(inst.id) ?? 0,
+      presentNow: presentNowMap.get(inst.id) ?? 0,
+      end: inst.end,
       graceMins: graceByLocation.get(inst.location) ?? 10,
     };
     const list = byDate.get(inst.date) ?? [];
@@ -217,10 +218,11 @@ export default async function ShiftsPage({
 
       {view === 'day' && (() => {
         const baseItems = byDate.get(date) ?? [];
-        const items = baseItems.map(({ instance, assigned, checkedIn, graceMins }) => ({
+        const items = baseItems.map(({ instance, assigned, presentNow, end, graceMins }) => ({
           instance,
           assigned,
-          checkedIn,
+          presentNow,
+          end,
           graceMins,
           workerNames: workerNamesMap.get(instance.id) ?? [],
         }));

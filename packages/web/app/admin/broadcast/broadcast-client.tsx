@@ -7,10 +7,13 @@ import { MultiSelectDropdown } from '../../components/multi-select-dropdown';
 
 type EnumOpt = readonly { value: string; label: string }[];
 
+type ShiftSlim = { id: string; location: string; date: string; start: string; end: string; headcount: number };
+
 type Props = {
   workers: Worker[];
   cities: string[];
   places: string[];
+  shifts: ShiftSlim[];
   enums: { gender: EnumOpt; transportation: EnumOpt; hebrewLevel: EnumOpt; payType: EnumOpt; schedule: EnumOpt };
 };
 
@@ -28,7 +31,7 @@ const EMPTY: WorkerFilters = {
   gender: [],
 };
 
-export function BroadcastClient({ workers, cities, places, enums }: Props) {
+export function BroadcastClient({ workers, cities, places, shifts, enums }: Props) {
   const [f, setF] = useState<WorkerFilters>(EMPTY);
   const [message, setMessage] = useState('');
   const [status, setStatus] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -68,6 +71,31 @@ export function BroadcastClient({ workers, cities, places, enums }: Props) {
 
   return (
     <div className="mt-4 space-y-4">
+      {/* Compose from shift */}
+      {shifts.length > 0 && (
+        <div>
+          <label className="mb-1 block text-sm font-medium text-gray-700">Compose from shift</label>
+          <select
+            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+            defaultValue=""
+            onChange={(e) => {
+              const shift = shifts.find((s) => s.id === e.target.value);
+              if (!shift) return;
+              setMessage(
+                `Shift available: ${shift.location}, ${shift.date} ${shift.start}–${shift.end} (${shift.headcount} needed). Reply if you can cover.`,
+              );
+            }}
+          >
+            <option value="">— compose from a shift —</option>
+            {shifts.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.date} · {s.location} · {s.start}–{s.end} · {s.headcount}x
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+
       {/* Message */}
       <div>
         <label className="mb-1 block text-sm font-medium text-gray-700">Message</label>

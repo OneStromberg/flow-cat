@@ -603,6 +603,41 @@ function UpcomingInstances({ instances }: { instances: InstanceWithCount[] }) {
   );
 }
 
+// ── Delete button ─────────────────────────────────────────────────────────────
+
+function DeleteTemplateButton({ id }: { id: string }) {
+  const router = useRouter();
+  const [busy, setBusy] = useState(false);
+
+  async function handleDelete() {
+    if (!confirm('Delete this template? It will stop generating new shifts.')) return;
+    setBusy(true);
+    try {
+      const res = await fetch(`/api/admin/shifts/templates/${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        router.push('/admin/shifts/templates');
+        router.refresh();
+      } else {
+        alert('Delete failed. Please try again.');
+      }
+    } catch {
+      alert('Network error. Please try again.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <button
+      onClick={handleDelete}
+      disabled={busy}
+      className="rounded-lg border border-red-300 px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50 disabled:opacity-40"
+    >
+      {busy ? 'Deleting…' : 'Delete template'}
+    </button>
+  );
+}
+
 // ── Root export ───────────────────────────────────────────────────────────────
 
 export function TemplateDetail({
@@ -621,10 +656,11 @@ export function TemplateDetail({
   return (
     <main className="mx-auto max-w-2xl space-y-6 p-5">
       {/* Back link */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center justify-between">
         <Link href="/admin/shifts/templates" className="text-sm text-gray-500 hover:text-gray-800">
           ‹ Back to shifts
         </Link>
+        <DeleteTemplateButton id={template.id} />
       </div>
 
       {/* Header */}

@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import type { ShiftInstance } from '@scourage/worklog-core';
 import { shiftStatusColor, shiftColorChipClass } from '../../../lib/shift-colors';
+import { LocationGroup } from './location-group';
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -12,7 +13,7 @@ function fmtMonDay(iso: string) {
 
 interface WeekColumnsProps {
   weekStart: string; // YYYY-MM-DD (Sunday)
-  days: { date: string; items: { instance: ShiftInstance; assigned: number; checkedIn: number; graceMins: number }[] }[];
+  days: { date: string; items: { instance: ShiftInstance; assigned: number; presentNow: number; end: string; graceMins: number }[] }[];
   prevHref: string;
   nextHref: string;
   nowISO: string;
@@ -41,40 +42,58 @@ export function WeekColumns({ weekStart, days, prevHref, nextHref, nowISO, tz }:
                 <span className="text-gray-400">{MONTHS[m - 1]} {d}</span>
               </div>
 
-              {/* Shift cards */}
+              {/* Shift cards — grouped by location */}
               {items.length === 0 ? (
                 <p className="text-center text-sm text-gray-300">—</p>
-              ) : (
-                <div className="space-y-1">
-                  {items.map(({ instance, assigned, checkedIn, graceMins }) => {
-                    const cancelled = instance.status === 'cancelled';
-                    const understaffed = !cancelled && assigned < instance.headcount;
-                    const color = shiftStatusColor({
-                      status: instance.status,
-                      assigned,
-                      headcount: instance.headcount,
-                      checkedIn,
-                      date: instance.date,
-                      start: instance.start,
-                      nowISO,
-                      tz,
-                      graceMins,
-                    });
-                    const chipClass = shiftColorChipClass(color);
-                    return (
-                      <Link
-                        key={instance.id}
-                        href={`/admin/shifts/instances/${instance.id}`}
-                        className={`block rounded p-1.5 text-xs leading-tight border-l-4 ${cancelled ? 'opacity-50 line-through border-gray-300 bg-gray-50' : `border-transparent ${chipClass}`}`}
-                      >
-                        <div className="font-medium truncate">{instance.location || '—'}</div>
-                        <div className="text-[10px] opacity-80">{instance.start}–{instance.end}</div>
-                        <div className="text-[10px]">{assigned}/{instance.headcount}{understaffed && ' ⚠'}</div>
-                      </Link>
-                    );
-                  })}
-                </div>
-              )}
+              ) : (() => {
+                // Group items by location, preserving first-seen order
+                const groups = new Map<string, typeof items>();
+                for (const item of items) {
+                  const loc = item.instance.location || '—';
+                  if (!groups.has(loc)) groups.set(loc, []);
+                  groups.get(loc)!.push(item);
+                }
+                return (
+                  <div>
+                    {Array.from(groups.entries()).map(([loc, groupItems]) => {
+                      const sumAssigned = groupItems.reduce((s, i) => s + i.assigned, 0);
+                      const sumHeadcount = groupItems.reduce((s, i) => s + i.instance.headcount, 0);
+                      return (
+                        <LocationGroup key={loc} title={loc} summary={`${sumAssigned}/${sumHeadcount}`} defaultOpen>
+                          {groupItems.map(({ instance, assigned, presentNow, end, graceMins }) => {
+                            const cancelled = instance.status === 'cancelled';
+                            const understaffed = !cancelled && assigned < instance.headcount;
+                            const color = shiftStatusColor({
+                              status: instance.status,
+                              assigned,
+                              headcount: instance.headcount,
+                              presentNow,
+                              date: instance.date,
+                              start: instance.start,
+                              end,
+                              nowISO,
+                              tz,
+                              graceMins,
+                            });
+                            const chipClass = shiftColorChipClass(color);
+                            return (
+                              <Link
+                                key={instance.id}
+                                href={`/admin/shifts/instances/${instance.id}`}
+                                className={`block rounded p-1.5 text-xs leading-tight border-l-4 ${cancelled ? 'opacity-50 line-through border-gray-300 bg-gray-50' : `border-transparent ${chipClass}`}`}
+                              >
+                                <div className="font-medium truncate">{instance.location || '—'}</div>
+                                <div className="text-[10px] opacity-80">{instance.start}–{instance.end}</div>
+                                <div className="text-[10px]">{assigned}/{instance.headcount}{understaffed && ' ⚠'}</div>
+                              </Link>
+                            );
+                          })}
+                        </LocationGroup>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
             </div>
           );
         })}

@@ -74,6 +74,47 @@ export async function listPlaces(gateway: SheetsGateway): Promise<Place[]> {
     }));
 }
 
+export async function updatePlace(
+  gateway: SheetsGateway,
+  name: string,
+  input: AddPlaceInput,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  if (!numeric(input.lat)) return { ok: false, error: 'lat must be a valid number — select a place from the list' };
+  if (!numeric(input.lng)) return { ok: false, error: 'lng must be a valid number — select a place from the list' };
+  if (input.geofenceRadiusM.trim() && !numeric(input.geofenceRadiusM)) return { ok: false, error: 'geofenceRadiusM must be a number' };
+  if (input.baseRate.trim() && !numeric(input.baseRate)) return { ok: false, error: 'baseRate must be a number' };
+
+  const rows = await gateway.readTab('Places');
+  if (rows.length === 0) return { ok: false, error: 'Not found' };
+  const header = rows[0].map((h) => h.trim());
+  const nameIdx = header.indexOf('place_name');
+  const activeIdx = header.indexOf('active');
+
+  const i = rows.findIndex((r, idx) => idx > 0 && (r[nameIdx] ?? '').trim() === name);
+  if (i < 0) return { ok: false, error: 'Not found' };
+
+  const existingActive = activeIdx >= 0 ? (rows[i][activeIdx] ?? 'yes') : 'yes';
+
+  const record: Record<string, string> = {
+    place_name: name,
+    active: existingActive,
+    lat: input.lat.trim(),
+    lng: input.lng.trim(),
+    place_id: input.placeId.trim(),
+    address: input.address.trim(),
+    client: input.client.trim(),
+    geofence_radius_m: input.geofenceRadiusM.trim(),
+    contact: input.contact.trim(),
+    base_rate: input.baseRate.trim(),
+    required_attributes: input.requiredAttributes.trim(),
+    notes: input.notes.trim(),
+    grace_mins: input.graceMins.trim(),
+  };
+
+  await gateway.updateRow('Places', i + 1, objectToRow(record, header));
+  return { ok: true };
+}
+
 function numeric(s: string): boolean {
   return s.trim() !== '' && Number.isFinite(Number(s));
 }

@@ -9,6 +9,18 @@ interface AttendanceRow extends Attendance {
   location: string;
 }
 
+function hhmm(iso: string): string {
+  if (!iso) return '—';
+  const t = Date.parse(iso);
+  if (!Number.isFinite(t)) return iso;
+  return new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Asia/Jerusalem',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).format(new Date(t));
+}
+
 export function AttendanceClient({ rows }: { rows: AttendanceRow[] }) {
   const router = useRouter();
   const [saving, setSaving] = useState<string | null>(null);
@@ -72,8 +84,8 @@ export function AttendanceClient({ rows }: { rows: AttendanceRow[] }) {
                 <td className="py-2">{row.date}</td>
                 <td>{row.workerName}</td>
                 <td>{row.location}</td>
-                <td>{row.checkInAt}</td>
-                <td>{row.checkOutAt || '—'}</td>
+                <td>{hhmm(row.checkInAt)}</td>
+                <td>{hhmm(row.checkOutAt)}</td>
                 <td>
                   <div className="flex items-center gap-2">
                     <input

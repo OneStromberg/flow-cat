@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createMemoryGateway } from '@scourage/sheets-helper';
-import { listPlaces, addPlace, wazeUrl, googleMapsUrl, placeGraceMins } from './places.ts';
+import { listPlaces, addPlace, updatePlace, wazeUrl, googleMapsUrl, placeGraceMins } from './places.ts';
 
 test('wazeUrl builds a navigate link', () => {
   assert.equal(wazeUrl('32.08', '34.78'), 'https://waze.com/ul?ll=32.08,34.78&navigate=yes');
@@ -101,6 +101,48 @@ test('addPlace stores new fields and rejects non-numeric radius/rate', async () 
   const bad = await addPlace(g, { name:'Site C', lat:'1', lng:'2', placeId:'', address:'', client:'', geofenceRadiusM:'wide', contact:'', baseRate:'', requiredAttributes:'', notes:'', graceMins: '' });
   assert.equal(bad.ok, false);
   if (!bad.ok) assert.equal(bad.errors.geofenceRadiusM, 'Must be a number');
+});
+
+test('updatePlace changes a field on an existing place', async () => {
+  const g = createMemoryGateway({ Places: [
+    ['place_name','active','lat','lng','place_id','address','client','geofence_radius_m','contact','base_rate','required_attributes','notes','grace_mins'],
+    ['Site A','yes','1','2','','addr','cli','100','c','','','note','10'],
+  ]});
+  const inp = { name:'Site A', lat:'1', lng:'2', placeId:'', address:'addr', client:'cli', geofenceRadiusM:'250', contact:'c', baseRate:'', requiredAttributes:'', notes:'note', graceMins:'10' };
+  const r = await updatePlace(g, 'Site A', inp as any);
+  assert.equal(r.ok, true);
+  const p = (await listPlaces(g)).find((x) => x.name === 'Site A');
+  assert.equal(p?.geofenceRadiusM, '250');
+  assert.equal(p?.active, true); // preserved
+  assert.equal((await updatePlace(g, 'Nope', inp as any)).ok, false);
+});
+
+test('updatePlace rejects empty lat/lng and non-numeric radius', async () => {
+  const g = createMemoryGateway({ Places: [
+    ['place_name','active','lat','lng','place_id','address','client','geofence_radius_m','contact','base_rate','required_attributes','notes','grace_mins'],
+    ['Site A','yes','32','34','','addr','cli','100','c','','','note','10'],
+  ]});
+  const base = { name:'Site A', lat:'32', lng:'34', placeId:'', address:'addr', client:'cli', geofenceRadiusM:'100', contact:'c', baseRate:'', requiredAttributes:'', notes:'note', graceMins:'10' };
+
+  // empty lat
+  const noLat = await updatePlace(g, 'Site A', { ...base, lat: '' } as any);
+  assert.equal(noLat.ok, false);
+
+  // empty lng
+  const noLng = await updatePlace(g, 'Site A', { ...base, lng: '' } as any);
+  assert.equal(noLng.ok, false);
+
+  // non-numeric lat
+  const badLat = await updatePlace(g, 'Site A', { ...base, lat: 'abc' } as any);
+  assert.equal(badLat.ok, false);
+
+  // non-numeric radius (when provided)
+  const badRadius = await updatePlace(g, 'Site A', { ...base, geofenceRadiusM: 'wide' } as any);
+  assert.equal(badRadius.ok, false);
+
+  // valid update still succeeds
+  const ok = await updatePlace(g, 'Site A', base as any);
+  assert.equal(ok.ok, true);
 });
 
 test('placeGraceMins falls back to default when blank/invalid', () => {

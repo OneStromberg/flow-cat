@@ -45,6 +45,7 @@ export function CheckinClient({ items, workerName }: CheckinClientProps) {
       const data = (await res.json()) as {
         ok?: boolean;
         error?: string;
+        message?: string;
         hours?: string;
         inGeofence?: boolean;
       };
@@ -57,7 +58,7 @@ export function CheckinClient({ items, workerName }: CheckinClientProps) {
         }
         router.refresh();
       } else {
-        setActionError(data.error ?? 'Something went wrong. Please try again.');
+        setActionError(data.message ?? data.error ?? 'Something went wrong. Please try again.');
       }
     } catch (err: unknown) {
       if (err instanceof GeolocationDeniedError) {
