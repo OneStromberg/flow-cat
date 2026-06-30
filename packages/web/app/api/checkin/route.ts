@@ -87,6 +87,11 @@ export async function POST(req: Request) {
       }
     }
 
+    // Hard-block a geofence-failing check-in BEFORE uploading any photo
+    if (action === 'in' && place && place.lat && place.lng && inGeofence === false) {
+      return Response.json({ error: 'outside_geofence', message: `You are outside ${instance.location}'s allowed area. Move closer, or ask your manager to widen the radius.` }, { status: 422 });
+    }
+
     const at = new Date().toISOString();
     const photoUrl = await storeCheckinPhoto(
       photo,
@@ -95,9 +100,6 @@ export async function POST(req: Request) {
     );
 
     if (action === 'in') {
-      if (place && place.lat && place.lng && inGeofence === false) {
-        return Response.json({ error: 'outside_geofence', message: `You are outside ${instance.location}'s allowed area. Move closer, or ask your manager to widen the radius.` }, { status: 422 });
-      }
       const result = await checkIn(gw, {
         instanceId,
         employeePhone: worker.phone,

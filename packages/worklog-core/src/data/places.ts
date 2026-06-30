@@ -79,6 +79,11 @@ export async function updatePlace(
   name: string,
   input: AddPlaceInput,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
+  if (!numeric(input.lat)) return { ok: false, error: 'lat must be a valid number — select a place from the list' };
+  if (!numeric(input.lng)) return { ok: false, error: 'lng must be a valid number — select a place from the list' };
+  if (input.geofenceRadiusM.trim() && !numeric(input.geofenceRadiusM)) return { ok: false, error: 'geofenceRadiusM must be a number' };
+  if (input.baseRate.trim() && !numeric(input.baseRate)) return { ok: false, error: 'baseRate must be a number' };
+
   const rows = await gateway.readTab('Places');
   if (rows.length === 0) return { ok: false, error: 'Not found' };
   const header = rows[0].map((h) => h.trim());

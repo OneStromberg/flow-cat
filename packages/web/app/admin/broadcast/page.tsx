@@ -33,6 +33,7 @@ export default async function BroadcastPage() {
   const places = [...new Set([...activePlaces, ...workers.flatMap((w) => w.places)])].sort();
 
   const shifts = rawInstances
+    .filter((i) => i.status !== 'cancelled')
     .sort((a, b) => a.date.localeCompare(b.date) || a.start.localeCompare(b.start))
     .slice(0, 100)
     .map(({ id, location, date, start, end, headcount }) => ({ id, location, date, start, end, headcount }));

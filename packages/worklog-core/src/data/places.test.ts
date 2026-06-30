@@ -117,6 +117,34 @@ test('updatePlace changes a field on an existing place', async () => {
   assert.equal((await updatePlace(g, 'Nope', inp as any)).ok, false);
 });
 
+test('updatePlace rejects empty lat/lng and non-numeric radius', async () => {
+  const g = createMemoryGateway({ Places: [
+    ['place_name','active','lat','lng','place_id','address','client','geofence_radius_m','contact','base_rate','required_attributes','notes','grace_mins'],
+    ['Site A','yes','32','34','','addr','cli','100','c','','','note','10'],
+  ]});
+  const base = { name:'Site A', lat:'32', lng:'34', placeId:'', address:'addr', client:'cli', geofenceRadiusM:'100', contact:'c', baseRate:'', requiredAttributes:'', notes:'note', graceMins:'10' };
+
+  // empty lat
+  const noLat = await updatePlace(g, 'Site A', { ...base, lat: '' } as any);
+  assert.equal(noLat.ok, false);
+
+  // empty lng
+  const noLng = await updatePlace(g, 'Site A', { ...base, lng: '' } as any);
+  assert.equal(noLng.ok, false);
+
+  // non-numeric lat
+  const badLat = await updatePlace(g, 'Site A', { ...base, lat: 'abc' } as any);
+  assert.equal(badLat.ok, false);
+
+  // non-numeric radius (when provided)
+  const badRadius = await updatePlace(g, 'Site A', { ...base, geofenceRadiusM: 'wide' } as any);
+  assert.equal(badRadius.ok, false);
+
+  // valid update still succeeds
+  const ok = await updatePlace(g, 'Site A', base as any);
+  assert.equal(ok.ok, true);
+});
+
 test('placeGraceMins falls back to default when blank/invalid', () => {
   assert.equal(placeGraceMins({ graceMins: '15' }), 15);
   assert.equal(placeGraceMins({ graceMins: '' }), 10);
