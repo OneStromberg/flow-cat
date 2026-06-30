@@ -170,3 +170,15 @@ export async function updateTemplate(gateway: SheetsGateway, id: string, input: 
 
   return { ok: true as const };
 }
+
+export async function deleteTemplate(gateway: SheetsGateway, id: string): Promise<{ ok: true } | { ok: false; error: string }> {
+  const rows = await gateway.readTab('ShiftTemplates');
+  if (!rows.length) return { ok: false, error: 'Not found' };
+  const header = rows[0].map((h) => h.trim());
+  const idx = rows.findIndex((r, i) => i > 0 && (r[header.indexOf('id')] ?? '').trim() === id);
+  if (idx < 0) return { ok: false, error: 'Not found' };
+  const newRow = [...rows[idx]];
+  newRow[header.indexOf('active')] = 'no';
+  await gateway.updateRow('ShiftTemplates', idx + 1, newRow); // 1-based
+  return { ok: true };
+}

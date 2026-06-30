@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createMemoryGateway } from '@scourage/sheets-helper';
-import { listTemplates, addTemplate, copyTemplate } from './shift-templates.ts';
+import { listTemplates, addTemplate, copyTemplate, deleteTemplate } from './shift-templates.ts';
 import { listRecurring, addRecurring } from './shift-assignments.ts';
 
 const WEEKDAYS = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
@@ -115,4 +115,16 @@ test('copyTemplate duplicates fields with new validity and carries assignments',
   assert.deepEqual(t.days, ['Mon','Wed']); assert.equal(t.start,'08:00'); assert.equal(t.validFrom,'2026-07-01'); assert.equal(t.rate,'40');
   const rec = (await listRecurring(g, newId)).filter((r)=>r.active);
   assert.equal(rec.length, 1); assert.equal(rec[0].employeePhone, '15551230000');
+});
+
+test('deleteTemplate soft-deletes (active=no) so listTemplates marks it inactive', async () => {
+  const g = createMemoryGateway({ ShiftTemplates: [
+    ['id','location','label','days','start','end','headcount','valid_from','valid_to','active','rate','instructions','day_times'],
+    ['t1','Site A','Day','mon','08:00','16:00','1','','','yes','','',''],
+  ]});
+  const r = await deleteTemplate(g, 't1');
+  assert.equal(r.ok, true);
+  const t = (await listTemplates(g)).find((x) => x.id === 't1');
+  assert.equal(t?.active, false);
+  assert.equal((await deleteTemplate(g, 'nope')).ok, false);
 });
