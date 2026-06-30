@@ -57,6 +57,14 @@ Code is correct; the recurring "=37" is a flat `pay_structure` saved via the wor
 - Worker add + edit forms: **remove the Pay structure selector** (keep Pay rate as the hourly rate). Leave the `pay_structure` column/field in the data layer (harmless; no migration), but stop writing/选ecting it from the UI.
 - `computePay` is unchanged (still supports structures for any future need; just not surfaced).
 
+### 2.4 — Delete a shift template
+Templates carry an `active` flag (`yes`/`no`) and the generator seeds only active ones, so **delete = soft-delete** (`active='no'`), no row removal (matches the append-only model). Changes:
+- `deleteTemplate(gateway, id)` in `shift-templates.ts` — find by id, set `active='no'` via `updateRow` (mirror `updateTemplate`'s row-find).
+- Confirm `generateInstances` skips inactive templates (it loads `listTemplates`); if it doesn't already filter `active`, add the filter so a deleted template stops generating new instances.
+- Hide inactive templates from the template list / place card.
+- A **Delete** button (with a confirm) on the template surface → calls a route that invokes `deleteTemplate`.
+- **Existing future instances are left as-is** (not cascade-cancelled) — deleting the template stops *new* generation; staffed/standing shifts aren't silently removed. (Flag if the PM wants cascade-cancel of future unstaffed instances.)
+
 ### 8.1 — Broadcast a specific shift instance
 On the broadcast page, add a mode: pick an upcoming **shift instance** (place + date + time + headcount) from a list; prefill the message with its details (editable); send to the selected worker segment via the existing broadcast path. No new send mechanism — just compose-from-shift.
 
