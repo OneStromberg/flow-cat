@@ -110,10 +110,12 @@ export default async function PlaceDetailPage({ params }: { params: Promise<{ na
           <ul className="divide-y divide-gray-100 rounded-lg border border-gray-200 text-sm">
             {placeTemplates.map((t) => (
               <li key={t.id} className="px-4 py-3">
-                <span className="font-medium">{t.label || t.id}</span>
-                <span className="ml-2 text-gray-500">
-                  {t.days.join(', ')} · {t.start}–{t.end} · {t.headcount} hd
-                </span>
+                <Link href={`/admin/shifts/templates/${t.id}`} className="text-blue-600 underline hover:text-blue-800">
+                  <span className="font-medium">{t.label || t.id}</span>
+                  <span className="ml-2 text-gray-500">
+                    {t.days.join(', ')} · {t.start}–{t.end} · {t.headcount} hd
+                  </span>
+                </Link>
               </li>
             ))}
           </ul>
