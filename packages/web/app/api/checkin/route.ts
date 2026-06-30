@@ -5,14 +5,30 @@ import {
   listAssignments,
   listInstances,
   listPlaces,
+  listWorkers,
   distanceMeters,
   withinGeofence,
   checkIn,
   checkOut,
   todayISO,
+  localWallClockToUTC,
 } from '@scourage/worklog-core';
+import { notifyAdmins, pickAdminChatIds } from '../../../lib/telegram';
 
 export const runtime = 'nodejs';
+
+function hhmm(iso: string, tz: string): string {
+  try {
+    return new Intl.DateTimeFormat('en-GB', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+      timeZone: tz,
+    }).format(new Date(iso));
+  } catch {
+    return iso;
+  }
+}
 
 export async function POST(req: Request) {
   const worker = await requireWorker();
@@ -79,6 +95,9 @@ export async function POST(req: Request) {
     );
 
     if (action === 'in') {
+      if (place && place.lat && place.lng && inGeofence === false) {
+        return Response.json({ error: 'outside_geofence', message: `You are outside ${instance.location}'s allowed area. Move closer, or ask your manager to widen the radius.` }, { status: 422 });
+      }
       const result = await checkIn(gw, {
         instanceId,
         employeePhone: worker.phone,
@@ -104,6 +123,18 @@ export async function POST(req: Request) {
       });
       if (!result.ok) {
         return Response.json({ error: result.error }, { status: 409 });
+      }
+      // Early-checkout alert: notify admins if worker leaves before scheduled shift end.
+      const [y, m, d] = instance.date.split('-').map(Number);
+      const endDate = instance.end < instance.start
+        ? new Date(Date.UTC(y, m - 1, d + 1)).toISOString().slice(0, 10)
+        : instance.date;
+      const endMs = Date.parse(localWallClockToUTC(endDate, instance.end, COMPANY_TZ));
+      if (Date.parse(at) < endMs) {
+        try {
+          const admins = pickAdminChatIds(await listWorkers(gw));
+          await notifyAdmins(`⚠️ ${worker.name} checked out early at ${instance.location} (${hhmm(at, COMPANY_TZ)}, shift ends ${instance.end}) — 📞 ${worker.phone}`, admins);
+        } catch (e) { console.error('early-checkout alert failed:', e); }
       }
       return Response.json({ ok: true, hours: result.hours, inGeofence });
     }
