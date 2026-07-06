@@ -392,6 +392,7 @@ function RecurringEditor({
   const [busy, setBusy] = useState(false);
   const [addPhone, setAddPhone] = useState('');
   const [syncNote, setSyncNote] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const activeRecurring = recurring.filter((r) => r.active);
   const assignedPhones = new Set(activeRecurring.map((r) => r.employeePhone));
@@ -406,6 +407,7 @@ function RecurringEditor({
 
   async function postAction(action: 'addRecurring' | 'removeRecurring', phone: string) {
     setBusy(true);
+    setActionError(null);
     try {
       const res = await fetch('/api/admin/shift-assignments', {
         method: 'POST',
@@ -413,8 +415,14 @@ function RecurringEditor({
         body: JSON.stringify({ action, templateId: template.id, phone }),
       });
       const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setActionError((data as { error?: string }).error ?? 'Action failed. Please try again.');
+        return;
+      }
       if ((data as { seedWarning?: boolean }).seedWarning) setSyncNote(true);
       router.refresh();
+    } catch {
+      setActionError('Network error. Please try again.');
     } finally {
       setBusy(false);
     }
@@ -486,6 +494,9 @@ function RecurringEditor({
       )}
       {syncNote && (
         <p className="mt-2 text-sm text-gray-500">Saved. Staffing is syncing — refresh in a moment.</p>
+      )}
+      {actionError && (
+        <p className="mt-2 text-sm text-red-600">{actionError}</p>
       )}
     </section>
   );

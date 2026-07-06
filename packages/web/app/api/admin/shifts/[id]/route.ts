@@ -46,13 +46,13 @@ export async function POST(req: Request, context: { params: Promise<{ id: string
     const r = await updateTemplate(gw, id, input);
     if (!r.ok) return Response.json({ errors: r.errors }, { status: 400 });
     const today = new Date().toISOString().slice(0, 10);
-    await applyTemplateEdit(gw, id, today);
     let seedWarning = false;
     try {
+      await applyTemplateEdit(gw, id, today);
       await generateInstances(gw, today);
     } catch (e) {
       seedWarning = true;
-      console.error('[shifts/[id]] generateInstances after save failed:', e);
+      console.error('[shifts/[id]] propagate/seed after save failed:', e);
     }
     return Response.json({ ok: true, seedWarning });
   } catch (err) {
