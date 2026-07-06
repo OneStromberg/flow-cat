@@ -124,7 +124,6 @@ export async function applyTemplateEdit(
   const rows = await gateway.readTab('ShiftInstances');
   if (!rows.length) return { updated: 0, cancelled: 0 };
   const header = rows[0].map((h) => h.trim());
-  const dayMap = new Map(tpl.dayTimes.map((d) => [d.day, d]));
 
   let updated = 0;
   let cancelled = 0;
@@ -137,24 +136,43 @@ export async function applyTemplateEdit(
     if ((row[header.indexOf('status')] ?? '').trim() !== 'scheduled') continue;
 
     const wd = weekday(date);
-    const dt = dayMap.get(wd);
+    const daySlots = tpl.dayTimes.filter((d) => d.day === wd);
     const validFromOk = !tpl.validFrom || date >= tpl.validFrom;
     const validToOk = !tpl.validTo || date <= tpl.validTo;
-    const valid = !!dt && validFromOk && validToOk;
 
     const newRow = [...row];
-    if (valid) {
+
+    if (!validFromOk || !validToOk || daySlots.length === 0) {
+      // Date outside validity range or day removed from template → cancel
+      newRow[header.indexOf('status')] = 'cancelled';
+      cancelled++;
+      await gateway.updateRow('ShiftInstances', i + 1, newRow); // updateRow is 1-based
+    } else if (daySlots.length === 1) {
+      // Single slot for this weekday: propagate all fields (start may change)
+      const dt = daySlots[0];
       newRow[header.indexOf('location')] = tpl.location;
-      newRow[header.indexOf('start')] = dt!.start;
-      newRow[header.indexOf('end')] = dt!.end;
+      newRow[header.indexOf('start')] = dt.start;
+      newRow[header.indexOf('end')] = dt.end;
       newRow[header.indexOf('headcount')] = String(tpl.headcount);
       // status stays 'scheduled'
       updated++;
+      await gateway.updateRow('ShiftInstances', i + 1, newRow); // updateRow is 1-based
     } else {
-      newRow[header.indexOf('status')] = 'cancelled';
-      cancelled++;
+      // Multiple slots for this weekday: match by the instance's stored start time.
+      // This avoids mis-assigning one slot's edits to the wrong instance.
+      const instanceStart = (row[header.indexOf('start')] ?? '').trim();
+      const dt = daySlots.find((s) => s.start === instanceStart);
+      if (dt) {
+        // Matched: update end and headcount; keep start (it is the identifier)
+        newRow[header.indexOf('location')] = tpl.location;
+        newRow[header.indexOf('end')] = dt.end;
+        newRow[header.indexOf('headcount')] = String(tpl.headcount);
+        // status stays 'scheduled'
+        updated++;
+        await gateway.updateRow('ShiftInstances', i + 1, newRow); // updateRow is 1-based
+      }
+      // No matching slot (slot removed or start changed): leave instance completely untouched
     }
-    await gateway.updateRow('ShiftInstances', i + 1, newRow); // updateRow is 1-based
   }
 
   return { updated, cancelled };

@@ -220,3 +220,34 @@ test('generateInstances creates one instance per same-day slot; composite-idempo
   const slot14 = inst.find((o) => o.start === '14:00');
   assert.equal(slot14?.id, 't1_20260706_1400');
 });
+
+test('applyTemplateEdit updates the matching slot only (multi-shift day)', async () => {
+  // Template already reflects the post-edit state: 14:00 slot end is 23:00 (was 22:00)
+  // Two Mon slots: 06:00-14:00 (unchanged) and 14:00-23:00 (edited end)
+  // 2026-07-06 is a Monday and is future relative to the today arg '2026-07-01'
+  const g = createMemoryGateway({
+    ShiftTemplates: [
+      ['id', 'location', 'label', 'days', 'start', 'end', 'headcount', 'valid_from', 'valid_to', 'active', 'rate', 'instructions', 'day_times'],
+      ['t1', 'Site A', 'Day', 'Mon', '06:00', '23:00', '2', '', '', 'yes', '', '', 'Mon=06:00-14:00;Mon=14:00-23:00'],
+    ],
+    ShiftInstances: [
+      ['id', 'template_id', 'location', 'date', 'start', 'end', 'headcount', 'status', 'generated_at'],
+      ['t1_i1', 't1', 'Site A', '2026-07-06', '06:00', '14:00', '2', 'scheduled', ''], // matches 06:00-14:00 slot → end unchanged
+      ['t1_i2', 't1', 'Site A', '2026-07-06', '14:00', '22:00', '2', 'scheduled', ''], // matches 14:00-23:00 slot → end updated
+      ['t1_i3', 't1', 'Site A', '2026-07-06', '20:00', '22:00', '2', 'scheduled', ''], // no matching slot → untouched
+    ],
+  });
+
+  await applyTemplateEdit(g, 't1', '2026-07-01');
+
+  const inst = rowsToObjects(g.dump()['ShiftInstances']).filter((o) => o.template_id === 't1');
+  const bySlot = Object.fromEntries(inst.map((o) => [o.start, o.end]));
+
+  assert.equal(bySlot['06:00'], '14:00'); // matched slot, end unchanged
+  assert.equal(bySlot['14:00'], '23:00'); // matched slot, end updated from 22:00 to 23:00
+
+  // Instance with start 20:00 has no matching Mon slot → left completely untouched
+  assert.equal(bySlot['20:00'], '22:00');
+  const unmatched = inst.find((o) => o.start === '20:00');
+  assert.equal(unmatched?.status, 'scheduled');
+});
