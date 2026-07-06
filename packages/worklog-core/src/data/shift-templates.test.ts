@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createMemoryGateway } from '@scourage/sheets-helper';
-import { listTemplates, addTemplate, copyTemplate, deleteTemplate } from './shift-templates.ts';
+import { listTemplates, addTemplate, copyTemplate, deleteTemplate, formatTemplateOffer } from './shift-templates.ts';
 import { listRecurring, addRecurring } from './shift-assignments.ts';
 
 const WEEKDAYS = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
@@ -130,6 +130,15 @@ test('validate rejects dayTimes with duplicate (day, start) pairs', async () => 
   });
   assert.equal(r.ok, false);
   if (!r.ok) assert.ok(r.errors.dayTimes, 'should have a dayTimes validation error for duplicate (day, start)');
+});
+
+test('formatTemplateOffer lists the full weekly schedule incl. multi-slot days', () => {
+  const t = { id:'t1', location:'Big Gedera', label:'Guard', validFrom:'2026-07-10', headcount:1,
+    dayTimes:[{day:'mon',start:'06:00',end:'14:00'},{day:'mon',start:'14:00',end:'22:00'},{day:'tue',start:'08:00',end:'16:00'}] } as any;
+  const s = formatTemplateOffer(t, { contact:'972500000000' });
+  assert.ok(s.includes('Big Gedera') && s.includes('Guard'));
+  assert.ok(s.includes('06:00') && s.includes('14:00') && s.includes('22:00') && s.includes('08:00'));
+  assert.ok(s.includes('972500000000'));
 });
 
 test('deleteTemplate soft-deletes (active=no) so listTemplates marks it inactive', async () => {

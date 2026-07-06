@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createMemoryGateway } from '@scourage/sheets-helper';
-import { findWorker, findWorkerByToken, authenticateWorker, listWorkers, listBrokenWorkers, parseWorker, linkTelegramChat } from './workers.ts';
+import { findWorker, findWorkerByToken, authenticateWorker, listWorkers, listBrokenWorkers, parseWorker, linkTelegramChat, findWorkerByChatId } from './workers.ts';
 
 const gw = () =>
   createMemoryGateway({
@@ -140,6 +140,15 @@ test('listBrokenWorkers flags blank and duplicate phones', async () => {
   assert.equal(byToken['tkA'], 'duplicate');
   assert.equal(byToken['tkB'], 'duplicate');
   assert.equal(byToken['tkOK'], undefined); // not broken
+});
+
+test('findWorkerByChatId matches by telegram_chat_id', async () => {
+  const g = createMemoryGateway({ Workers: [
+    ['phone','name','greeting','places','active','token','teudat_zeut','admin','city','age','transportation','hebrew_level','pay_type','pay_amount','schedule','gender','pay_structure','pay_rate','telegram_chat_id'],
+    ['972501112222','Dana','','','yes','tk','','','','','','','','','','','','','55501'],
+  ]});
+  assert.equal((await findWorkerByChatId(g,'55501'))?.name, 'Dana');
+  assert.equal(await findWorkerByChatId(g,'nope'), null);
 });
 
 test('linkTelegramChat writes telegram_chat_id onto the matching worker row', async () => {
