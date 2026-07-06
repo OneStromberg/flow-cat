@@ -221,6 +221,74 @@ test('generateInstances creates one instance per same-day slot; composite-idempo
   assert.equal(slot14?.id, 't1_20260706_1400');
 });
 
+// ── FIX 1 regression: admin-edited start must not cause a duplicate on re-run ─
+test('generateInstances: edited start does not create a duplicate on re-run', async () => {
+  // 2026-07-06 is a Monday
+  const g = createMemoryGateway({
+    ShiftTemplates: [
+      ['id', 'location', 'label', 'days', 'start', 'end', 'headcount', 'valid_from', 'valid_to', 'active', 'rate', 'instructions', 'day_times'],
+      ['t1', 'Site A', 'Day', 'Mon', '08:00', '16:00', '1', '', '', 'yes', '', '', 'Mon=08:00-16:00'],
+    ],
+    RecurringAssignments: [['template_id', 'employee_phone', 'active', 'created_at']],
+    ShiftInstances: [['id', 'template_id', 'location', 'date', 'start', 'end', 'headcount', 'status', 'generated_at']],
+    ShiftAssignments: [['instance_id', 'employee_phone', 'source', 'status', 'assigned_at', 'assigned_by']],
+  });
+
+  // First run: creates t1_20260706_0800
+  const r1 = await generateInstances(g, '2026-07-06', 7);
+  assert.equal(r1.instancesCreated, 1);
+  const allInst1 = rowsToObjects(g.dump()['ShiftInstances']).filter(
+    (o) => o.template_id === 't1' && o.date === '2026-07-06',
+  );
+  assert.equal(allInst1.length, 1);
+  assert.equal(allInst1[0].id, 't1_20260706_0800');
+
+  // Admin edits the instance's start to 09:00 (id stays t1_20260706_0800)
+  const upd = await updateInstance(g, 't1_20260706_0800', { start: '09:00' });
+  assert.equal(upd.ok, true);
+
+  // Second run: slot.start is still 08:00 → newId = t1_20260706_0800, which already exists → skip
+  const r2 = await generateInstances(g, '2026-07-06', 7);
+  assert.equal(r2.instancesCreated, 0, 'must not create a duplicate after start was edited');
+
+  const allInst2 = rowsToObjects(g.dump()['ShiftInstances']).filter(
+    (o) => o.template_id === 't1' && o.date === '2026-07-06',
+  );
+  assert.equal(allInst2.length, 1, 'must remain exactly one instance for (t1, 2026-07-06)');
+});
+
+// ── FIX 2 regression: single-slot branch must not rewrite start into a collision ─
+test('applyTemplateEdit: single-slot branch leaves stale instance untouched when start would collide', async () => {
+  // Template Mon now has ONE slot 06:00-14:00
+  // Pre-seed TWO Mon instances for 2026-07-06: one at 06:00 (correct) and one at 14:00 (stale leftover)
+  const g = createMemoryGateway({
+    ShiftTemplates: [
+      ['id', 'location', 'label', 'days', 'start', 'end', 'headcount', 'valid_from', 'valid_to', 'active', 'rate', 'instructions', 'day_times'],
+      ['t1', 'Site A', 'Day', 'Mon', '06:00', '14:00', '1', '', '', 'yes', '', '', 'Mon=06:00-14:00'],
+    ],
+    ShiftInstances: [
+      ['id', 'template_id', 'location', 'date', 'start', 'end', 'headcount', 'status', 'generated_at'],
+      ['i1', 't1', 'Site A', '2026-07-06', '06:00', '14:00', '1', 'scheduled', ''],
+      ['i2', 't1', 'Site A', '2026-07-06', '14:00', '22:00', '1', 'scheduled', ''],
+    ],
+  });
+
+  await applyTemplateEdit(g, 't1', '2026-07-01');
+
+  const inst = rowsToObjects(g.dump()['ShiftInstances']).filter((o) => o.template_id === 't1' && o.date === '2026-07-06');
+  const i1 = inst.find((o) => o.id === 'i1');
+  const i2 = inst.find((o) => o.id === 'i2');
+
+  // i1 (start already 06:00) → updated normally
+  assert.equal(i1?.start, '06:00');
+  assert.equal(i1?.status, 'scheduled');
+
+  // i2 (start=14:00, stale leftover) must NOT be rewritten to 06:00
+  // because i1 already owns that start → left completely untouched
+  assert.equal(i2?.start, '14:00', 'stale instance start must not be rewritten to 06:00');
+  assert.equal(i2?.status, 'scheduled', 'stale instance must remain scheduled (not changed)');
+});
+
 test('applyTemplateEdit updates the matching slot only (multi-shift day)', async () => {
   // Template already reflects the post-edit state: 14:00 slot end is 23:00 (was 22:00)
   // Two Mon slots: 06:00-14:00 (unchanged) and 14:00-23:00 (edited end)

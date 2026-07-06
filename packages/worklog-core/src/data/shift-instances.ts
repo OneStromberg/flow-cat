@@ -128,6 +128,23 @@ export async function applyTemplateEdit(
   let updated = 0;
   let cancelled = 0;
 
+  // Pre-build a map of templateId|date → Set<start> for all currently-scheduled instances.
+  // Used in the single-slot branch to detect whether propagating a new start would collide
+  // with a sibling instance that already owns that start (stale-leftover scenario).
+  const scheduledStartsByKey = new Map<string, Set<string>>();
+  for (let j = 1; j < rows.length; j++) {
+    const r = rows[j];
+    const rtid = (r[header.indexOf('template_id')] ?? '').trim();
+    const rdate = (r[header.indexOf('date')] ?? '').trim();
+    const rstart = (r[header.indexOf('start')] ?? '').trim();
+    const rstatus = (r[header.indexOf('status')] ?? '').trim();
+    if (rstatus === 'scheduled' && rtid && rdate && rstart) {
+      const key = `${rtid}|${rdate}`;
+      if (!scheduledStartsByKey.has(key)) scheduledStartsByKey.set(key, new Set());
+      scheduledStartsByKey.get(key)!.add(rstart);
+    }
+  }
+
   for (let i = 1; i < rows.length; i++) {
     const row = rows[i];
     if ((row[header.indexOf('template_id')] ?? '').trim() !== templateId) continue;
@@ -148,15 +165,25 @@ export async function applyTemplateEdit(
       cancelled++;
       await gateway.updateRow('ShiftInstances', i + 1, newRow); // updateRow is 1-based
     } else if (daySlots.length === 1) {
-      // Single slot for this weekday: propagate all fields (start may change)
+      // Single slot for this weekday: propagate all fields (start may change).
+      // Guard: if propagating dt.start would collide with a sibling scheduled instance
+      // that already owns that start, leave this (stale) instance completely untouched.
+      // This is consistent with the multi-slot contract ("changed-start leaves a stale instance").
       const dt = daySlots[0];
-      newRow[header.indexOf('location')] = tpl.location;
-      newRow[header.indexOf('start')] = dt.start;
-      newRow[header.indexOf('end')] = dt.end;
-      newRow[header.indexOf('headcount')] = String(tpl.headcount);
-      // status stays 'scheduled'
-      updated++;
-      await gateway.updateRow('ShiftInstances', i + 1, newRow); // updateRow is 1-based
+      const instanceStart = (row[header.indexOf('start')] ?? '').trim();
+      const wouldCollide =
+        instanceStart !== dt.start &&
+        (scheduledStartsByKey.get(`${templateId}|${date}`) ?? new Set<string>()).has(dt.start);
+      if (!wouldCollide) {
+        newRow[header.indexOf('location')] = tpl.location;
+        newRow[header.indexOf('start')] = dt.start;
+        newRow[header.indexOf('end')] = dt.end;
+        newRow[header.indexOf('headcount')] = String(tpl.headcount);
+        // status stays 'scheduled'
+        updated++;
+        await gateway.updateRow('ShiftInstances', i + 1, newRow); // updateRow is 1-based
+      }
+      // else: stale leftover — leave completely untouched (no update, no cancel)
     } else {
       // Multiple slots for this weekday: match by the instance's stored start time.
       // This avoids mis-assigning one slot's edits to the wrong instance.
@@ -200,13 +227,16 @@ export async function generateInstances(
   const templates = (await listTemplates(gateway)).filter((t) => t.active);
 
   // Build composite idempotency map: template_id|date|start → existing row id
+  // Also build a Set of all existing instance ids for stable-id dedup (handles admin-edited start/date).
   const instanceRows = rowsToObjects(await gateway.readTab('ShiftInstances'));
   const existingByComposite = new Map<string, string>();
+  const existingIds = new Set<string>();
   for (const o of instanceRows) {
     const tid = (o.template_id ?? '').trim();
     const oDate = (o.date ?? '').trim();
     const oStart = (o.start ?? '').trim();
     const id = (o.id ?? '').trim();
+    if (id) existingIds.add(id);
     if (tid && oDate && oStart && id) existingByComposite.set(`${tid}|${oDate}|${oStart}`, id);
   }
 
@@ -247,11 +277,16 @@ export async function generateInstances(
 
       for (const slot of slots) {
         const compositeKey = `${tpl.id}|${date}|${slot.start}`;
-        const existingId = existingByComposite.get(compositeKey);
-        const instanceId = existingId ?? `${tpl.id}_${compact(date)}_${slot.start.replace(':', '')}`;
+        const newId = `${tpl.id}_${compact(date)}_${slot.start.replace(':', '')}`;
+        // Prefer composite lookup (recognises old-format ids and renamed starts).
+        // Fall back to the stable new-format id (handles the case where an admin
+        // edited start/date — the id is stable even when the mutable fields change).
+        const compositeExistingId = existingByComposite.get(compositeKey);
+        const instanceId = compositeExistingId ?? newId;
+        const shouldCreate = !compositeExistingId && !existingIds.has(newId);
 
-        // Create instance if not already present (identified by composite key)
-        if (!existingId) {
+        // Create instance only when neither idempotency guard fires
+        if (shouldCreate) {
           const record: Record<string, string> = {
             id: instanceId,
             template_id: tpl.id,
@@ -265,6 +300,7 @@ export async function generateInstances(
           };
           await gateway.appendRow('ShiftInstances', objectToRow(record, instanceHeader));
           existingByComposite.set(compositeKey, instanceId);
+          existingIds.add(instanceId);
           instancesCreated++;
         }
 
@@ -308,13 +344,16 @@ export async function seedTemplateInstances(
   if (!tpl) return { instancesCreated: 0, assignmentsSeeded: 0 };
 
   // Build composite idempotency map: template_id|date|start → existing row id
+  // Also build a Set of all existing instance ids for stable-id dedup (handles admin-edited start/date).
   const instanceRows = rowsToObjects(await gateway.readTab('ShiftInstances'));
   const existingByComposite = new Map<string, string>();
+  const existingIds = new Set<string>();
   for (const o of instanceRows) {
     const tid = (o.template_id ?? '').trim();
     const oDate = (o.date ?? '').trim();
     const oStart = (o.start ?? '').trim();
     const id = (o.id ?? '').trim();
+    if (id) existingIds.add(id);
     if (tid && oDate && oStart && id) existingByComposite.set(`${tid}|${oDate}|${oStart}`, id);
   }
 
@@ -354,11 +393,15 @@ export async function seedTemplateInstances(
 
     for (const slot of slots) {
       const compositeKey = `${tpl.id}|${date}|${slot.start}`;
-      const existingId = existingByComposite.get(compositeKey);
-      const instanceId = existingId ?? `${tpl.id}_${compact(date)}_${slot.start.replace(':', '')}`;
+      const newId = `${tpl.id}_${compact(date)}_${slot.start.replace(':', '')}`;
+      // Prefer composite lookup (recognises old-format ids and renamed starts).
+      // Fall back to the stable new-format id (handles admin-edited start/date).
+      const compositeExistingId = existingByComposite.get(compositeKey);
+      const instanceId = compositeExistingId ?? newId;
+      const shouldCreate = !compositeExistingId && !existingIds.has(newId);
 
-      // Create instance if not already present (identified by composite key)
-      if (!existingId) {
+      // Create instance only when neither idempotency guard fires
+      if (shouldCreate) {
         const record: Record<string, string> = {
           id: instanceId,
           template_id: tpl.id,
@@ -372,6 +415,7 @@ export async function seedTemplateInstances(
         };
         await gateway.appendRow('ShiftInstances', objectToRow(record, instanceHeader));
         existingByComposite.set(compositeKey, instanceId);
+        existingIds.add(instanceId);
         instancesCreated++;
       }
 
