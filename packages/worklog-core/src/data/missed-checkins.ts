@@ -156,3 +156,30 @@ export async function recordAlerts(
     await gateway.appendRow('Alerts', objectToRow(record, header));
   }
 }
+
+export async function lastAlertAtByKey(
+  gateway: SheetsGateway,
+): Promise<Map<string, string>> {
+  const objs = rowsToObjects(await gateway.readTab('Alerts'));
+  const m = new Map<string, string>();
+  for (const o of objs) {
+    const key = `${(o.instance_id ?? '').trim()}|${(o.employee_phone ?? '').trim()}|${(o.type ?? '').trim()}`;
+    const sent = (o.sent_at ?? '').trim();
+    if (!sent) continue;
+    const prev = m.get(key);
+    if (!prev || sent > prev) m.set(key, sent);
+  }
+  return m;
+}
+
+export function shouldRealert(
+  lastSentIso: string | undefined,
+  nowIso: string,
+  minGapMs: number,
+): boolean {
+  if (!lastSentIso) return true;
+  const last = Date.parse(lastSentIso);
+  const now = Date.parse(nowIso);
+  if (!Number.isFinite(last) || !Number.isFinite(now)) return true;
+  return now - last >= minGapMs;
+}
