@@ -12,7 +12,7 @@ export function getSigningKey(): string {
 
 export async function setSessionCookie(phone: string): Promise<void> {
   const value = createSession(phone, getSigningKey());
-  (await cookies()).set(COOKIE_NAME, value, { httpOnly: true, secure: true, sameSite: 'lax', path: '/' });
+  (await cookies()).set(COOKIE_NAME, value, { httpOnly: true, secure: true, sameSite: 'lax', path: '/', maxAge: 60 * 60 * 24 * 30 });
 }
 
 export async function clearSessionCookie(): Promise<void> {
