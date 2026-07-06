@@ -96,9 +96,11 @@ export function InstanceDetail({ instance, assignments, workers, role, instructi
   async function handleAdd() {
     if (!effectivePhone) return;
     setAddLoading(true);
-    await apiPost(instance.id, { action: 'assign', phone: effectivePhone });
+    const r = await apiPost(instance.id, { action: 'assign', phone: effectivePhone });
     setAddLoading(false);
-    router.refresh();
+    if (r.ok) {
+      router.refresh();
+    }
   }
 
   // ── Remove-assignment ──────────────────────────────────────────────────────
@@ -106,9 +108,11 @@ export function InstanceDetail({ instance, assignments, workers, role, instructi
 
   async function handleRemove(phone: string) {
     setRemovingPhone(phone);
-    await apiPost(instance.id, { action: 'remove', phone });
+    const r = await apiPost(instance.id, { action: 'remove', phone });
     setRemovingPhone(null);
-    router.refresh();
+    if (r.ok) {
+      router.refresh();
+    }
   }
 
   // ── Render ─────────────────────────────────────────────────────────────────
