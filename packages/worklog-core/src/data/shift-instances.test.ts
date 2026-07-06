@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createMemoryGateway } from '@scourage/sheets-helper';
-import { generateInstances, listInstances, cancelInstance, updateInstance, applyTemplateEdit } from './shift-instances.ts';
+import { createMemoryGateway, rowsToObjects } from '@scourage/sheets-helper';
+import { generateInstances, listInstances, cancelInstance, updateInstance, applyTemplateEdit, seedTemplateInstances } from './shift-instances.ts';
 import { listAssignments } from './shift-assignments.ts';
 
 function seed() {
@@ -158,4 +158,35 @@ test('applyTemplateEdit updates valid future instances and cancels now-invalid o
   const wed = ins.find((i)=>i.id==='tpl_1_20260701'); const fri = ins.find((i)=>i.id==='tpl_1_20260703');
   assert.equal(wed?.start, '10:00'); assert.equal(wed?.headcount, 2); assert.equal(wed?.status, 'scheduled');
   assert.equal(fri?.status, 'cancelled');
+});
+
+test('seedTemplateInstances seeds recurring into existing instances (idempotent)', async () => {
+  // 2026-07-06 is a Monday
+  const g = createMemoryGateway({
+    ShiftTemplates: [
+      ['id', 'location', 'label', 'days', 'start', 'end', 'headcount', 'valid_from', 'valid_to', 'active', 'rate', 'instructions', 'day_times'],
+      ['t1', 'Site A', 'Day', 'Mon', '08:00', '16:00', '1', '', '', 'yes', '', '', 'Mon=08:00-16:00'],
+    ],
+    RecurringAssignments: [
+      ['template_id', 'employee_phone', 'active', 'created_at'],
+      ['t1', 'p1', 'yes', ''],
+    ],
+    ShiftInstances: [
+      ['id', 'template_id', 'location', 'date', 'start', 'end', 'headcount', 'status', 'generated_at'],
+      ['t1_20260706', 't1', 'Site A', '2026-07-06', '08:00', '16:00', '1', 'scheduled', ''],
+    ],
+    ShiftAssignments: [['instance_id', 'employee_phone', 'source', 'status', 'assigned_at', 'assigned_by']],
+  });
+
+  const r1 = await seedTemplateInstances(g, 't1', '2026-07-06', 42);
+  assert.ok(r1.assignmentsSeeded >= 1);
+
+  const assigns = rowsToObjects(g.dump()['ShiftAssignments']).filter(
+    (o) => o.instance_id === 't1_20260706' && o.employee_phone === 'p1',
+  );
+  assert.equal(assigns.length, 1);
+
+  // Idempotent: second run seeds nothing new
+  const r2 = await seedTemplateInstances(g, 't1', '2026-07-06', 42);
+  assert.equal(r2.assignmentsSeeded, 0);
 });

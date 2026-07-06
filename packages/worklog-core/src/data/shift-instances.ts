@@ -268,3 +268,94 @@ export async function generateInstances(
     horizonEnd,
   };
 }
+
+export async function seedTemplateInstances(
+  gateway: SheetsGateway,
+  templateId: string,
+  today: string,
+  horizonDays = 42,
+): Promise<{ instancesCreated: number; assignmentsSeeded: number }> {
+  // Load only the one active template
+  const tpl = (await listTemplates(gateway)).find((t) => t.id === templateId && t.active);
+  if (!tpl) return { instancesCreated: 0, assignmentsSeeded: 0 };
+
+  // Load existing instance ids into a Set (idempotency)
+  const instanceRows = rowsToObjects(await gateway.readTab('ShiftInstances'));
+  const existingIds = new Set(instanceRows.map((o) => (o.id ?? '').trim()).filter(Boolean));
+
+  // Load existing assignment keys (instanceId|phone, ANY status) into a Set (idempotency)
+  const assignRows = rowsToObjects(await gateway.readTab('ShiftAssignments'));
+  const existingAssignKeys = new Set(
+    assignRows
+      .map((o) => {
+        const iid = (o.instance_id ?? '').trim();
+        const ph = (o.employee_phone ?? '').trim();
+        return iid && ph ? `${iid}|${ph}` : '';
+      })
+      .filter(Boolean),
+  );
+
+  // Ensure headers (read once, needed before appending)
+  const instanceHeader = await ensureInstanceHeader(gateway);
+  const assignHeader = await ensureAssignHeader(gateway);
+
+  let instancesCreated = 0;
+  let assignmentsSeeded = 0;
+
+  // Load active recurring assignments for this template
+  const recurring = (await listRecurring(gateway, tpl.id)).filter((r) => r.active);
+  const dayMap = new Map(tpl.dayTimes.map((d) => [d.day, d]));
+
+  for (let offset = 0; offset < horizonDays; offset++) {
+    const date = addDays(today, offset);
+
+    // Clip to valid_from / valid_to
+    if (tpl.validFrom && date < tpl.validFrom) continue;
+    if (tpl.validTo && date > tpl.validTo) continue;
+
+    // Check weekday via dayMap
+    const wd = weekday(date);
+    const dt = dayMap.get(wd);
+    if (!dt) continue;
+
+    const instanceId = `${tpl.id}_${compact(date)}`;
+
+    // Create instance if not already present
+    if (!existingIds.has(instanceId)) {
+      const record: Record<string, string> = {
+        id: instanceId,
+        template_id: tpl.id,
+        location: tpl.location,
+        date,
+        start: dt.start,
+        end: dt.end,
+        headcount: String(tpl.headcount),
+        status: 'scheduled',
+        generated_at: new Date().toISOString(),
+      };
+      await gateway.appendRow('ShiftInstances', objectToRow(record, instanceHeader));
+      existingIds.add(instanceId);
+      instancesCreated++;
+    }
+
+    // Seed recurring assignments into this instance
+    for (const rec of recurring) {
+      const key = `${instanceId}|${rec.employeePhone}`;
+      if (!existingAssignKeys.has(key)) {
+        const assignRecord: Record<string, string> = {
+          instance_id: instanceId,
+          employee_phone: rec.employeePhone,
+          source: 'recurring',
+          status: 'assigned',
+          assigned_at: new Date().toISOString(),
+          assigned_by: 'system',
+        };
+        await gateway.appendRow('ShiftAssignments', objectToRow(assignRecord, assignHeader));
+        existingAssignKeys.add(key);
+        assignmentsSeeded++;
+      }
+    }
+  }
+
+  return { instancesCreated, assignmentsSeeded };
+}

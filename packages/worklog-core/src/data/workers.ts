@@ -95,6 +95,45 @@ export async function listWorkers(gateway: SheetsGateway): Promise<Worker[]> {
   return objs.filter((o) => (o.phone ?? '').trim() !== '').map((o) => parseWorker(o, []));
 }
 
+export interface BrokenWorker {
+  token: string;
+  name: string;
+  phone: string;
+  reason: 'blank' | 'duplicate';
+}
+
+/**
+ * Returns workers whose phone is blank or shared with another worker.
+ * These rows are invisible to `listWorkers` (blank-phone filter) and
+ * cannot be looked up by phone (duplicate ambiguity). Use `setWorkerPhone`
+ * (via the admin fix-phone endpoint) to repair them.
+ */
+export async function listBrokenWorkers(gateway: SheetsGateway): Promise<BrokenWorker[]> {
+  const objs = rowsToObjects(await gateway.readTab('Workers'));
+
+  // Count normalized phones for NON-blank rows to detect duplicates.
+  const counts = new Map<string, number>();
+  for (const o of objs) {
+    const raw = (o.phone ?? '').trim();
+    if (!raw) continue;
+    const norm = normalizePhone(raw);
+    counts.set(norm, (counts.get(norm) ?? 0) + 1);
+  }
+
+  const result: BrokenWorker[] = [];
+  for (const o of objs) {
+    const rawPhone = (o.phone ?? '').trim();
+    const token = (o.token ?? '').trim();
+    const name = (o.name ?? '').trim();
+    if (!rawPhone) {
+      result.push({ token, name, phone: rawPhone, reason: 'blank' });
+    } else if ((counts.get(normalizePhone(rawPhone)) ?? 0) > 1) {
+      result.push({ token, name, phone: rawPhone, reason: 'duplicate' });
+    }
+  }
+  return result;
+}
+
 export async function linkTelegramChat(gateway: SheetsGateway, phone: string, chatId: string): Promise<boolean> {
   const target = normalizePhone(phone);
   const rows = await gateway.readTab('Workers');

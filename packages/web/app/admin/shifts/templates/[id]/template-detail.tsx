@@ -79,6 +79,7 @@ function EditTemplateForm({
   const [fatal, setFatal] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [syncNote, setSyncNote] = useState(false);
 
   function toggleDay(day: Day) {
     setGrid((g) => ({ ...g, [day]: { ...g[day], on: !g[day].on } }));
@@ -133,6 +134,7 @@ function EditTemplateForm({
       const data = await res.json();
       if (res.ok && data.ok) {
         setSaved(true);
+        if (data.seedWarning) setSyncNote(true);
         router.refresh();
       } else if (res.status === 400 && data.errors) {
         setErrors(data.errors);
@@ -362,6 +364,7 @@ function EditTemplateForm({
 
         {fatal && <p className="text-sm text-red-600">{fatal}</p>}
         {saved && <p className="text-sm text-green-600">Saved.</p>}
+        {syncNote && <p className="text-sm text-gray-500">Staffing is syncing — refresh in a moment.</p>}
         <button
           type="submit"
           disabled={busy}
@@ -388,6 +391,8 @@ function RecurringEditor({
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [addPhone, setAddPhone] = useState('');
+  const [syncNote, setSyncNote] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const activeRecurring = recurring.filter((r) => r.active);
   const assignedPhones = new Set(activeRecurring.map((r) => r.employeePhone));
@@ -402,13 +407,22 @@ function RecurringEditor({
 
   async function postAction(action: 'addRecurring' | 'removeRecurring', phone: string) {
     setBusy(true);
+    setActionError(null);
     try {
-      await fetch('/api/admin/shift-assignments', {
+      const res = await fetch('/api/admin/shift-assignments', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action, templateId: template.id, phone }),
       });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setActionError((data as { error?: string }).error ?? 'Action failed. Please try again.');
+        return;
+      }
+      if ((data as { seedWarning?: boolean }).seedWarning) setSyncNote(true);
       router.refresh();
+    } catch {
+      setActionError('Network error. Please try again.');
     } finally {
       setBusy(false);
     }
@@ -478,6 +492,12 @@ function RecurringEditor({
           </button>
         </div>
       )}
+      {syncNote && (
+        <p className="mt-2 text-sm text-gray-500">Saved. Staffing is syncing — refresh in a moment.</p>
+      )}
+      {actionError && (
+        <p className="mt-2 text-sm text-red-600">{actionError}</p>
+      )}
     </section>
   );
 }
@@ -491,10 +511,12 @@ function CopyToLocation({ template, places }: { template: ShiftTemplate; places:
   const [carryAssignments, setCarryAssignments] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [syncNote, setSyncNote] = useState<string | null>(null);
 
   async function handleCopy() {
     setBusy(true);
     setError(null);
+    setSyncNote(null);
     try {
       const res = await fetch('/api/admin/shifts/copy', {
         method: 'POST',
@@ -503,7 +525,12 @@ function CopyToLocation({ template, places }: { template: ShiftTemplate; places:
       });
       const data = await res.json();
       if (res.ok && data.ok) {
-        router.push(`/admin/shifts/templates/${data.id}`);
+        if (data.seedWarning) {
+          setSyncNote('Saved. Staffing is syncing — refresh in a moment.');
+          setTimeout(() => router.push(`/admin/shifts/templates/${data.id}`), 1800);
+        } else {
+          router.push(`/admin/shifts/templates/${data.id}`);
+        }
       } else {
         setError(
           data.errors
@@ -546,6 +573,7 @@ function CopyToLocation({ template, places }: { template: ShiftTemplate; places:
         />
         Carry recurring assignments to new template
       </label>
+      {syncNote && <p className="mt-2 text-sm text-gray-500">{syncNote}</p>}
       {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
       <button
         onClick={handleCopy}

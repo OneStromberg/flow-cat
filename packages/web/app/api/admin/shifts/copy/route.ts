@@ -26,8 +26,14 @@ export async function POST(req: Request) {
     const r = await copyTemplate(gw, templateId, { location, carryAssignments });
     if (!r.ok) return Response.json({ errors: r.errors }, { status: 400 });
     const today = new Date().toISOString().slice(0, 10);
-    await generateInstances(gw, today);
-    return Response.json({ ok: true, id: r.id });
+    let seedWarning = false;
+    try {
+      await generateInstances(gw, today);
+    } catch (e) {
+      seedWarning = true;
+      console.error('[shifts/copy] generateInstances after save failed:', e);
+    }
+    return Response.json({ ok: true, id: r.id, seedWarning });
   } catch (err) {
     console.error('copy template failed:', err);
     return Response.json({ error: 'copy failed' }, { status: 503 });

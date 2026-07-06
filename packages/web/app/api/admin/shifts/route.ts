@@ -36,8 +36,14 @@ export async function POST(req: Request) {
     const r = await addTemplate(getGateway(), input);
     if (!r.ok) return Response.json({ errors: r.errors }, { status: 400 });
     const today = new Date().toISOString().slice(0, 10);
-    await generateInstances(getGateway(), today);
-    return Response.json({ ok: true, id: r.id });
+    let seedWarning = false;
+    try {
+      await generateInstances(getGateway(), today);
+    } catch (e) {
+      seedWarning = true;
+      console.error('[shifts] generateInstances after save failed:', e);
+    }
+    return Response.json({ ok: true, id: r.id, seedWarning });
   } catch (err) {
     console.error('add template failed:', err);
     return Response.json({ error: 'save failed' }, { status: 503 });
