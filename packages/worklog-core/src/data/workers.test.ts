@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createMemoryGateway } from '@scourage/sheets-helper';
-import { findWorker, findWorkerByToken, authenticateWorker, listWorkers, parseWorker, linkTelegramChat } from './workers.ts';
+import { findWorker, findWorkerByToken, authenticateWorker, listWorkers, listBrokenWorkers, parseWorker, linkTelegramChat } from './workers.ts';
 
 const gw = () =>
   createMemoryGateway({
@@ -122,6 +122,24 @@ test('parseWorker reads gender', () => {
 test('parseWorker reads pay_structure and pay_rate', () => {
   const w = parseWorker({ phone:'15551230000', name:'A', places:'', active:'yes', pay_structure:'monthly', pay_rate:'8000' }, []);
   assert.equal(w.payStructure, 'monthly'); assert.equal(w.payRate, '8000');
+});
+
+test('listBrokenWorkers flags blank and duplicate phones', async () => {
+  const g = createMemoryGateway({
+    Workers: [
+      ['phone', 'name', 'token'],
+      ['', 'Roma', 'tk1'],
+      ['972500000001', 'A', 'tkA'],
+      ['972500000001', 'B', 'tkB'],
+      ['972500000009', 'OK', 'tkOK'],
+    ],
+  });
+  const broken = await listBrokenWorkers(g);
+  const byToken = Object.fromEntries(broken.map((b) => [b.token, b.reason]));
+  assert.equal(byToken['tk1'], 'blank');
+  assert.equal(byToken['tkA'], 'duplicate');
+  assert.equal(byToken['tkB'], 'duplicate');
+  assert.equal(byToken['tkOK'], undefined); // not broken
 });
 
 test('linkTelegramChat writes telegram_chat_id onto the matching worker row', async () => {

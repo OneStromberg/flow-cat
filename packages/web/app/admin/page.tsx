@@ -1,9 +1,10 @@
 import { redirect } from 'next/navigation';
 import { requireAdmin } from '../../lib/session';
 import { getRequestGateway } from '../../lib/sheets';
-import { listWorkers, loadActivePlaces, TRANSPORTATION, HEBREW_LEVEL, PAY_TYPE, SCHEDULE, GENDER } from '@scourage/worklog-core';
+import { listWorkers, listBrokenWorkers, loadActivePlaces, TRANSPORTATION, HEBREW_LEVEL, PAY_TYPE, SCHEDULE, GENDER } from '@scourage/worklog-core';
 import { WorkersFilter } from './workers-filter';
 import { TelegramConnect } from '../components/telegram-connect';
+import { BrokenWorkerFix } from './broken-worker-fix';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -13,8 +14,11 @@ export default async function AdminPage() {
   if (!admin) redirect('/');
 
   const gw = getRequestGateway();
-  const workers = await listWorkers(gw);
-  const activePlaces = await loadActivePlaces(gw);
+  const [workers, brokenWorkers, activePlaces] = await Promise.all([
+    listWorkers(gw),
+    listBrokenWorkers(gw),
+    loadActivePlaces(gw),
+  ]);
   const cities = [...new Set(workers.map((w) => w.city ?? '').filter(Boolean))].sort();
   // Filter chips = master active places ∪ every place actually assigned in the sheet.
   const places = [...new Set([...activePlaces, ...workers.flatMap((w) => w.places)])].sort();
@@ -28,6 +32,7 @@ export default async function AdminPage() {
           <a href="/admin/add" className="rounded-lg bg-gray-900 px-3 py-2 text-sm text-white">+ Add worker</a>
         </div>
       </div>
+      <BrokenWorkerFix workers={brokenWorkers} />
       <WorkersFilter
         workers={workers}
         cities={cities}

@@ -1,5 +1,5 @@
-export type { Worker } from './data/workers.ts';
-export { findWorker, findWorkerByToken, authenticateWorker, listWorkers, linkTelegramChat } from './data/workers.ts';
+export type { Worker, BrokenWorker } from './data/workers.ts';
+export { findWorker, findWorkerByToken, authenticateWorker, listWorkers, listBrokenWorkers, linkTelegramChat } from './data/workers.ts';
 export { TRANSPORTATION, HEBREW_LEVEL, PAY_TYPE, SCHEDULE, GENDER } from './data/worker-fields.ts';
 export { generateToken } from './data/tokens.ts';
 export { loadActivePlaces, listPlaces, addPlace, updatePlace, wazeUrl, googleMapsUrl, placeGraceMins } from './data/places.ts';
