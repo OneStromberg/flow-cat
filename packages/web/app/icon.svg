@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <!-- Dark rounded-square background -->
+  <rect width="512" height="512" rx="96" ry="96" fill="#111827"/>
+  <!-- Cat ears (two triangles) -->
+  <polygon points="128,180 172,100 216,180" fill="#ffffff"/>
+  <polygon points="296,180 340,100 384,180" fill="#ffffff"/>
+  <!-- Cat face circle -->
+  <circle cx="256" cy="290" r="110" fill="#ffffff"/>
+  <!-- Eyes -->
+  <ellipse cx="216" cy="268" rx="18" ry="22" fill="#111827"/>
+  <ellipse cx="296" cy="268" rx="18" ry="22" fill="#111827"/>
+  <!-- Eye shine -->
+  <circle cx="224" cy="260" r="6" fill="#ffffff"/>
+  <circle cx="304" cy="260" r="6" fill="#ffffff"/>
+  <!-- Nose -->
+  <polygon points="256,296 244,310 268,310" fill="#111827"/>
+  <!-- Mouth -->
+  <path d="M244 310 Q230 330 218 322" stroke="#111827" stroke-width="4" fill="none" stroke-linecap="round"/>
+  <path d="M268 310 Q282 330 294 322" stroke="#111827" stroke-width="4" fill="none" stroke-linecap="round"/>
+  <!-- Whiskers left -->
+  <line x1="145" y1="300" x2="225" y2="308" stroke="#111827" stroke-width="3.5" stroke-linecap="round"/>
+  <line x1="140" y1="318" x2="223" y2="318" stroke="#111827" stroke-width="3.5" stroke-linecap="round"/>
+  <!-- Whiskers right -->
+  <line x1="287" y1="308" x2="367" y2="300" stroke="#111827" stroke-width="3.5" stroke-linecap="round"/>
+  <line x1="289" y1="318" x2="372" y2="318" stroke="#111827" stroke-width="3.5" stroke-linecap="round"/>
+  <!-- Clock tick marks on the face circle (12, 3, 6, 9) -->
+  <line x1="256" y1="182" x2="256" y2="196" stroke="#111827" stroke-width="5" stroke-linecap="round"/>
+  <line x1="364" y1="290" x2="350" y2="290" stroke="#111827" stroke-width="5" stroke-linecap="round"/>
+  <line x1="256" y1="398" x2="256" y2="384" stroke="#111827" stroke-width="5" stroke-linecap="round"/>
+  <line x1="148" y1="290" x2="162" y2="290" stroke="#111827" stroke-width="5" stroke-linecap="round"/>
+</svg>

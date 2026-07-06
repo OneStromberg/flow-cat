@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createMemoryGateway } from '@scourage/sheets-helper';
-import { listPlaces, addPlace, updatePlace, wazeUrl, googleMapsUrl, placeGraceMins } from './places.ts';
+import { listPlaces, addPlace, updatePlace, deletePlace, wazeUrl, googleMapsUrl, placeGraceMins } from './places.ts';
 
 test('wazeUrl builds a navigate link', () => {
   assert.equal(wazeUrl('32.08', '34.78'), 'https://waze.com/ul?ll=32.08,34.78&navigate=yes');
@@ -143,6 +143,16 @@ test('updatePlace rejects empty lat/lng and non-numeric radius', async () => {
   // valid update still succeeds
   const ok = await updatePlace(g, 'Site A', base as any);
   assert.equal(ok.ok, true);
+});
+
+test('deletePlace soft-deletes (active=no)', async () => {
+  const g = createMemoryGateway({ Places: [
+    ['place_name','active','lat','lng','place_id','address','client','geofence_radius_m','contact','base_rate','required_attributes','notes','grace_mins'],
+    ['Site A','yes','1','2','','','','100','','','','',''],
+  ]});
+  assert.equal((await deletePlace(g,'Site A')).ok, true);
+  assert.equal((await listPlaces(g)).find((p)=>p.name==='Site A')?.active, false);
+  assert.equal((await deletePlace(g,'Nope')).ok, false);
 });
 
 test('placeGraceMins falls back to default when blank/invalid', () => {

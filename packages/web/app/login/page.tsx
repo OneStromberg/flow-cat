@@ -13,6 +13,10 @@ export default async function LoginPage() {
       <h1 className="text-xl font-semibold">FlowCat — Log in</h1>
       <p className="mt-1 text-sm text-gray-600">Enter your phone number and teudat zeut.</p>
       <LoginForm />
+      <p className="mt-4 text-center text-sm text-gray-500">
+        New here?{' '}
+        <a href="/register" className="underline text-gray-700">Register</a>
+      </p>
     </main>
   );
 }

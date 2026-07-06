@@ -212,6 +212,14 @@ export async function checkOut(
   if (i < 0) return { ok: false, error: 'no open check-in found' };
 
   const checkInAt = (rows[i][idxCheckInAt] ?? '').trim();
+
+  // Reject checkout less than 60 seconds after check-in
+  const ci = Date.parse(checkInAt);
+  const co = Date.parse(params.at);
+  if (Number.isFinite(ci) && Number.isFinite(co) && co - ci < 60_000) {
+    return { ok: false, error: 'too_soon' };
+  }
+
   const hours = String(hoursBetween(checkInAt, params.at));
 
   const newRow = [...rows[i]];
