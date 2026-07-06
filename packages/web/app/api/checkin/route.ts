@@ -3,6 +3,7 @@ import { requireWorker } from '../../../lib/session';
 import { storeCheckinPhoto } from '../../../lib/gcs';
 import {
   listAssignments,
+  listAttendance,
   listInstances,
   listPlaces,
   listWorkers,
@@ -112,6 +113,14 @@ export async function POST(req: Request) {
       if (!result.ok) {
         return Response.json({ error: result.error }, { status: 409 });
       }
+      // RULE 3: Early check-in alert (>15 min before scheduled start)
+      try {
+        const startMs = Date.parse(localWallClockToUTC(instance.date, instance.start, COMPANY_TZ));
+        if (Number.isFinite(startMs) && startMs - Date.parse(at) > 15 * 60000) {
+          const admins = pickAdminChatIds(await listWorkers(gw));
+          await notifyAdmins(`⏱ ${worker.name} checked in early at ${instance.location} (${hhmm(at, COMPANY_TZ)}, starts ${instance.start}) — 📞 ${worker.phone}`, admins);
+        }
+      } catch (e) { console.error('early-checkin alert failed:', e); }
       return Response.json({ ok: true, inGeofence });
     } else {
       const result = await checkOut(gw, {
@@ -126,18 +135,53 @@ export async function POST(req: Request) {
       if (!result.ok) {
         return Response.json({ error: result.error }, { status: 409 });
       }
-      // Early-checkout alert: notify admins if worker leaves before scheduled shift end.
+      // Compute endMs for early-checkout detection (overnight rule applied)
       const [y, m, d] = instance.date.split('-').map(Number);
       const endDate = instance.end < instance.start
         ? new Date(Date.UTC(y, m - 1, d + 1)).toISOString().slice(0, 10)
         : instance.date;
       const endMs = Date.parse(localWallClockToUTC(endDate, instance.end, COMPANY_TZ));
-      if (Date.parse(at) < endMs) {
+
+      // Fetch admins once — shared by all alert blocks below (best-effort)
+      let admins: string[] = [];
+      try { admins = pickAdminChatIds(await listWorkers(gw)); } catch { /* no admins available */ }
+
+      // RULE 2: Early-checkout alert (>15 min before scheduled end)
+      if (Number.isFinite(endMs) && endMs - Date.parse(at) > 15 * 60000) {
         try {
-          const admins = pickAdminChatIds(await listWorkers(gw));
           await notifyAdmins(`⚠️ ${worker.name} checked out early at ${instance.location} (${hhmm(at, COMPANY_TZ)}, shift ends ${instance.end}) — 📞 ${worker.phone}`, admins);
         } catch (e) { console.error('early-checkout alert failed:', e); }
       }
+
+      // RULE 4: Short shift alert (<10 min)
+      try {
+        const mins = Math.round(Number(result.hours) * 60);
+        if (Number.isFinite(mins) && mins < 10) {
+          await notifyAdmins(`⚠️ ${worker.name} very short shift at ${instance.location} (${mins} min) — 📞 ${worker.phone}`, admins);
+        }
+      } catch (e) { console.error('short-shift alert failed:', e); }
+
+      // RULE 5: Coverage gap — a next shift at this location starts within 30 min and its assigned worker has no open attendance
+      try {
+        const nowMs = Date.parse(at);
+        const thirtyMins = 30 * 60000;
+        const locInstances = await listInstances(gw, { from: today, to: today, location: instance.location });
+        for (const next of locInstances) {
+          if (next.id === instanceId) continue;
+          const nextStartMs = Date.parse(localWallClockToUTC(next.date, next.start, COMPANY_TZ));
+          if (!Number.isFinite(nextStartMs)) continue;
+          const diff = nextStartMs - nowMs;
+          if (diff < 0 || diff > thirtyMins) continue;
+          const nextAssignments = await listAssignments(gw, { instanceId: next.id });
+          const otherPhones = nextAssignments.map((a) => a.employeePhone).filter((ph) => ph !== worker.phone);
+          if (otherPhones.length === 0) continue;
+          const nextAtt = await listAttendance(gw, { instanceId: next.id });
+          if (nextAtt.some((a) => a.status === 'open')) continue;
+          await notifyAdmins(`🔁 Coverage gap at ${instance.location}: ${worker.name} left before the next shift's worker checked in — 📞 ${worker.phone}`, admins);
+          break;
+        }
+      } catch (e) { console.error('coverage-gap alert failed:', e); }
+
       return Response.json({ ok: true, hours: result.hours, inGeofence });
     }
   } catch (err) {
