@@ -117,6 +117,21 @@ test('copyTemplate duplicates fields with new validity and carries assignments',
   assert.equal(rec.length, 1); assert.equal(rec[0].employeePhone, '15551230000');
 });
 
+// ── FIX 3 regression: duplicate (day, start) in dayTimes must be rejected ─
+test('validate rejects dayTimes with duplicate (day, start) pairs', async () => {
+  const g = createMemoryGateway({ ShiftTemplates: [['id', 'location', 'label', 'days', 'start', 'end', 'headcount', 'valid_from', 'valid_to', 'active', 'rate', 'instructions', 'day_times']] });
+  const r = await addTemplate(g, {
+    location: 'A', label: 'D', days: [], start: '', end: '', headcount: '1',
+    validFrom: '', validTo: '', rate: '', instructions: '',
+    dayTimes: [
+      { day: 'Mon', start: '08:00', end: '16:00' },
+      { day: 'Mon', start: '08:00', end: '20:00' }, // duplicate (Mon, 08:00)
+    ],
+  });
+  assert.equal(r.ok, false);
+  if (!r.ok) assert.ok(r.errors.dayTimes, 'should have a dayTimes validation error for duplicate (day, start)');
+});
+
 test('deleteTemplate soft-deletes (active=no) so listTemplates marks it inactive', async () => {
   const g = createMemoryGateway({ ShiftTemplates: [
     ['id','location','label','days','start','end','headcount','valid_from','valid_to','active','rate','instructions','day_times'],

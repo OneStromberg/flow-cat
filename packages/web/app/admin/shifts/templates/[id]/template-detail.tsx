@@ -14,7 +14,8 @@ const smInp = 'rounded-lg border border-gray-300 px-2 py-2 text-base';
 
 const DAY_ORDER = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] as const;
 type Day = (typeof DAY_ORDER)[number];
-type DayState = { on: boolean; start: string; end: string };
+type SlotState = { start: string; end: string };
+type DayState = { on: boolean; slots: SlotState[] };
 type DayGrid = Record<Day, DayState>;
 type RecurMode = 'forever' | 'nweeks' | 'fromto';
 
@@ -29,11 +30,15 @@ function addDays(dateStr: string, n: number): string {
 }
 
 function initGrid(template: ShiftTemplate): DayGrid {
-  const dayMap = new Map(template.dayTimes.map((dt) => [dt.day, dt]));
+  const daySlots = new Map<string, SlotState[]>();
+  for (const dt of template.dayTimes) {
+    const prev = daySlots.get(dt.day) ?? [];
+    daySlots.set(dt.day, [...prev, { start: dt.start, end: dt.end }]);
+  }
   return Object.fromEntries(
     DAY_ORDER.map((d) => {
-      const dt = dayMap.get(d);
-      return [d, { on: Boolean(dt), start: dt?.start ?? '', end: dt?.end ?? '' }];
+      const slots = daySlots.get(d);
+      return [d, { on: Boolean(slots), slots: slots ?? [{ start: '', end: '' }] }];
     }),
   ) as DayGrid;
 }
@@ -84,14 +89,29 @@ function EditTemplateForm({
   function toggleDay(day: Day) {
     setGrid((g) => ({ ...g, [day]: { ...g[day], on: !g[day].on } }));
   }
-  function setDayField(day: Day, field: 'start' | 'end', val: string) {
-    setGrid((g) => ({ ...g, [day]: { ...g[day], [field]: val } }));
+  function setSlotField(day: Day, idx: number, field: 'start' | 'end', val: string) {
+    setGrid((g) => {
+      const slots = g[day].slots.map((s, i) => (i === idx ? { ...s, [field]: val } : s));
+      return { ...g, [day]: { ...g[day], slots } };
+    });
+  }
+  function addSlot(day: Day) {
+    setGrid((g) => ({
+      ...g,
+      [day]: { ...g[day], slots: [...g[day].slots, { start: '', end: '' }] },
+    }));
+  }
+  function removeSlot(day: Day, idx: number) {
+    setGrid((g) => {
+      const slots = g[day].slots.filter((_, i) => i !== idx);
+      return { ...g, [day]: { ...g[day], slots: slots.length ? slots : [{ start: '', end: '' }] } };
+    });
   }
   function applyDefaults() {
     setGrid((g) => {
       const next = { ...g };
       for (const d of DAY_ORDER) {
-        if (next[d].on) next[d] = { ...next[d], start: defStart, end: defEnd };
+        if (next[d].on) next[d] = { ...next[d], slots: next[d].slots.map(() => ({ start: defStart, end: defEnd })) };
       }
       return next;
     });
@@ -116,12 +136,14 @@ function EditTemplateForm({
     const clientErrors: Record<string, string> = {};
     if (enabled.length === 0) clientErrors.dayTimes = 'Select at least one day.';
     for (const d of enabled) {
-      if (!grid[d].start || !grid[d].end)
-        clientErrors.dayTimes = `${d} is enabled but missing a start or end time.`;
+      for (const slot of grid[d].slots) {
+        if (!slot.start || !slot.end)
+          clientErrors.dayTimes = `${d} has a slot missing a start or end time.`;
+      }
     }
     if (Object.keys(clientErrors).length) { setErrors(clientErrors); return; }
 
-    const dayTimes = enabled.map((d) => ({ day: d, start: grid[d].start, end: grid[d].end }));
+    const dayTimes = enabled.flatMap((d) => grid[d].slots.map((s) => ({ day: d, start: s.start, end: s.end })));
     const { validFrom, validTo } = getDateRange();
 
     setBusy(true);
@@ -204,37 +226,72 @@ function EditTemplateForm({
               Apply to checked days
             </button>
           </div>
-          <div className="mt-3 space-y-2">
+          <div className="mt-3 space-y-3">
             {DAY_ORDER.map((day) => {
               const row = grid[day];
               return (
-                <div key={day} className="flex items-center gap-3">
-                  <label className="flex w-14 shrink-0 cursor-pointer items-center gap-1.5 text-sm font-medium text-gray-700">
-                    <input
-                      type="checkbox"
-                      checked={row.on}
-                      onChange={() => toggleDay(day)}
-                      className="h-5 w-5 rounded border-gray-300"
-                    />
-                    {day}
-                  </label>
-                  <input
-                    type="time"
-                    value={row.start}
-                    disabled={!row.on}
-                    onChange={(e) => setDayField(day, 'start', e.target.value)}
-                    className={smInp + ' w-full disabled:opacity-40'}
-                    aria-label={`${day} start`}
-                  />
-                  <span className="shrink-0 text-xs text-gray-400">–</span>
-                  <input
-                    type="time"
-                    value={row.end}
-                    disabled={!row.on}
-                    onChange={(e) => setDayField(day, 'end', e.target.value)}
-                    className={smInp + ' w-full disabled:opacity-40'}
-                    aria-label={`${day} end`}
-                  />
+                <div key={day} className="space-y-1">
+                  {row.slots.map((slot, idx) => (
+                    <div key={idx} className="flex items-center gap-3">
+                      {/* checkbox + day label — only on first slot row */}
+                      {idx === 0 ? (
+                        <label className="flex w-14 shrink-0 cursor-pointer items-center gap-1.5 text-sm font-medium text-gray-700">
+                          <input
+                            type="checkbox"
+                            checked={row.on}
+                            onChange={() => toggleDay(day)}
+                            className="h-5 w-5 rounded border-gray-300"
+                          />
+                          {day}
+                        </label>
+                      ) : (
+                        <div className="w-14 shrink-0" />
+                      )}
+                      <input
+                        type="time"
+                        value={slot.start}
+                        disabled={!row.on}
+                        onChange={(e) => setSlotField(day, idx, 'start', e.target.value)}
+                        className={smInp + ' w-full disabled:opacity-40'}
+                        aria-label={`${day} shift ${idx + 1} start`}
+                      />
+                      <span className="shrink-0 text-xs text-gray-400">–</span>
+                      <input
+                        type="time"
+                        value={slot.end}
+                        disabled={!row.on}
+                        onChange={(e) => setSlotField(day, idx, 'end', e.target.value)}
+                        className={smInp + ' w-full disabled:opacity-40'}
+                        aria-label={`${day} shift ${idx + 1} end`}
+                      />
+                      {/* remove slot — only when enabled and 2+ slots exist */}
+                      {row.on && row.slots.length > 1 ? (
+                        <button
+                          type="button"
+                          onClick={() => removeSlot(day, idx)}
+                          className="shrink-0 text-lg leading-none text-gray-400 hover:text-red-500"
+                          aria-label={`Remove ${day} shift ${idx + 1}`}
+                        >
+                          ×
+                        </button>
+                      ) : (
+                        <div className="w-5 shrink-0" />
+                      )}
+                    </div>
+                  ))}
+                  {/* add shift button — only when day is enabled */}
+                  {row.on && (
+                    <div className="flex items-center gap-3">
+                      <div className="w-14 shrink-0" />
+                      <button
+                        type="button"
+                        onClick={() => addSlot(day)}
+                        className="text-xs text-blue-600 hover:text-blue-800"
+                      >
+                        + add shift
+                      </button>
+                    </div>
+                  )}
                 </div>
               );
             })}
