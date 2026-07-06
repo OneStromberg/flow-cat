@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createMemoryGateway } from '@scourage/sheets-helper';
-import { findMissedCheckins } from './missed-checkins.ts';
+import { findMissedCheckins, lastAlertAtByKey, shouldRealert } from './missed-checkins.ts';
 
 function seed(extra: Record<string, string[][]> = {}) {
   return createMemoryGateway({
@@ -47,4 +47,17 @@ test('start time is interpreted in the given tz (Jerusalem)', async () => {
   assert.equal(m.length, 1); assert.equal(m[0].type, 'in');
   // 08:05 Jerusalem = 05:05 UTC; within grace → not missed
   assert.equal((await findMissedCheckins(g, '2026-07-01T05:05:00.000Z', 10, 'Asia/Jerusalem')).length, 0);
+});
+
+test('lastAlertAtByKey returns latest sent_at; shouldRealert respects the window', async () => {
+  const g = createMemoryGateway({ Alerts: [
+    ['instance_id','employee_phone','type','sent_at'],
+    ['i1','p1','in','2026-07-06T08:00:00.000Z'],
+    ['i1','p1','in','2026-07-06T08:05:00.000Z'],
+  ]});
+  const m = await lastAlertAtByKey(g);
+  assert.equal(m.get('i1|p1|in'), '2026-07-06T08:05:00.000Z');
+  assert.equal(shouldRealert(m.get('i1|p1|in'), '2026-07-06T08:09:00.000Z', 5*60000), false);
+  assert.equal(shouldRealert(m.get('i1|p1|in'), '2026-07-06T08:11:00.000Z', 5*60000), true);
+  assert.equal(shouldRealert(undefined, '2026-07-06T08:11:00.000Z', 5*60000), true);
 });
