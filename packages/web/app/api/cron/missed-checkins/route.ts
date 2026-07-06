@@ -1,5 +1,5 @@
 import { getGateway, COMPANY_TZ } from '../../../../lib/sheets';
-import { findMissedCheckins, listSentAlerts, recordAlerts, listWorkers } from '@scourage/worklog-core';
+import { findMissedCheckins, lastAlertAtByKey, shouldRealert, recordAlerts, listWorkers } from '@scourage/worklog-core';
 import { notifyAdmins, pickAdminChatIds } from '../../../../lib/telegram';
 
 export const runtime = 'nodejs';
@@ -19,14 +19,14 @@ export async function GET(req: Request) {
 
   try {
     const missed = await findMissedCheckins(gw, now, 10, COMPANY_TZ);
-    const sent = await listSentAlerts(gw);
-    const fresh = missed.filter(m => !sent.has(`${m.instanceId}|${m.employeePhone}|${m.type}`));
+    const lastAt = await lastAlertAtByKey(gw);
+    const due = missed.filter((m) => shouldRealert(lastAt.get(`${m.instanceId}|${m.employeePhone}|${m.type}`), now, 5 * 60000));
 
-    if (fresh.length > 0) {
+    if (due.length > 0) {
       const workers = await listWorkers(gw);
       const phoneToName = new Map(workers.map(w => [w.phone, w.name]));
 
-      const lines = fresh.map(m => {
+      const lines = due.map(m => {
         const name = phoneToName.get(m.employeePhone) || m.employeePhone;
         const checkType = m.type === 'in' ? 'check-in' : 'check-out';
         const expectedTime = formatExpectedTime(m.expectedAt);
@@ -37,10 +37,10 @@ export async function GET(req: Request) {
       const admins = pickAdminChatIds(workers);
 
       await notifyAdmins(message, admins);
-      await recordAlerts(gw, fresh);
+      await recordAlerts(gw, due);
     }
 
-    return Response.json({ ok: true, missed: missed.length, alerted: fresh.length });
+    return Response.json({ ok: true, missed: missed.length, alerted: due.length });
   } catch (err) {
     console.error('missed-checkins cron failed:', err);
     try {
