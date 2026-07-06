@@ -181,9 +181,16 @@ export async function generateInstances(
   // Load all active templates
   const templates = (await listTemplates(gateway)).filter((t) => t.active);
 
-  // Load existing instance ids into a Set (idempotency)
+  // Build composite idempotency map: template_id|date|start → existing row id
   const instanceRows = rowsToObjects(await gateway.readTab('ShiftInstances'));
-  const existingIds = new Set(instanceRows.map((o) => (o.id ?? '').trim()).filter(Boolean));
+  const existingByComposite = new Map<string, string>();
+  for (const o of instanceRows) {
+    const tid = (o.template_id ?? '').trim();
+    const oDate = (o.date ?? '').trim();
+    const oStart = (o.start ?? '').trim();
+    const id = (o.id ?? '').trim();
+    if (tid && oDate && oStart && id) existingByComposite.set(`${tid}|${oDate}|${oStart}`, id);
+  }
 
   // Load existing assignment keys (instanceId|phone, ANY status) into a Set (idempotency)
   const assignRows = rowsToObjects(await gateway.readTab('ShiftAssignments'));
@@ -207,7 +214,6 @@ export async function generateInstances(
   for (const tpl of templates) {
     // Load active recurring assignments for this template
     const recurring = (await listRecurring(gateway, tpl.id)).filter((r) => r.active);
-    const dayMap = new Map(tpl.dayTimes.map((d) => [d.day, d]));
 
     for (let offset = 0; offset < horizonDays; offset++) {
       const date = addDays(today, offset);
@@ -216,46 +222,50 @@ export async function generateInstances(
       if (tpl.validFrom && date < tpl.validFrom) continue;
       if (tpl.validTo && date > tpl.validTo) continue;
 
-      // Check weekday via dayMap (covers both legacy and per-day templates)
+      // Collect all slots for this weekday (supports multiple shifts on same day)
       const wd = weekday(date);
-      const dt = dayMap.get(wd);
-      if (!dt) continue;
+      const slots = tpl.dayTimes.filter((d) => d.day === wd);
+      if (!slots.length) continue;
 
-      const instanceId = `${tpl.id}_${compact(date)}`;
+      for (const slot of slots) {
+        const compositeKey = `${tpl.id}|${date}|${slot.start}`;
+        const existingId = existingByComposite.get(compositeKey);
+        const instanceId = existingId ?? `${tpl.id}_${compact(date)}_${slot.start.replace(':', '')}`;
 
-      // Create instance if not already present
-      if (!existingIds.has(instanceId)) {
-        const record: Record<string, string> = {
-          id: instanceId,
-          template_id: tpl.id,
-          location: tpl.location,
-          date,
-          start: dt.start,
-          end: dt.end,
-          headcount: String(tpl.headcount),
-          status: 'scheduled',
-          generated_at: new Date().toISOString(),
-        };
-        await gateway.appendRow('ShiftInstances', objectToRow(record, instanceHeader));
-        existingIds.add(instanceId);
-        instancesCreated++;
-      }
-
-      // Seed recurring assignments
-      for (const rec of recurring) {
-        const key = `${instanceId}|${rec.employeePhone}`;
-        if (!existingAssignKeys.has(key)) {
-          const assignRecord: Record<string, string> = {
-            instance_id: instanceId,
-            employee_phone: rec.employeePhone,
-            source: 'recurring',
-            status: 'assigned',
-            assigned_at: new Date().toISOString(),
-            assigned_by: 'system',
+        // Create instance if not already present (identified by composite key)
+        if (!existingId) {
+          const record: Record<string, string> = {
+            id: instanceId,
+            template_id: tpl.id,
+            location: tpl.location,
+            date,
+            start: slot.start,
+            end: slot.end,
+            headcount: String(tpl.headcount),
+            status: 'scheduled',
+            generated_at: new Date().toISOString(),
           };
-          await gateway.appendRow('ShiftAssignments', objectToRow(assignRecord, assignHeader));
-          existingAssignKeys.add(key);
-          assignmentsSeeded++;
+          await gateway.appendRow('ShiftInstances', objectToRow(record, instanceHeader));
+          existingByComposite.set(compositeKey, instanceId);
+          instancesCreated++;
+        }
+
+        // Seed recurring assignments against the real instance id
+        for (const rec of recurring) {
+          const key = `${instanceId}|${rec.employeePhone}`;
+          if (!existingAssignKeys.has(key)) {
+            const assignRecord: Record<string, string> = {
+              instance_id: instanceId,
+              employee_phone: rec.employeePhone,
+              source: 'recurring',
+              status: 'assigned',
+              assigned_at: new Date().toISOString(),
+              assigned_by: 'system',
+            };
+            await gateway.appendRow('ShiftAssignments', objectToRow(assignRecord, assignHeader));
+            existingAssignKeys.add(key);
+            assignmentsSeeded++;
+          }
         }
       }
     }
@@ -279,9 +289,16 @@ export async function seedTemplateInstances(
   const tpl = (await listTemplates(gateway)).find((t) => t.id === templateId && t.active);
   if (!tpl) return { instancesCreated: 0, assignmentsSeeded: 0 };
 
-  // Load existing instance ids into a Set (idempotency)
+  // Build composite idempotency map: template_id|date|start → existing row id
   const instanceRows = rowsToObjects(await gateway.readTab('ShiftInstances'));
-  const existingIds = new Set(instanceRows.map((o) => (o.id ?? '').trim()).filter(Boolean));
+  const existingByComposite = new Map<string, string>();
+  for (const o of instanceRows) {
+    const tid = (o.template_id ?? '').trim();
+    const oDate = (o.date ?? '').trim();
+    const oStart = (o.start ?? '').trim();
+    const id = (o.id ?? '').trim();
+    if (tid && oDate && oStart && id) existingByComposite.set(`${tid}|${oDate}|${oStart}`, id);
+  }
 
   // Load existing assignment keys (instanceId|phone, ANY status) into a Set (idempotency)
   const assignRows = rowsToObjects(await gateway.readTab('ShiftAssignments'));
@@ -304,7 +321,6 @@ export async function seedTemplateInstances(
 
   // Load active recurring assignments for this template
   const recurring = (await listRecurring(gateway, tpl.id)).filter((r) => r.active);
-  const dayMap = new Map(tpl.dayTimes.map((d) => [d.day, d]));
 
   for (let offset = 0; offset < horizonDays; offset++) {
     const date = addDays(today, offset);
@@ -313,46 +329,50 @@ export async function seedTemplateInstances(
     if (tpl.validFrom && date < tpl.validFrom) continue;
     if (tpl.validTo && date > tpl.validTo) continue;
 
-    // Check weekday via dayMap
+    // Collect all slots for this weekday (supports multiple shifts on same day)
     const wd = weekday(date);
-    const dt = dayMap.get(wd);
-    if (!dt) continue;
+    const slots = tpl.dayTimes.filter((d) => d.day === wd);
+    if (!slots.length) continue;
 
-    const instanceId = `${tpl.id}_${compact(date)}`;
+    for (const slot of slots) {
+      const compositeKey = `${tpl.id}|${date}|${slot.start}`;
+      const existingId = existingByComposite.get(compositeKey);
+      const instanceId = existingId ?? `${tpl.id}_${compact(date)}_${slot.start.replace(':', '')}`;
 
-    // Create instance if not already present
-    if (!existingIds.has(instanceId)) {
-      const record: Record<string, string> = {
-        id: instanceId,
-        template_id: tpl.id,
-        location: tpl.location,
-        date,
-        start: dt.start,
-        end: dt.end,
-        headcount: String(tpl.headcount),
-        status: 'scheduled',
-        generated_at: new Date().toISOString(),
-      };
-      await gateway.appendRow('ShiftInstances', objectToRow(record, instanceHeader));
-      existingIds.add(instanceId);
-      instancesCreated++;
-    }
-
-    // Seed recurring assignments into this instance
-    for (const rec of recurring) {
-      const key = `${instanceId}|${rec.employeePhone}`;
-      if (!existingAssignKeys.has(key)) {
-        const assignRecord: Record<string, string> = {
-          instance_id: instanceId,
-          employee_phone: rec.employeePhone,
-          source: 'recurring',
-          status: 'assigned',
-          assigned_at: new Date().toISOString(),
-          assigned_by: 'system',
+      // Create instance if not already present (identified by composite key)
+      if (!existingId) {
+        const record: Record<string, string> = {
+          id: instanceId,
+          template_id: tpl.id,
+          location: tpl.location,
+          date,
+          start: slot.start,
+          end: slot.end,
+          headcount: String(tpl.headcount),
+          status: 'scheduled',
+          generated_at: new Date().toISOString(),
         };
-        await gateway.appendRow('ShiftAssignments', objectToRow(assignRecord, assignHeader));
-        existingAssignKeys.add(key);
-        assignmentsSeeded++;
+        await gateway.appendRow('ShiftInstances', objectToRow(record, instanceHeader));
+        existingByComposite.set(compositeKey, instanceId);
+        instancesCreated++;
+      }
+
+      // Seed recurring assignments against the real instance id
+      for (const rec of recurring) {
+        const key = `${instanceId}|${rec.employeePhone}`;
+        if (!existingAssignKeys.has(key)) {
+          const assignRecord: Record<string, string> = {
+            instance_id: instanceId,
+            employee_phone: rec.employeePhone,
+            source: 'recurring',
+            status: 'assigned',
+            assigned_at: new Date().toISOString(),
+            assigned_by: 'system',
+          };
+          await gateway.appendRow('ShiftAssignments', objectToRow(assignRecord, assignHeader));
+          existingAssignKeys.add(key);
+          assignmentsSeeded++;
+        }
       }
     }
   }

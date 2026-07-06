@@ -26,10 +26,10 @@ test('generates weekday instances within horizon, idempotent, seeds recurring', 
   const ins = await listInstances(g, { from: '2026-07-01', to: '2026-07-31' });
   assert.deepEqual(
     ins.map((i) => i.id).sort(),
-    ['tpl_1_20260701', 'tpl_1_20260708'],
+    ['tpl_1_20260701_2200', 'tpl_1_20260708_2200'],
   );
   assert.equal(ins[0].end, '06:00');
-  const a = await listAssignments(g, { instanceId: 'tpl_1_20260701' });
+  const a = await listAssignments(g, { instanceId: 'tpl_1_20260701_2200' });
   assert.equal(a.length, 1);
   assert.equal(a[0].source, 'recurring');
   const r2 = await generateInstances(g, '2026-07-01', 14);
@@ -47,7 +47,7 @@ test('clips to valid_from', async () => {
   const ins = await listInstances(g, { from: '2026-07-01', to: '2026-07-31' });
   assert.deepEqual(
     ins.map((i) => i.id),
-    ['tpl_1_20260708'],
+    ['tpl_1_20260708_2200'],
   );
 });
 
@@ -189,4 +189,34 @@ test('seedTemplateInstances seeds recurring into existing instances (idempotent)
   // Idempotent: second run seeds nothing new
   const r2 = await seedTemplateInstances(g, 't1', '2026-07-06', 42);
   assert.equal(r2.assignmentsSeeded, 0);
+});
+
+test('generateInstances creates one instance per same-day slot; composite-idempotent vs old id format', async () => {
+  // 2026-07-06 is a Monday
+  // Template has two Mon slots: 06:00-14:00 and 14:00-22:00
+  // Pre-seed the 06:00 slot with an OLD-format id (t1_20260706) to prove composite idempotency
+  const g = createMemoryGateway({
+    ShiftTemplates: [
+      ['id', 'location', 'label', 'days', 'start', 'end', 'headcount', 'valid_from', 'valid_to', 'active', 'rate', 'instructions', 'day_times'],
+      ['t1', 'Site A', 'Day', 'Mon', '06:00', '22:00', '1', '', '', 'yes', '', '', 'Mon=06:00-14:00;Mon=14:00-22:00'],
+    ],
+    RecurringAssignments: [['template_id', 'employee_phone', 'active', 'created_at']],
+    ShiftInstances: [
+      ['id', 'template_id', 'location', 'date', 'start', 'end', 'headcount', 'status', 'generated_at'],
+      ['t1_20260706', 't1', 'Site A', '2026-07-06', '06:00', '14:00', '1', 'scheduled', ''],
+    ],
+    ShiftAssignments: [['instance_id', 'employee_phone', 'source', 'status', 'assigned_at', 'assigned_by']],
+  });
+  await generateInstances(g, '2026-07-06', 7);
+  const inst = rowsToObjects(g.dump()['ShiftInstances']).filter(
+    (o) => o.template_id === 't1' && o.date === '2026-07-06',
+  );
+  const starts = inst.map((o) => o.start).sort();
+  assert.deepEqual(starts, ['06:00', '14:00']); // exactly two slots, no duplicate 06:00
+  // old-format id is preserved for the 06:00 slot
+  const slot06 = inst.find((o) => o.start === '06:00');
+  assert.equal(slot06?.id, 't1_20260706');
+  // new-format id for the 14:00 slot
+  const slot14 = inst.find((o) => o.start === '14:00');
+  assert.equal(slot14?.id, 't1_20260706_1400');
 });

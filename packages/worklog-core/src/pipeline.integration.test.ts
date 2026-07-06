@@ -48,7 +48,7 @@ test('END-TO-END: worker → place → shift → generate → check-in/out → p
   const instances = await listInstances(g, { from: TODAY, to: TODAY });
   assert.equal(instances.length, 1);
   const instanceId = instances[0].id;
-  assert.equal(instanceId, `${tplId}_20260701`);
+  assert.equal(instanceId, `${tplId}_20260701_0800`);
 
   // 4. Worker checks in at 08:00 and out at 16:00 (8h).
   const ci = await checkIn(g, { instanceId, employeePhone: PHONE, at: `${TODAY}T08:00:00.000Z`, lat: '32.08', lng: '34.78', photo: '', inGeofence: true });
