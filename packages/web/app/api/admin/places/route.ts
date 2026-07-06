@@ -1,6 +1,6 @@
 import { getGateway } from '../../../../lib/sheets';
 import { requireAdmin } from '../../../../lib/session';
-import { addPlace, updatePlace, type AddPlaceInput } from '@scourage/worklog-core';
+import { addPlace, updatePlace, deletePlace, type AddPlaceInput } from '@scourage/worklog-core';
 
 export const runtime = 'nodejs';
 
@@ -28,6 +28,30 @@ export async function POST(req: Request) {
     return Response.json({ ok: true });
   } catch (err) {
     console.error('add place failed:', err);
+    return Response.json({ error: 'save failed' }, { status: 503 });
+  }
+}
+
+export async function DELETE(req: Request) {
+  const admin = await requireAdmin();
+  if (!admin) return Response.json({ error: 'unauthorized' }, { status: 401 });
+
+  let body: unknown;
+  try {
+    body = await req.json();
+  } catch {
+    return Response.json({ error: 'bad json' }, { status: 400 });
+  }
+  const b = (body ?? {}) as Record<string, unknown>;
+  const name = typeof b.name === 'string' ? b.name : '';
+  if (!name) return Response.json({ error: 'name required' }, { status: 400 });
+
+  try {
+    const r = await deletePlace(getGateway(), name);
+    if (!r.ok) return Response.json({ error: r.error }, { status: 404 });
+    return Response.json({ ok: true });
+  } catch (err) {
+    console.error('delete place failed:', err);
     return Response.json({ error: 'save failed' }, { status: 503 });
   }
 }

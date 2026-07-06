@@ -115,6 +115,26 @@ export async function updatePlace(
   return { ok: true };
 }
 
+export async function deletePlace(
+  gateway: SheetsGateway,
+  name: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const rows = await gateway.readTab('Places');
+  if (rows.length === 0) return { ok: false, error: 'Not found' };
+  const header = rows[0].map((h) => h.trim());
+  const nameIdx = header.indexOf('place_name');
+  const activeIdx = header.indexOf('active');
+
+  const i = rows.findIndex((r, idx) => idx > 0 && (r[nameIdx] ?? '').trim() === name);
+  if (i < 0) return { ok: false, error: 'Not found' };
+
+  const row = [...rows[i]];
+  if (activeIdx >= 0) row[activeIdx] = 'no';
+
+  await gateway.updateRow('Places', i + 1, row);
+  return { ok: true };
+}
+
 function numeric(s: string): boolean {
   return s.trim() !== '' && Number.isFinite(Number(s));
 }

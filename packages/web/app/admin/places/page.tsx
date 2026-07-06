@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import { requireAdmin } from '../../../lib/session';
 import { getRequestGateway } from '../../../lib/sheets';
 import { listPlaces, wazeUrl, googleMapsUrl } from '@scourage/worklog-core';
+import { DeletePlaceButton } from './DeletePlaceButton';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -9,7 +10,10 @@ export const dynamic = 'force-dynamic';
 export default async function PlacesPage() {
   const admin = await requireAdmin();
   if (!admin) redirect('/');
-  const places = await listPlaces(getRequestGateway());
+  const allPlaces = await listPlaces(getRequestGateway());
+  const places = allPlaces
+    .filter((p) => p.active)
+    .sort((a, b) => a.name.localeCompare(b.name));
 
   return (
     <main className="mx-auto max-w-3xl p-5">
@@ -26,8 +30,8 @@ export default async function PlacesPage() {
             <th className="py-2">Name</th>
             <th>Client</th>
             <th>Address</th>
-            <th>Active</th>
             <th>Navigate</th>
+            <th></th>
           </tr>
         </thead>
         <tbody>
@@ -40,7 +44,6 @@ export default async function PlacesPage() {
                 </td>
                 <td className="text-gray-600">{p.client || '—'}</td>
                 <td className="text-gray-600">{p.address || '—'}</td>
-                <td>{p.active ? 'yes' : 'no'}</td>
                 <td>
                   {hasCoords ? (
                     <span className="flex gap-3">
@@ -48,6 +51,9 @@ export default async function PlacesPage() {
                       <a href={googleMapsUrl(p.lat, p.lng, p.placeId)} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">Google Maps</a>
                     </span>
                   ) : '—'}
+                </td>
+                <td className="text-right">
+                  <DeletePlaceButton name={p.name} />
                 </td>
               </tr>
             );

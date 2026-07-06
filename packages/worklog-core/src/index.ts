@@ -2,7 +2,7 @@ export type { Worker, BrokenWorker } from './data/workers.ts';
 export { findWorker, findWorkerByToken, authenticateWorker, listWorkers, listBrokenWorkers, linkTelegramChat } from './data/workers.ts';
 export { TRANSPORTATION, HEBREW_LEVEL, PAY_TYPE, SCHEDULE, GENDER } from './data/worker-fields.ts';
 export { generateToken } from './data/tokens.ts';
-export { loadActivePlaces, listPlaces, addPlace, updatePlace, wazeUrl, googleMapsUrl, placeGraceMins } from './data/places.ts';
+export { loadActivePlaces, listPlaces, addPlace, updatePlace, deletePlace, wazeUrl, googleMapsUrl, placeGraceMins } from './data/places.ts';
 export type { Place, AddPlaceInput } from './data/places.ts';
 export { loadCities } from './data/cities.ts';
 export { appendWorkLog } from './data/worklogs.ts';
