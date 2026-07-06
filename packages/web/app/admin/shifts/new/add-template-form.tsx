@@ -53,6 +53,7 @@ export function AddTemplateForm({ places }: Props) {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [fatal, setFatal] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [syncNote, setSyncNote] = useState<string | null>(null);
 
   // grid helpers
   function toggleDay(day: Day) {
@@ -111,7 +112,12 @@ export function AddTemplateForm({ places }: Props) {
       });
       const data = await res.json();
       if (res.ok && data.ok) {
-        router.push('/admin/shifts');
+        if (data.seedWarning) {
+          setSyncNote('Saved. Staffing is syncing — refresh in a moment.');
+          setTimeout(() => router.push('/admin/shifts'), 1800);
+        } else {
+          router.push('/admin/shifts');
+        }
       } else if (res.status === 400 && data.errors) {
         setErrors(data.errors);
         setBusy(false);
@@ -342,6 +348,7 @@ export function AddTemplateForm({ places }: Props) {
         {errors.instructions && <p className="mt-1 text-sm text-red-600">{errors.instructions}</p>}
       </div>
 
+      {syncNote && <p className="text-sm text-gray-500">{syncNote}</p>}
       {fatal && <p className="text-sm text-red-600">{fatal}</p>}
       <button
         type="submit"

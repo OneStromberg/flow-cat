@@ -1,6 +1,6 @@
 import { getGateway } from '../../../../lib/sheets';
 import { requireAdmin } from '../../../../lib/session';
-import { addRecurring, removeRecurring, generateInstances } from '@scourage/worklog-core';
+import { addRecurring, removeRecurring, seedTemplateInstances } from '@scourage/worklog-core';
 
 export const runtime = 'nodejs';
 
@@ -27,12 +27,15 @@ export async function POST(req: Request) {
 
   if (action === 'addRecurring') {
     await addRecurring(gw, templateId, phone);
-    // Non-blocking seeding: seed future instances; failure must not fail the request
     const today = new Date().toISOString().slice(0, 10);
-    generateInstances(gw, today).catch((err) => {
-      console.error('[shift-assignments] generateInstances failed (non-blocking):', err);
-    });
-    return Response.json({ ok: true });
+    let seedWarning = false;
+    try {
+      await seedTemplateInstances(gw, templateId, today);
+    } catch (e) {
+      seedWarning = true;
+      console.error('[shift-assignments] seed failed:', e);
+    }
+    return Response.json({ ok: true, seedWarning });
   }
 
   if (action === 'removeRecurring') {
