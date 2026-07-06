@@ -21,7 +21,7 @@ export { createSession, readSession } from './session/session.ts';
 export { addWorker, type AddWorkerInput, updateWorker, type UpdateWorkerInput } from './data/add-worker.ts';
 export { listTemplates, addTemplate, updateTemplate, deleteTemplate, copyTemplate, parseTemplate, WEEKDAYS, type ShiftTemplate, type AddTemplateInput, type DayTime } from './data/shift-templates.ts';
 export { listRecurring, addRecurring, removeRecurring, listAssignments, assignManual, removeAssignment, type RecurringAssignment, type ShiftAssignment } from './data/shift-assignments.ts';
-export { generateInstances, listInstances, cancelInstance, updateInstance, applyTemplateEdit, type ShiftInstance } from './data/shift-instances.ts';
+export { generateInstances, seedTemplateInstances, listInstances, cancelInstance, updateInstance, applyTemplateEdit, type ShiftInstance } from './data/shift-instances.ts';
 export { distanceMeters, withinGeofence, hoursBetween, checkIn, checkOut, adminCorrect, listAttendance, type Attendance } from './data/attendance.ts';
 export { instancesOverlap, findConflicts, type ShiftWindow, type Conflict } from './data/conflicts.ts';
 export { PAY_STRUCTURE, resolveHourlyRate, computePay, listAdjustments, addAdjustment, type WorkedItem, type Adjustment, type PayBreakdown } from './data/payroll.ts';
