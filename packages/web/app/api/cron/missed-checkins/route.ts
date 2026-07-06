@@ -20,7 +20,15 @@ export async function GET(req: Request) {
   try {
     const missed = await findMissedCheckins(gw, now, 10, COMPANY_TZ);
     const lastAt = await lastAlertAtByKey(gw);
-    const due = missed.filter((m) => shouldRealert(lastAt.get(`${m.instanceId}|${m.employeePhone}|${m.type}`), now, 5 * 60000));
+    const HORIZON_MS = 2 * 60 * 60 * 1000; // stop re-alerting ~2h after the expected time
+    const nowMs = Date.parse(now);
+    const due = missed.filter((m) => {
+      const key = `${m.instanceId}|${m.employeePhone}|${m.type}`;
+      const last = lastAt.get(key);
+      if (m.type === 'out') return !last;                         // check-out: alert once ever
+      if (Number.isFinite(nowMs) && nowMs - Date.parse(m.expectedAt) > HORIZON_MS) return false; // stale no-show: stop
+      return shouldRealert(last, now, 4 * 60 * 1000);             // check-in: repeat (~5min cron, 4min gap avoids drift)
+    });
 
     if (due.length > 0) {
       const workers = await listWorkers(gw);

@@ -168,10 +168,11 @@ export async function POST(req: Request) {
         const locInstances = await listInstances(gw, { from: today, to: today, location: instance.location });
         for (const next of locInstances) {
           if (next.id === instanceId) continue;
+          if ((next.status ?? '') === 'cancelled') continue;
           const nextStartMs = Date.parse(localWallClockToUTC(next.date, next.start, COMPANY_TZ));
           if (!Number.isFinite(nextStartMs)) continue;
           const diff = nextStartMs - nowMs;
-          if (diff < 0 || diff > thirtyMins) continue;
+          if (diff > thirtyMins || diff < -thirtyMins) continue;
           const nextAssignments = await listAssignments(gw, { instanceId: next.id });
           const otherPhones = nextAssignments.map((a) => a.employeePhone).filter((ph) => ph !== worker.phone);
           if (otherPhones.length === 0) continue;
