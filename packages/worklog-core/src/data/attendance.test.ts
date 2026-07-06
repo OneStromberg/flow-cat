@@ -66,3 +66,13 @@ test('checkIn allows up to headcount distinct workers', async () => {
   assert.equal((await checkIn(g, { instanceId:'i1', employeePhone:'p2', at:'2026-07-01T08:00:00.000Z', lat:'', lng:'', photo:'', inGeofence:true })).ok, true);
   assert.equal((await checkIn(g, { instanceId:'i1', employeePhone:'p3', at:'2026-07-01T08:00:00.000Z', lat:'', lng:'', photo:'', inGeofence:true })).ok, false);
 });
+test('checkOut rejects a checkout less than 60s after check-in', async () => {
+  const g = createMemoryGateway({ Attendance: [
+    ['id','instance_id','employee_phone','date','check_in_at','check_in_lat','check_in_lng','check_in_photo','check_in_in_geofence','check_out_at','check_out_lat','check_out_lng','check_out_photo','check_out_in_geofence','hours','status'],
+    ['a1','i1','p1','2026-07-06','2026-07-06T08:00:00.000Z','','','','yes','','','','','','','open'],
+  ]});
+  const tooSoon = await checkOut(g, { instanceId:'i1', employeePhone:'p1', at:'2026-07-06T08:00:30.000Z', lat:'', lng:'', photo:'', inGeofence:true });
+  assert.equal(tooSoon.ok, false);
+  const ok = await checkOut(g, { instanceId:'i1', employeePhone:'p1', at:'2026-07-06T08:01:30.000Z', lat:'', lng:'', photo:'', inGeofence:true });
+  assert.equal(ok.ok, true);
+});
