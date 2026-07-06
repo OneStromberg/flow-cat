@@ -108,6 +108,33 @@ export interface UpdateWorkerInput {
   admin: boolean;
 }
 
+export async function setWorkerPhone(
+  gateway: SheetsGateway,
+  token: string,
+  newPhone: string,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const rows = await gateway.readTab('Workers');
+  const header = rows[0].map((h) => h.trim());
+  const tokenCol = header.indexOf('token');
+  const phoneCol = header.indexOf('phone');
+
+  const idx = rows.findIndex((r, i) => i > 0 && (r[tokenCol] ?? '').trim() === token);
+  if (idx < 0) return { ok: false, error: 'Worker not found' };
+
+  const p = normalizePhone(newPhone);
+  if (!p) return { ok: false, error: 'Phone required' };
+
+  if (rows.some((r, j) => j > 0 && j !== idx && normalizePhone(r[phoneCol] ?? '') === p)) {
+    return { ok: false, error: 'A worker with this phone already exists' };
+  }
+
+  const newRow = [...rows[idx]];
+  while (newRow.length < header.length) newRow.push('');
+  newRow[phoneCol] = p;
+  await gateway.updateRow('Workers', idx + 1, newRow);
+  return { ok: true };
+}
+
 export async function updateWorker(
   gateway: SheetsGateway,
   phone: string,

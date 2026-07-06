@@ -1,8 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createMemoryGateway } from '@scourage/sheets-helper';
-import { addWorker, updateWorker } from './add-worker.ts';
-import { findWorker } from './workers.ts';
+import { addWorker, updateWorker, setWorkerPhone } from './add-worker.ts';
+import { findWorker, listWorkers } from './workers.ts';
 
 const base = {
   phone: '+1 555-222-0000', teudatZeut: '987654321', name: 'New Guy',
@@ -66,6 +66,25 @@ test('updateWorker edits an existing worker by phone (incl pay structure)', asyn
   assert.equal(w?.payStructure, 'hourly'); assert.equal(w?.payRate, '37'); assert.equal(w?.active, true);
   const miss = await updateWorker(g, '10000000000', { /* ...same shape... */ } as any);
   assert.equal(miss.ok, false);
+});
+
+test('setWorkerPhone repairs a blank-phone worker matched by token; rejects unknown token + collision', async () => {
+  const g = createMemoryGateway({
+    Workers: [
+      ['phone', 'name', 'token'],
+      ['', 'Roma', 'tk1'],
+      ['972509999999', 'Other', 'tk2'],
+    ],
+  });
+  // Repair blank phone on tk1
+  const r = await setWorkerPhone(g, 'tk1', '0501234567');
+  assert.deepEqual(r, { ok: true });
+  const w = (await listWorkers(g)).find((x) => x.token === 'tk1');
+  assert.equal(w?.phone, '972501234567'); // normalizePhone('0501234567') → '972501234567'
+  // Unknown token
+  assert.equal((await setWorkerPhone(g, 'nope', '0501234567')).ok, false);
+  // Collision: '0509999999' normalizes to '972509999999' which is already tk2's phone
+  assert.equal((await setWorkerPhone(g, 'tk1', '0509999999')).ok, false);
 });
 
 test('addWorker accepts a valid gender and rejects an invalid one', async () => {
