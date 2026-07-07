@@ -37,8 +37,10 @@ export function GeoPoller({ instanceId }: { instanceId: string }) {
           }
           schedule(nextPollMs);
         },
-        () => {
-          /* denied/unavailable: stop silently */
+        (err: GeolocationPositionError) => {
+          if (cancelled) return;
+          // Stop only on real permission denial; transient TIMEOUT / POSITION_UNAVAILABLE → keep trying at default cadence.
+          if (err.code !== err.PERMISSION_DENIED) schedule(1_800_000);
         },
         { enableHighAccuracy: true, timeout: 20_000, maximumAge: 60_000 },
       );
