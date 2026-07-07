@@ -8,6 +8,9 @@ importers:
 
   .:
     devDependencies:
+      '@scourage/sheets-helper':
+        specifier: workspace:*
+        version: link:packages/sheets-helper
       '@types/node':
         specifier: ^22.10.0
         version: 22.19.21
