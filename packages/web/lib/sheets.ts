@@ -11,6 +11,9 @@ export function getGateway(): SheetsGateway {
   if (!json) throw new Error('Missing GOOGLE_SERVICE_ACCOUNT_JSON');
   const creds = parseServiceAccountJson(json);
   const backend = (process.env.STORAGE_BACKEND ?? 'firestore').toLowerCase();
+  if (backend !== 'firestore' && backend !== 'sheets') {
+    throw new Error(`Invalid STORAGE_BACKEND '${backend}' (expected 'firestore' or 'sheets')`);
+  }
 
   let inner: SheetsGateway;
   if (backend === 'sheets') {

@@ -84,12 +84,11 @@ export function createFirestoreGateway(opts: FirestoreGatewayOptions): SheetsGat
     },
 
     async writeHeaderRow(tab: string, headers: string[]): Promise<void> {
-      // Write the header doc directly (always row 1).
-      await rowsRef(tab).doc(id(1)).set({ _row: 1, _cells: headers });
-      // Ensure the tab meta-doc count is at least 1.
+      // Atomically write the header doc and update the tab meta-doc count.
       await db.runTransaction(async (tx) => {
         const t = await tx.get(tabRef(tab));
         const c = (t.data()?.count as number | undefined) ?? 0;
+        tx.set(rowsRef(tab).doc(id(1)), { _row: 1, _cells: headers });
         tx.set(tabRef(tab), { count: Math.max(c, 1) }, { merge: true });
       });
     },
