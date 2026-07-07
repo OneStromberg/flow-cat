@@ -4,7 +4,7 @@ import { useState } from 'react';
 
 type EnumOpt = readonly { value: string; label: string }[];
 type Props = {
-  cities: string[];
+  cities: EnumOpt;
   enums: {
     transportation: EnumOpt;
     hebrewLevel: EnumOpt;
@@ -104,43 +104,12 @@ export function RegisterForm({ cities, enums }: Props) {
     </div>
   );
 
-  const cityField =
-    cities.length > 0 ? (
-      <div>
-        <label className="block text-sm font-medium text-gray-700">City</label>
-        <select
-          className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-base"
-          value={v.city}
-          onChange={(e) => set('city', e.target.value)}
-        >
-          <option value="">Choose…</option>
-          {cities.map((c) => (
-            <option key={c} value={c}>
-              {c}
-            </option>
-          ))}
-        </select>
-        {errors.city && <p className="mt-1 text-sm text-red-600">{errors.city}</p>}
-      </div>
-    ) : (
-      <div>
-        <label className="block text-sm font-medium text-gray-700">City</label>
-        <input
-          className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-base"
-          type="text"
-          value={v.city}
-          onChange={(e) => set('city', e.target.value)}
-        />
-        {errors.city && <p className="mt-1 text-sm text-red-600">{errors.city}</p>}
-      </div>
-    );
-
   return (
     <form className="mt-6 space-y-4" onSubmit={submit}>
       {input('name', 'Name')}
       {input('phone', 'Phone', 'tel')}
       {input('teudatZeut', 'Teudat zeut')}
-      {cityField}
+      {select('city', 'City / Город', cities)}
       {input('age', 'Age', 'number')}
       {select('transportation', 'Transportation', enums.transportation)}
       {select('hebrewLevel', 'Hebrew level', enums.hebrewLevel)}
