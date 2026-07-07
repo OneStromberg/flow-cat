@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { InstanceWithAttendance } from './page';
+import { GeoPoller } from './geo-poller';
 
 interface CheckinClientProps {
   items: InstanceWithAttendance[];
@@ -79,9 +80,13 @@ export function CheckinClient({ items, workerName }: CheckinClientProps) {
     );
   }
 
+  const openInstanceId = items.find(({ attendance }) => attendance?.status === 'open')?.instance.id ?? null;
+
   return (
     <div className="space-y-4">
       <p className="text-sm text-gray-500">Hi {workerName}</p>
+
+      {openInstanceId && <GeoPoller instanceId={openInstanceId} />}
 
       {geofenceWarning && (
         <div className="rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800">

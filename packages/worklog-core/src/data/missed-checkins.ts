@@ -5,7 +5,7 @@ import { listPlaces, placeGraceMins } from './places';
 export interface MissedEvent {
   instanceId: string;
   employeePhone: string;
-  type: 'in' | 'out';
+  type: 'in' | 'out' | 'offsite';
   location: string;
   expectedAt: string;
 }
