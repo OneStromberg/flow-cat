@@ -1,8 +1,8 @@
 import { getGateway } from '../../../../lib/sheets';
 import { getSigningKey } from '../../../../lib/session';
 import { verifyLinkToken } from '../../../../lib/telegram-link';
-import { sendTelegram } from '../../../../lib/telegram';
-import { linkTelegramChat, findWorker } from '@scourage/worklog-core';
+import { sendTelegram, notifyAdmins, pickAdminChatIds, answerCallbackQuery } from '../../../../lib/telegram';
+import { linkTelegramChat, findWorker, findWorkerByChatId, listTemplates, listPlaces, listWorkers } from '@scourage/worklog-core';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -14,6 +14,37 @@ export async function POST(req: Request) {
   }
   try {
     const update = await req.json();
+
+    if (update?.callback_query) {
+      const cq = update.callback_query;
+      const data = String(cq.data ?? '');
+      const fromId = String(cq.from?.id ?? '');
+      try {
+        const gw = getGateway();
+        const worker = await findWorkerByChatId(gw, fromId);
+        if (data.startsWith('accept:')) {
+          const templateId = data.slice('accept:'.length);
+          const tpl = (await listTemplates(gw)).find((t) => t.id === templateId);
+          const origin = new URL(req.url).origin;
+          const cardUrl = `${origin}/admin/workers/${encodeURIComponent(worker?.phone ?? '')}`;
+          const label = tpl?.label ? ` — ${tpl.label}` : '';
+          await notifyAdmins(`✅ ${worker?.name ?? 'Someone'} accepted ${tpl?.location ?? 'a shift'}${label}. 📞 ${worker?.phone ?? ''} · ${cardUrl}`, pickAdminChatIds(await listWorkers(gw)));
+          await answerCallbackQuery(cq.id, 'Спасибо! Менеджер свяжется с вами.');
+        } else if (data.startsWith('contact:')) {
+          const templateId = data.slice('contact:'.length);
+          const tpl = (await listTemplates(gw)).find((t) => t.id === templateId);
+          const place = tpl ? (await listPlaces(gw)).find((p) => p.name === tpl.location) : undefined;
+          await answerCallbackQuery(cq.id, place?.contact ? `Контакт: ${place.contact}` : 'Контакт не указан', true);
+        } else {
+          await answerCallbackQuery(cq.id, '');
+        }
+      } catch (e) {
+        console.error('telegram callback handling failed:', e);
+        try { await answerCallbackQuery(cq.id, ''); } catch {}
+      }
+      return Response.json({ ok: true });
+    }
+
     const msg = update?.message;
     const text: string = msg?.text ?? '';
     const chatId = String(msg?.chat?.id ?? '');

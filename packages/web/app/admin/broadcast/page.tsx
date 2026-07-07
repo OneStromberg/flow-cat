@@ -6,6 +6,7 @@ import {
   loadActivePlaces,
   loadCities,
   listInstances,
+  listTemplates,
   todayISO,
   GENDER,
   TRANSPORTATION,
@@ -23,11 +24,12 @@ export default async function BroadcastPage() {
   if (!admin) redirect('/');
 
   const gw = getRequestGateway();
-  const [workers, activePlaces, cities, rawInstances] = await Promise.all([
+  const [workers, activePlaces, cities, rawInstances, allTemplates] = await Promise.all([
     listWorkers(gw),
     loadActivePlaces(gw),
     loadCities(gw),
     listInstances(gw, { from: todayISO(COMPANY_TZ), to: '2099-12-31' }),
+    listTemplates(gw),
   ]);
 
   const places = [...new Set([...activePlaces, ...workers.flatMap((w) => w.places)])].sort();
@@ -38,6 +40,10 @@ export default async function BroadcastPage() {
     .slice(0, 100)
     .map(({ id, location, date, start, end, headcount }) => ({ id, location, date, start, end, headcount }));
 
+  const templates = allTemplates
+    .filter((t) => t.active)
+    .map(({ id, location, label, validFrom, dayTimes }) => ({ id, location, label, validFrom, dayTimes }));
+
   return (
     <main className="mx-auto max-w-2xl p-5">
       <h1 className="text-xl font-semibold">📣 Broadcast</h1>
@@ -46,6 +52,7 @@ export default async function BroadcastPage() {
         cities={cities}
         places={places}
         shifts={shifts}
+        templates={templates}
         enums={{ gender: GENDER, transportation: TRANSPORTATION, hebrewLevel: HEBREW_LEVEL, payType: PAY_TYPE, schedule: SCHEDULE }}
       />
     </main>

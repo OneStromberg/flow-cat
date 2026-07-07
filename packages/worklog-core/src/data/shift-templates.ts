@@ -183,6 +183,46 @@ export async function updateTemplate(gateway: SheetsGateway, id: string, input: 
   return { ok: true as const };
 }
 
+const WEEK_ORDER_LOWER = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
+
+export function formatTemplateOffer(
+  template: Pick<ShiftTemplate, 'location' | 'label' | 'validFrom' | 'dayTimes'>,
+  opts?: { contact?: string },
+): string {
+  const lines: string[] = [];
+  lines.push('🆕 Доступна новая смена');
+  lines.push(`Location: ${template.location}`);
+  if (template.label) lines.push(`Label: ${template.label}`);
+  if (template.validFrom) lines.push(`From: ${template.validFrom}`);
+
+  if (template.dayTimes && template.dayTimes.length > 0) {
+    lines.push('Schedule:');
+    const byDay = new Map<string, DayTime[]>();
+    for (const dt of template.dayTimes) {
+      const key = dt.day.toLowerCase();
+      if (!byDay.has(key)) byDay.set(key, []);
+      byDay.get(key)!.push(dt);
+    }
+    const sortedDays = [...byDay.keys()].sort(
+      (a, b) => {
+        const ai = WEEK_ORDER_LOWER.indexOf(a);
+        const bi = WEEK_ORDER_LOWER.indexOf(b);
+        return (ai < 0 ? 99 : ai) - (bi < 0 ? 99 : bi);
+      },
+    );
+    for (const dayKey of sortedDays) {
+      const slots = byDay.get(dayKey)!;
+      const displayDay = dayKey.charAt(0).toUpperCase() + dayKey.slice(1);
+      const times = slots.map((s) => `${s.start}–${s.end}`).join(', ');
+      lines.push(`  ${displayDay}: ${times}`);
+    }
+  }
+
+  if (opts?.contact) lines.push(`Contact: ${opts.contact}`);
+
+  return lines.join('\n');
+}
+
 export async function deleteTemplate(gateway: SheetsGateway, id: string): Promise<{ ok: true } | { ok: false; error: string }> {
   const rows = await gateway.readTab('ShiftTemplates');
   if (!rows.length) return { ok: false, error: 'Not found' };

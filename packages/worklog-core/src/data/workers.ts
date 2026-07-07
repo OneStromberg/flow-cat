@@ -134,6 +134,17 @@ export async function listBrokenWorkers(gateway: SheetsGateway): Promise<BrokenW
   return result;
 }
 
+export async function findWorkerByChatId(gateway: SheetsGateway, chatId: string): Promise<Worker | null> {
+  const target = String(chatId).trim();
+  if (!target) return null;
+  const objs = rowsToObjects(await gateway.readTab('Workers'));
+  const row = objs.find((o) => {
+    const id = (o.telegram_chat_id ?? '').trim();
+    return id !== '' && id === target;
+  });
+  return row ? parseWorker(row, []) : null;
+}
+
 export async function linkTelegramChat(gateway: SheetsGateway, phone: string, chatId: string): Promise<boolean> {
   const target = normalizePhone(phone);
   const rows = await gateway.readTab('Workers');
