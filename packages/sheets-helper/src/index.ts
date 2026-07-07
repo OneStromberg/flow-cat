@@ -7,3 +7,4 @@ export { createTtlCachingGateway } from './ttl-caching-gateway.ts';
 export { ensureTabs } from './ensure-tabs.ts';
 export { parseServiceAccountJson, type ServiceAccountCredentials } from './credentials.ts';
 export { buildSheetsAuth, type SheetsAuthOptions } from './auth.ts';
+export { createFirestoreGateway, type FirestoreGatewayOptions } from './firestore-gateway.ts';
