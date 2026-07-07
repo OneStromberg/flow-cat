@@ -10,7 +10,10 @@ export function getGateway(): SheetsGateway {
   const json = process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
   if (!json) throw new Error('Missing GOOGLE_SERVICE_ACCOUNT_JSON');
   const creds = parseServiceAccountJson(json);
-  const backend = (process.env.STORAGE_BACKEND ?? 'firestore').toLowerCase();
+  // Default 'sheets' so merging/deploying does NOT switch prod to an (empty)
+  // Firestore before the one-time migration is run. Flip to Firestore by setting
+  // STORAGE_BACKEND=firestore in the env AFTER migrating. Rollback = unset it.
+  const backend = (process.env.STORAGE_BACKEND ?? 'sheets').toLowerCase();
   if (backend !== 'firestore' && backend !== 'sheets') {
     throw new Error(`Invalid STORAGE_BACKEND '${backend}' (expected 'firestore' or 'sheets')`);
   }
