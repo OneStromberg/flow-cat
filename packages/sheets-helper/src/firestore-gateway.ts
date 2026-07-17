@@ -45,6 +45,8 @@ export interface FirestoreGatewayOptions {
   credentials: { client_email: string; private_key: string };
   /** Firestore root collection name (default: "sheets"). */
   rootCollection?: string;
+  /** Named Firestore database id. Omit/undefined ⇒ the "(default)" database. */
+  databaseId?: string;
   /**
    * Injectable Firestore-like client for testing. When omitted a real
    * `@google-cloud/firestore` Firestore instance is created.
@@ -67,7 +69,13 @@ export function createFirestoreGateway(opts: FirestoreGatewayOptions): SheetsGat
 
   const db: FirestoreLike =
     opts.firestore ??
-    (new Firestore({ projectId: opts.projectId, credentials: opts.credentials }) as unknown as FirestoreLike);
+    (new Firestore({
+      projectId: opts.projectId,
+      credentials: opts.credentials,
+      // A named (non-default) database must be selected explicitly, else the
+      // client connects to "(default)". `undefined` ⇒ the default database.
+      ...(opts.databaseId ? { databaseId: opts.databaseId } : {}),
+    }) as unknown as FirestoreLike);
 
   function tabRef(tab: string): DocRef {
     return db.collection(root).doc(tab);

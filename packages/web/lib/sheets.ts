@@ -30,6 +30,7 @@ export function getGateway(): SheetsGateway {
       projectId,
       credentials: { client_email: creds.client_email, private_key: creds.private_key },
       rootCollection: process.env.FIRESTORE_ROOT_COLLECTION,
+      databaseId: process.env.FIRESTORE_DATABASE_ID,
     });
   }
   // Cross-request read cache (writes invalidate) caps the per-minute read
