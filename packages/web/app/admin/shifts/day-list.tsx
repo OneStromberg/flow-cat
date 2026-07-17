@@ -55,8 +55,7 @@ export function DayList({ date, items, prevHref, nextHref, nowISO, tz }: DayList
               return (
                 <LocationGroup key={loc} title={loc} summary={`${sumAssigned}/${sumHeadcount}`} defaultOpen>
                   {groupItems.map(({ instance, assigned, presentNow, end, graceMins, workerNames }) => {
-                    const cancelled = instance.status === 'cancelled';
-                    const understaffed = !cancelled && assigned < instance.headcount;
+                    const understaffed = assigned < instance.headcount;
                     const color = shiftStatusColor({
                       status: instance.status,
                       assigned,
@@ -74,19 +73,18 @@ export function DayList({ date, items, prevHref, nextHref, nowISO, tz }: DayList
                       <Link
                         key={instance.id}
                         href={`/admin/shifts/instances/${instance.id}`}
-                        className={`block rounded-lg border p-3 ${cancelled ? 'opacity-50 border-gray-200' : 'border-gray-200 hover:border-gray-400'}`}
+                        className="block rounded-lg border p-3 border-gray-200 hover:border-gray-400"
                       >
                         <div className="flex items-start gap-2">
                           <span className={`mt-0.5 h-3 w-3 flex-shrink-0 rounded-full ${dotBgClass(chipClass)}`} />
                           <div className="min-w-0 flex-1">
-                            <div className={`font-semibold text-sm ${cancelled ? 'line-through text-gray-400' : 'text-gray-900'}`}>
+                            <div className="font-semibold text-sm text-gray-900">
                               {instance.location || '—'}
                             </div>
                             <div className="text-xs text-gray-500">{instance.start}–{instance.end}</div>
                             <div className="text-xs text-gray-500">
                               {assigned}/{instance.headcount} assigned
                               {understaffed && <span className="ml-1 text-amber-600 font-medium">⚠ needs staff</span>}
-                              {cancelled && <span className="ml-1 text-gray-400">(cancelled)</span>}
                             </div>
                             <div className="mt-1 text-xs text-gray-500">
                               {workerNames.length > 0 ? workerNames.join(', ') : '— unstaffed —'}

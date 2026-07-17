@@ -60,8 +60,7 @@ export function MonthGrid({ monthLabel, weeks, prevHref, nextHref, nowISO, tz }:
               {/* Shift chips */}
               <div className="mt-0.5 space-y-px">
                 {day.items.slice(0, MAX).map(({ instance, assigned, presentNow, graceMins }) => {
-                  const cancelled = instance.status === 'cancelled';
-                  const understaffed = !cancelled && assigned < instance.headcount;
+                  const understaffed = assigned < instance.headcount;
                   const color = shiftStatusColor({
                     status: instance.status,
                     assigned,
@@ -74,9 +73,7 @@ export function MonthGrid({ monthLabel, weeks, prevHref, nextHref, nowISO, tz }:
                     tz,
                     graceMins,
                   });
-                  const colorClass = cancelled
-                    ? 'bg-gray-300 text-gray-500 line-through'
-                    : shiftColorChipClass(color);
+                  const colorClass = shiftColorChipClass(color);
                   return (
                     <Link
                       key={instance.id}

@@ -78,8 +78,11 @@ export default async function ShiftsPage({
     listPlaces(gw),
   ]);
 
+  // ── Hide cancelled instances from calendar views (detail page unaffected) ───
+  const liveInstances = instances.filter((i) => i.status !== 'cancelled');
+
   // ── Assigned-count map ──────────────────────────────────────────────────────
-  const rangeInstanceIds = new Set(instances.map((i) => i.id));
+  const rangeInstanceIds = new Set(liveInstances.map((i) => i.id));
   const assignedCountMap = new Map<string, number>();
   for (const a of allAssignments) {
     if (a.status === 'assigned' && rangeInstanceIds.has(a.instanceId)) {
@@ -123,7 +126,7 @@ export default async function ShiftsPage({
 
   // ── Group by date ───────────────────────────────────────────────────────────
   const byDate = new Map<string, { instance: ShiftInstance; assigned: number; presentNow: number; end: string; graceMins: number }[]>();
-  for (const inst of instances) {
+  for (const inst of liveInstances) {
     const entry = {
       instance: inst,
       assigned: assignedCountMap.get(inst.id) ?? 0,
@@ -148,7 +151,7 @@ export default async function ShiftsPage({
 
   // ── Render ──────────────────────────────────────────────────────────────────
   return (
-    <main className="mx-auto max-w-2xl p-4">
+    <main className="mx-auto max-w-2xl md:max-w-5xl lg:max-w-6xl p-4">
       <ViewSwitcher active={view} dayHref={dayHref} weekHref={weekHref} monthHref={monthHref} />
 
       {view === 'month' && (() => {

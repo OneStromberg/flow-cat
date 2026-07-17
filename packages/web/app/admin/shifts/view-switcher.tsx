@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { RepairOrphansButton } from './repair-orphans-button';
 
 interface ViewSwitcherProps {
   active: 'day' | 'week' | 'month';
@@ -30,6 +31,7 @@ export function ViewSwitcher({ active: view, dayHref, weekHref, monthHref }: Vie
         <Link href="/admin/shifts/templates" className="rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700">
           Templates
         </Link>
+        <RepairOrphansButton />
 
         {/* spacer */}
         <div className="flex-1" />

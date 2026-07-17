@@ -35,7 +35,7 @@ export function WeekColumns({ weekStart, days, prevHref, nextHref, nowISO, tz }:
         {days.map(({ date, items }, idx) => {
           const [, m, d] = date.split('-').map(Number);
           return (
-            <div key={date} className="min-w-[9rem] flex-shrink-0">
+            <div key={date} className="min-w-[9rem] flex-1 md:min-w-0">
               {/* Column header */}
               <div className="mb-1 text-center text-xs font-semibold text-gray-500">
                 {WEEKDAYS[idx]}<br />
@@ -61,8 +61,7 @@ export function WeekColumns({ weekStart, days, prevHref, nextHref, nowISO, tz }:
                       return (
                         <LocationGroup key={loc} title={loc} summary={`${sumAssigned}/${sumHeadcount}`} defaultOpen>
                           {groupItems.map(({ instance, assigned, presentNow, end, graceMins }) => {
-                            const cancelled = instance.status === 'cancelled';
-                            const understaffed = !cancelled && assigned < instance.headcount;
+                            const understaffed = assigned < instance.headcount;
                             const color = shiftStatusColor({
                               status: instance.status,
                               assigned,
@@ -80,7 +79,7 @@ export function WeekColumns({ weekStart, days, prevHref, nextHref, nowISO, tz }:
                               <Link
                                 key={instance.id}
                                 href={`/admin/shifts/instances/${instance.id}`}
-                                className={`block rounded p-1.5 text-xs leading-tight border-l-4 ${cancelled ? 'opacity-50 line-through border-gray-300 bg-gray-50' : `border-transparent ${chipClass}`}`}
+                                className={`block rounded p-1.5 text-xs leading-tight border-l-4 border-transparent ${chipClass}`}
                               >
                                 <div className="font-medium truncate">{instance.location || '—'}</div>
                                 <div className="text-[10px] opacity-80">{instance.start}–{instance.end}</div>

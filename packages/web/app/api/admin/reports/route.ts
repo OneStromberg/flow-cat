@@ -7,8 +7,9 @@ import {
   listTemplates,
   listPlaces,
   listAdjustments,
+  listAssignments,
   computePay,
-  resolveHourlyRate,
+  resolveAssignmentRate,
   hoursByEmployee,
   hoursByLocation,
   attendanceExceptions,
@@ -89,13 +90,21 @@ export async function POST(req: Request) {
     } else {
       // payroll
       header = ['Worker', 'Structure', 'Hours', 'Gross', 'Bonuses', 'Penalties', 'Net'];
-      const [templates, places] = await Promise.all([listTemplates(gw), listPlaces(gw)]);
+      const [templates, places, assignments] = await Promise.all([
+        listTemplates(gw),
+        listPlaces(gw),
+        listAssignments(gw),
+      ]);
 
       const instanceMap = new Map(
         instances.map((inst) => [
           inst.id,
           { templateId: inst.templateId, location: inst.location },
         ])
+      );
+
+      const assignmentRateByKey = new Map(
+        assignments.map((a) => [`${a.instanceId}|${a.employeePhone}`, a.rate])
       );
 
       const activeWorkers = workers.filter((w) => w.active && (!employeePhone || w.phone === employeePhone));
@@ -113,7 +122,9 @@ export async function POST(req: Request) {
             const inst = instanceMap.get(a.instanceId);
             const tmpl = inst ? templates.find((t) => t.id === inst.templateId) : undefined;
             const place = inst ? places.find((p) => p.name === inst.location) : undefined;
-            const rate = resolveHourlyRate(
+            const assignmentRate = assignmentRateByKey.get(`${a.instanceId}|${w.phone}`) ?? '';
+            const rate = resolveAssignmentRate(
+              assignmentRate,
               w.payRate ?? '',
               tmpl?.rate ?? '',
               place?.baseRate ?? ''

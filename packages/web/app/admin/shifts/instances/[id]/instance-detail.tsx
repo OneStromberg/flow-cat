@@ -92,13 +92,19 @@ export function InstanceDetail({ instance, assignments, workers, role, instructi
     ? (availableWorkers[0]?.phone ?? '')
     : selectedPhone;
   const [addLoading, setAddLoading] = useState(false);
+  const [assignRate, setAssignRate] = useState('');
 
   async function handleAdd() {
     if (!effectivePhone) return;
     setAddLoading(true);
-    const r = await apiPost(instance.id, { action: 'assign', phone: effectivePhone });
+    const r = await apiPost(instance.id, {
+      action: 'assign',
+      phone: effectivePhone,
+      rate: assignRate,
+    });
     setAddLoading(false);
     if (r.ok) {
+      setAssignRate('');
       router.refresh();
     }
   }
@@ -253,7 +259,8 @@ export function InstanceDetail({ instance, assignments, workers, role, instructi
             <p className="px-4 py-3 text-sm text-gray-400">No assignments yet.</p>
           ) : (
             <ul className="divide-y divide-gray-100">
-              {assignments.map((a) => (
+              {assignments.map((a) => {
+                return (
                 <li
                   key={a.employeePhone}
                   className="flex items-center justify-between gap-2 px-4 py-2.5"
@@ -264,6 +271,9 @@ export function InstanceDetail({ instance, assignments, workers, role, instructi
                     </span>
                     {a.source !== 'manual' && (
                       <span className="ml-2 text-xs text-gray-400">({a.source})</span>
+                    )}
+                    {a.effectiveRate > 0 && (
+                      <span className="ml-2 text-xs text-gray-400">· ₪{a.effectiveRate}/h</span>
                     )}
                   </div>
                   {!cancelled && (
@@ -276,7 +286,8 @@ export function InstanceDetail({ instance, assignments, workers, role, instructi
                     </button>
                   )}
                 </li>
-              ))}
+                );
+              })}
             </ul>
           )}
 
@@ -294,6 +305,15 @@ export function InstanceDetail({ instance, assignments, workers, role, instructi
                   </option>
                 ))}
               </select>
+              <input
+                type="number"
+                min={0}
+                step="0.01"
+                placeholder="Rate (optional)"
+                value={assignRate}
+                onChange={(e) => setAssignRate(e.target.value)}
+                className="w-28 rounded border border-gray-300 px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-gray-400"
+              />
               <button
                 onClick={handleAdd}
                 disabled={addLoading || !effectivePhone}

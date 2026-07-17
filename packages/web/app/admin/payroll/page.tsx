@@ -8,8 +8,9 @@ import {
   listInstances,
   listAttendance,
   listAdjustments,
+  listAssignments,
   computePay,
-  resolveHourlyRate,
+  resolveAssignmentRate,
   type WorkedItem,
 } from '@scourage/worklog-core';
 import { PayrollClient } from './payroll-client';
@@ -42,16 +43,22 @@ export default async function PayrollPage({
   const to = typeof params.to === 'string' ? params.to : defaults.to;
 
   const gw = getRequestGateway();
-  const [workers, templates, places, instances] = await Promise.all([
+  const [workers, templates, places, instances, assignments] = await Promise.all([
     listWorkers(gw),
     listTemplates(gw),
     listPlaces(gw),
     listInstances(gw, { from, to }),
+    listAssignments(gw),
   ]);
 
   // Build instance lookup: id → {templateId, location}
   const instanceMap = new Map(
     instances.map((inst) => [inst.id, { templateId: inst.templateId, location: inst.location }])
+  );
+
+  // Build assignment lookup: (instanceId, employeePhone) → rate
+  const assignmentRateByKey = new Map(
+    assignments.map((a) => [`${a.instanceId}|${a.employeePhone}`, a.rate])
   );
 
   const activeWorkers = workers.filter((w) => w.active);
@@ -71,7 +78,13 @@ export default async function PayrollPage({
         const inst = instanceMap.get(att.instanceId);
         const tmpl = inst ? templates.find((t) => t.id === inst.templateId) : undefined;
         const place = inst ? places.find((p) => p.name === inst.location) : undefined;
-        const rate = resolveHourlyRate(w.payRate ?? '', tmpl?.rate ?? '', place?.baseRate ?? '');
+        const assignmentRate = assignmentRateByKey.get(`${att.instanceId}|${w.phone}`) ?? '';
+        const rate = resolveAssignmentRate(
+          assignmentRate,
+          w.payRate ?? '',
+          tmpl?.rate ?? '',
+          place?.baseRate ?? '',
+        );
         return { date: att.date, hours: Number(att.hours) || 0, rate };
       });
 

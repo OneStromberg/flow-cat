@@ -51,7 +51,7 @@ export async function POST(req: Request, context: { params: Promise<{ id: string
 
     if (action === 'assign') {
       const phone = typeof b.phone === 'string' ? b.phone : '';
-      await assignManual(gw, id, phone, admin.phone);
+      await assignManual(gw, id, phone, admin.phone, typeof b.rate === 'string' ? b.rate : '');
       return Response.json({ ok: true });
     }
 

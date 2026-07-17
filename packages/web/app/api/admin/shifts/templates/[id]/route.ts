@@ -1,6 +1,6 @@
-import { getGateway } from '../../../../../../lib/sheets';
+import { getGateway, COMPANY_TZ } from '../../../../../../lib/sheets';
 import { requireAdmin } from '../../../../../../lib/session';
-import { deleteTemplate } from '@scourage/worklog-core';
+import { deleteTemplate, cancelFutureInstancesForTemplate, todayISO } from '@scourage/worklog-core';
 
 export const runtime = 'nodejs';
 
@@ -11,8 +11,11 @@ export async function DELETE(_req: Request, context: { params: Promise<{ id: str
   const { id } = await context.params;
 
   try {
-    const result = await deleteTemplate(getGateway(), id);
+    const gw = getGateway();
+    const result = await deleteTemplate(gw, id);
     if (!result.ok) return Response.json({ error: result.error }, { status: 404 });
+    const today = todayISO(COMPANY_TZ);
+    await cancelFutureInstancesForTemplate(gw, id, today);
     return Response.json({ ok: true });
   } catch (err) {
     console.error('delete template failed:', err);
