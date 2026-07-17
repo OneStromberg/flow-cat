@@ -29,7 +29,8 @@ The shared data layer for all three is `packages/worklog-core/src/data/add-worke
 - Add `birthdate?: string` to the `Worker` read model (`workers.ts`) and a pure `ageFromBirthdate(birthdate, now?): number | null` helper in `worklog-core` (exported from `index.ts`). Age is displayed wherever age is shown, computed from birthdate.
 - Forms: replace `{input('age', 'Age', 'number')}` with a date input for birthdate (register-form.tsx:113, add-worker-form.tsx:88, worker-card.tsx:128).
 **Decision — keep the `age` column?** Keep it as a **legacy/back-compat read-only** column: do NOT write it from the UI anymore, but if `birthdate` is empty fall back to the stored `age` string on read (mirrors batch-4's "force hourly but leave pay_structure column" pattern). This makes existing workers correct without a back-fill.
-**Open Q (flagged in roundup):** Do we back-fill birthdate for existing workers (we only have `age`, which can't be inverted to an exact date), or accept that legacy rows show age-from-stored-`age` until the worker re-registers/edits?
+**PM answer (resolved):** the PM **has the DOBs** and will enter them via profiles, so the `birthdate` field must be **editable on the worker EDIT form / worker card** (not just at account creation). No bulk back-fill needed — the PM fills them in through the edit path; legacy rows fall back to the stored `age` until edited.
+**Open Q:** none — birthdate is editable on both create AND edit (worker-card) paths; PM enters DOBs manually.
 
 ### W3 — Wire the embedded `CITIES` list into the admin forms
 **Root confirmed:** the rich bilingual `CITIES` constant (`worker-fields.ts:35`, `value` = Hebrew canonical, `label` = "Русский — עברית") is wired **only** into self-registration (`register/page.tsx:14` → `register-form.tsx:112`). The admin add form uses a plain string list from `loadCities(gw)` (`admin/add/page.tsx:15`), and the worker card uses `selectWithFallback('city', 'City', cities)` (`worker-card.tsx:106,127`) — a free-text-passthrough of whatever string is already stored. So the admin genuinely cannot pick from the curated city list, and (post-Firestore) can't hand-edit the sheet either.
@@ -181,14 +182,16 @@ Message plumbing: `packages/web/lib/telegram.ts` (`sendTelegram(chatId, text)`, 
 
 Worker-facing pages: `packages/web/app/app/**` — `checkin` (home/start-shift, `checkin-client.tsx`), `hours`, `profile`, `edit/[id]`, plus `worker-nav.tsx`, `layout.tsx`. All strings are **hardcoded English inline** — there is **no i18n mechanism, no library, no lang toggle** (confirmed: no i18n dep in `packages/web/package.json`; the only `locale*` usages are `localeCompare`/`toLocaleTimeString`).
 
-### U1 — Add Russian to the WORKER interface (i18n)
+### U1 — Language TOGGLE (RU / EN / HE) on the WORKER interface (i18n)
+**PM answer (resolved):** the workforce mixes Russian, Hebrew AND English speakers, so this is a **language toggle**, not a fixed RU default. The dictionary carries **three locales — `ru` / `en` / `he`**; language is a **per-worker `lang` preference** (stable across devices) PLUS a **visible toggle** on the worker interface that updates that preference. Default when unset: `ru`.
+
 **Approach (lightest — ponytail on frameworks):**
-- A **plain dictionary** module (e.g. `packages/web/lib/i18n/strings.ts` or in `worklog-core` if we want it shared/tested): `{ en: {...}, ru: {...} }` keyed by short string ids, plus a tiny `t(key, lang)` helper. No `next-intl`/`i18next`/`react-intl` (overkill for a handful of worker screens).
-- **Language selection:** a per-worker `lang` preference (new optional `lang` column on Workers, defaulting to RU for the worker interface since the workforce is Russian-speaking) OR a simple in-app toggle persisted to the worker's profile / localStorage. Recommend **per-worker `lang` field** (defaults `ru`) so it's stable across devices and set-once — with a toggle on the profile page.
+- A **plain dictionary** module (`packages/web/lib/i18n/strings.ts`): `{ ru: {...}, en: {...}, he: {...} }` keyed by short string ids, plus a tiny `t(key, lang)` helper. No `next-intl`/`i18next`/`react-intl` (overkill for a handful of worker screens). Fill `ru` + `en` now with real strings; the `he` keys are present in the structure and completed **progressively** (Hebrew keys can land incrementally — `t()` falls back `he → en → key` for any not-yet-filled `he` string).
+- **Language selection:** a **per-worker `lang` column** (new optional `lang` on Workers, default `ru`) so it is stable across devices, PLUS a **visible toggle** on the worker interface (on the profile page, and/or a small switcher in the worker nav) that writes the preference. Worker-facing pages read the worker's `lang` and render through `t(key, lang)`.
 - **Scope:** worker-facing pages only (`app/app/**`) — checkin, hours, profile, edit, nav. Admin surfaces stay English.
-**Files:** new `lib/i18n/strings.ts` + `t()`; `app/app/checkin/checkin-client.tsx`, `app/app/hours/page.tsx`, `app/app/profile/page.tsx`, `app/app/edit/[id]/edit-form.tsx`, `app/app/worker-nav.tsx`; the register form (`register-form.tsx`) for W1/W4 RU labels; `add-worker.ts`/`workers.ts` if we add a `lang` column.
-**Decision:** hand-rolled dictionary + per-worker `lang` (default `ru`). No pluralization/interpolation engine beyond simple `${}` substitution — YAGNI. This is the anchor item; W1, W4, U3 all fold their RU labels into this dictionary.
-**Open Q (roundup):** (a) toggle mechanism — per-worker `lang` field (recommended) vs. a session/localStorage toggle vs. both; (b) default language — RU for all workers, or detect/ask on registration; (c) is EN even needed on the worker side, or is it RU-only + HE later?
+**Files:** new `lib/i18n/strings.ts` + `t()` (three-locale dict); `app/app/checkin/checkin-client.tsx`, `app/app/hours/page.tsx`, `app/app/profile/page.tsx`, `app/app/edit/[id]/edit-form.tsx`, `app/app/worker-nav.tsx`; a small `app/api/app/lang` route + toggle UI; the register form (`register-form.tsx`) for W1/W4 RU labels; `add-worker.ts`/`workers.ts` for the new `lang` column + `setWorkerLang`.
+**Decision:** hand-rolled dictionary with **three locales (`ru`/`en`/`he`)** + per-worker `lang` (default `ru`) + a visible toggle. No pluralization/interpolation engine beyond simple `${}` substitution — YAGNI. This is the anchor item; W1, W4, U3 all fold their RU labels into this dictionary.
+**Open Q:** none — resolved (toggle + 3 locales; `he` completed progressively).
 
 ### U2 — Collapse the shift instruction, make it openable with other info
 **Root confirmed:** in `checkin-client.tsx:141-145` the template `instructions` render **inline and always expanded** next to each shift's Check-in button; address/contacts are not currently surfaced there.
@@ -214,43 +217,65 @@ Worker-facing pages: `packages/web/app/app/**` — `checkin` (home/start-shift, 
 
 ## Area 8 — Reports (large)
 
-Current state (all confirmed): `packages/web/app/admin/reports/reports-client.tsx` offers 4 types (`hours_employee`, `hours_location`, `payroll`, `exceptions`) with **single-select** `location` and `employeePhone` dropdowns and a date range; the route `api/admin/reports/route.ts` runs the matching `worklog-core/data/reports.ts` primitive (`hoursByEmployee`, `hoursByLocation`, `attendanceExceptions`, `filterAttendanceForReport`) and writes **one flat tab** via `writeReportTab(gateway, tab, header, rows)`. Post-Firestore, `writeReportTab` still works: a "tab" maps to a Firestore doc-with-rows collection via the gateway — no change needed. Hours per shift come from `Attendance.hours` (computed `hoursBetween(checkInAt, checkOutAt)`), joined by `employeePhone`→worker, `instanceId`→instance→`location`.
+Current state (all confirmed): `packages/web/app/admin/reports/reports-client.tsx` offers 4 types (`hours_employee`, `hours_location`, `payroll`, `exceptions`) with **single-select** `location` and `employeePhone` dropdowns and a date range; the route `api/admin/reports/route.ts` runs the matching `worklog-core/data/reports.ts` primitive (`hoursByEmployee`, `hoursByLocation`, `attendanceExceptions`, `filterAttendanceForReport`) and writes **one flat tab** via `writeReportTab(gateway, tab, header, rows)`. Post-Firestore, `writeReportTab` still works: a "tab" maps to a Firestore doc-with-rows collection via the gateway. Hours per shift come from `Attendance.hours` (computed `hoursBetween(checkInAt, checkOutAt)` — the **same** hours source attendance uses, so an overnight 17:00→07:00 shift correctly reads 14h), joined by `employeePhone`→worker, `instanceId`→instance→`location`.
 
-### R1 — Three new report types
-Design from the PM's text (the example files were **not** provided — flagged). Each is a new `type` in the route + a new `worklog-core` builder:
+**PM answer (resolved) — deliverable is a downloadable multi-sheet `.xlsx` workbook.** The PM supplied the example workbook. The three new reports produce a **single `.xlsx` workbook with multiple sheets**, generated **server-side** and returned as a file download — NOT per-target Firestore tabs / CSV. The route returns the workbook with `Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet` and `Content-Disposition: attachment; filename="report ….xlsx"`; the client triggers the download. **The old `writeReportTab`-to-storage step is NOT used for these three new reports.** (The four legacy types keep their existing single-tab + client-CSV path unchanged.)
 
-1. **By object(s)** (`report_by_object`): for each selected place, all shifts by **day** with worker names, start/end times, and hours per shift; plus a **total hours per person** over the period. New builder aggregating attendance (joined to instance for location/times) grouped by location → day → shift, with a per-person total block.
-2. **By person** (`report_by_person`): for each selected worker, all shifts by **day** with the object, start/end, hours per shift; plus **total hours per object** for that worker over the period. Mirror of #1 grouped by worker.
-3. **Summary table** (`report_summary`): over selected objects — per object: **sum of hours**, the **object's rate** (place `baseRate`, or the effective rate given S4), and **total amount** (hours × rate), over the period. One flat table.
+- **Dependency:** add **`exceljs`** (actively maintained on npm; good multi-sheet + buffer output) to `packages/web`. The **pure data builders stay in `worklog-core`** (produce arrays-of-arrays / structured rows per sheet — fully testable, no exceljs dependency in core); the **web route** assembles the exceljs workbook from those structured rows and returns the buffer.
 
-**Files:** `packages/worklog-core/src/data/reports.ts` (three new pure builders + tests — mirror the existing `hoursBy*` shape), `packages/web/app/api/admin/reports/route.ts` (wire the new types, extend `VALID_TYPES`), `packages/web/app/admin/reports/reports-client.tsx` (type list + labels).
-**Decision:** the "amount" in the summary uses the place `baseRate` as the per-object rate the PM described; if S4 lands, note that a per-object single rate is an approximation when workers have per-assignment rates (the summary is object-level, so `baseRate` is the right object-level number — the per-person/per-object reports carry the real worked hours). Keep computation in pure `worklog-core` builders (testable), route just formats.
-**Open Q (roundup):** The **example files are missing** — exact column order, totals placement, and the "rate" source for the summary (place `baseRate` vs. a report-time input) need the PM's samples to match precisely.
+### R1 — Three new report types (exact sheet layouts from the PM's workbook)
+Each is a new `type` in the route + a new pure `worklog-core` builder. The exact layouts, taken from the PM's file (three sheet shapes):
+
+**A) "Object" report (`report_by_object`) — ONE sheet per selected place (sheet name = place name):**
+- A **title cell** with the place name.
+- **Header row:** `Date | Name | Start time | End time | Total`.
+- **Body:** iterate every date in the selected range; for each date list that place's shifts as rows `date | worker name | start (HH:MM) | end (HH:MM) | hours`. Show the date only on the **first** shift row of the date (blank on subsequent rows for the same date).
+  - *Ponytail:* do **NOT** replicate the example's fixed 4-empty-slot-per-day padding — that is a manual-template artifact. List the **actual** shifts only.
+- **Totals block** (after the body): one row per worker who worked at this place `worker name | total hours`, then a **grand total** row (sum of all hours). (Example: Victor 98, Igor 116, Alex 21 → grand total 235.)
+
+**B) "Worker" report (`report_by_person`) — ONE sheet per selected worker (sheet name = worker name):**
+- A **title cell** with the worker name.
+- **Header row:** `Date | Place | Start time | End time | Total`.
+- **Body:** every date in range; per shift `date | place | start | end | hours` (overnight e.g. 17:00→07:00 = 14h — from `Attendance.hours`, the same hours source as attendance).
+- **Totals block:** one row per place the worker worked `place | total hours`, then a **grand total** row. (Example: Place1 14, Place2 7, Place3 14, Place4 9 → grand total 44.)
+
+**C) "Summary / Pivot" report (`report_summary`) — ONE sheet:**
+- **Title:** "Client / Selected places".
+- **Header row:** `Date | Place | Hours | Rate | Total amount`.
+- **Body:** bucket the selected range **by month**; for each month × each selected place: `month-label | place | hours | rate | amount` where `amount = hours × rate` and `rate` = the place's rate (`Place.baseRate`). *Note (S4):* per-assignment rates do NOT change this object-level rate — the summary is deliberately **object-level**, so `baseRate` is the correct number here; the per-object/per-worker reports carry the real worked hours. (Example rates: Place1 40, Place2 50, Place3 60, Place4 70.)
+- **Per-place rollup** (after the monthly body): `place | total amount` (summed across months), then a **grand total** row. (Example: Place1 29600, Place2 39500, Place3 36000, Place4 57050 → grand 162150.)
+
+**Report-type → sheets mapping (R3):** a "by object" report with N selected places → N "Object" sheets (optionally plus the summary sheet); "by worker" with M workers → M "Worker" sheets; the summary is a single sheet. Every selected target gets its **own sheet in the one workbook**.
+
+**Files:** `packages/worklog-core/src/data/reports.ts` (three new pure builders + tests — produce structured per-sheet rows; keep them pure), `packages/web/app/api/admin/reports/route.ts` (wire the new types, extend `VALID_TYPES`, build the exceljs workbook, return the file download), `packages/web/app/admin/reports/reports-client.tsx` (type list + labels + multi-select + download trigger), `packages/web/package.json` (add `exceljs`).
+**Decision:** pure builders in `worklog-core` (testable, no exceljs); the web route assembles the workbook and returns the buffer. The summary's per-object rate uses place `baseRate` (object-level, per PM). Keep all computation in the pure builders; the route only assembles sheets + formatting.
+**Open Q:** none — the PM supplied the workbook; the layouts above are authoritative.
 
 ### R2 — Select multiple places AND multiple workers
 **Approach:** Replace the single-value `location`/`employeePhone` selects (`reports-client.tsx:123-145`, currently `useState('')` each) with **multi-select** (checkbox lists or a multi-select control), sending `locations: string[]` and `employeePhones: string[]` to the route. Extend `filterAttendanceForReport` (`reports.ts:60-68`) to accept arrays (`location?: string` → `locations?: string[]`), or add an array-aware filter. Route parses arrays instead of scalars (`route.ts:40-41`).
-**Files:** `reports-client.tsx` (multi-select UI + payload), `api/admin/reports/route.ts` (parse arrays), `reports.ts` (`filterAttendanceForReport` array support).
-**Decision:** empty selection = "all" (preserve current behavior). "All of one client" (the summary's phrasing) implies a **client** grouping of places — see open Q.
-**Open Q:** Is there a **client** entity grouping places? The summary says "all of one client, or hand-picked." Places (`places.ts`) don't obviously have a `client` field today — if "select all of a client" is required, we need a client field on Place (or a client picker). Otherwise "hand-pick multiple objects" covers it. Confirm.
+**Client grouping (resolved):** `Place` **HAS a `client` field** (`places.ts` `Place.client`, backed by the `client` column). So "all places of a client" is a **feasible selection filter** — include it as a selection option (pick a client → auto-selects its places), alongside the hand-pick multi-select. Both feed the same `locations: string[]` payload.
+**Files:** `reports-client.tsx` (multi-select UI + a client picker that expands to its places + payload), `api/admin/reports/route.ts` (parse arrays), `reports.ts` (`filterAttendanceForReport` array support).
+**Decision:** empty selection = "all" (preserve current behavior). Two selection modes on the client: (a) **pick a client** → its places (derived from `Place.client`), (b) **hand-pick** multiple objects. Both resolve to `locations: string[]`.
+**Open Q:** none — `Place.client` exists; client-grouping is a supported selection mode.
 
-### R3 — One sheet/tab per object or per worker (multi-target reports)
-**Root confirmed:** today `writeReportTab` writes exactly one tab; the route computes a single `tab` name (`route.ts:146`) and one header/rows. For the by-object and by-person reports with multiple targets, each object/worker goes to its **own** tab.
-**Approach:** For `report_by_object`/`report_by_person` with N selected targets, loop and call `writeReportTab` once per target with a target-specific tab name (e.g. `Report by-object <place> <from>..<to>`), truncated to the 90-char cap already used. The **summary** report (R1.3) stays a **single** tab (it's a cross-object rollup). Return the list of tabs + a combined preview to the client (the client currently shows one `tab`/`header`/`rows`; extend to render multiple result blocks and offer per-tab CSV — `buildCsv`/`downloadCsv` already exist client-side).
-**Files:** `api/admin/reports/route.ts` (per-target loop + multi-tab write + response shape), `reports-client.tsx` (render/download multiple results), `reports.ts` (`writeReportTab` unchanged — called per target).
-**Decision:** per-target tabs for the two detailed reports; single tab for the summary. Firestore "tabs" are cheap docs, so N tabs is fine. Do NOT build a real multi-sheet XLSX exporter (ponytail) unless the PM's examples are literal .xlsx workbooks — flag if so (the current model is one logical tab per collection, surfaced as CSV download client-side).
-**Open Q:** Were the PM's examples **one .xlsx workbook with multiple sheets** (implying a real workbook export) or separate files/tabs? The tab-per-target model matches "separate sheet/tab"; a literal single multi-sheet .xlsx would need an export lib.
+### R3 — One SHEET per object or per worker (multi-target `.xlsx` workbook)
+**Resolved:** the PM's examples are **one `.xlsx` workbook with multiple sheets**, so each object/worker becomes its **own sheet inside a single downloadable workbook** (not a Firestore tab / separate file). This supersedes the earlier "per-target tab + CSV" model for the three new reports.
+**Approach:** For `report_by_object`/`report_by_person` with N selected targets, the pure builder returns **N structured sheet payloads** (arrays-of-arrays or structured rows per sheet); the web route builds an **exceljs** `Workbook`, adds one `Worksheet` per payload (sheet name = place / worker name, sanitized to Excel's 31-char + illegal-char rules), and streams the workbook buffer back as a file download. The **summary** report is a **single** sheet in the workbook. See R1 for the exact per-sheet layouts.
+**Files:** `packages/web/app/api/admin/reports/route.ts` (assemble the exceljs workbook from the builder payloads + return the download), `packages/web/app/admin/reports/reports-client.tsx` (a **Download** button that fetches the workbook as a blob and saves it), `packages/worklog-core/src/data/reports.ts` (the three pure builders produce per-sheet structured rows; `writeReportTab` is **not** used for these three), `packages/web/package.json` (`exceljs`).
+**Decision:** real multi-sheet `.xlsx` via **exceljs** (server-side, buffer output). One sheet per target for the two detailed reports; a single summary sheet. Keep the builders pure (no exceljs in `worklog-core`); the route owns workbook assembly + the `Content-Type`/`Content-Disposition` download headers. The four legacy report types keep their existing single-tab + CSV path.
+**Open Q:** none — confirmed multi-sheet `.xlsx`; `exceljs` is the chosen writer.
 
 ---
 
 ## Open questions for the PM (roundup)
 
-1. **Reports example files (R1/R3) — MISSING.** The PM referenced attached example files that were not provided. Exact columns, totals placement, the summary's "rate" source, and whether the deliverable is a multi-sheet .xlsx workbook vs. separate tabs all depend on these samples. Please share them.
-2. **Per-assignment rate migration (S4).** Existing `ShiftAssignments` rows will have an empty new `rate` column and keep resolving employee→template→location. Confirm no back-fill is wanted (default = fallback behavior unchanged).
-3. **i18n scope + toggle mechanism (U1).** (a) per-worker `lang` field (recommended) vs. localStorage toggle vs. both; (b) default = RU for all workers? (c) is EN needed on the worker side at all, or RU-only now / HE later?
-4. **Birthdate storage + back-fill (W2).** Store birthdate as source of truth (agreed) — but existing workers only have `age`, which can't be inverted to a date. Accept "legacy rows fall back to stored `age` until re-edited," or run a manual back-fill where DOBs are known?
-5. **Cascade-delete semantics for already-orphaned Gedera data (S1).** New deletes cascade (template→future instances; place→templates→instances). For the **existing** 4 phantom Gedera shifts: one-shot repair pass that cancels orphaned future instances (recommended, cleans them everywhere) vs. hide-only via S2's view filter (leaves them in data)?
+**Resolved in this batch (PM answered):**
+- **Reports deliverable (R1/R2/R3).** PM supplied the example workbook → downloadable **multi-sheet `.xlsx`** via **`exceljs`**; exact per-sheet layouts captured in R1; `Place.client` enables client-grouped selection (R2); one sheet per target in one workbook (R3).
+- **i18n (U1).** Language **toggle** across **RU / EN / HE**; per-worker `lang` column (default `ru`) + a visible toggle; `he` completed progressively.
+- **Birthdate (W2).** PM has the DOBs and enters them via profiles → `birthdate` editable on **create AND edit** (worker-card); no bulk back-fill.
+- **PM confirmed the spec defaults** (no change needed) for: S4 per-assignment rate migration (empty = fallback, no back-fill); S1 already-orphaned Gedera → one-shot repair; Bot2 tap-to-call (E.164); A1 checkout hard-block; map names per shift; RU alert wording.
 
-Additional smaller confirmations embedded above: RU wording for W1/W4/B1/Bot1; tap-to-call vs. tap-to-WhatsApp for Bot2; a `client` grouping for places (R2); "activate now" priority for U4; checkout-block escape hatch (A1).
+_All batch-6 open questions are now resolved; no pending PM examples remain._
 
 ---
 
