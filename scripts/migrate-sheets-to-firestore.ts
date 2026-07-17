@@ -65,6 +65,7 @@ const fsGw = createFirestoreGateway({
     private_key: creds.private_key,
   },
   rootCollection: process.env['FIRESTORE_ROOT_COLLECTION'],
+  databaseId: process.env['FIRESTORE_DATABASE_ID'],
 });
 
 // ---------------------------------------------------------------------------
@@ -97,6 +98,7 @@ console.log(`Starting migration of ${TABS.length} tabs from Sheets → Firestore
 console.log(`  spreadsheetId: ${spreadsheetId}`);
 console.log(`  projectId: ${projectId}`);
 console.log(`  rootCollection: ${process.env['FIRESTORE_ROOT_COLLECTION'] ?? 'sheets'}`);
+console.log(`  databaseId: ${process.env['FIRESTORE_DATABASE_ID'] ?? '(default)'}`);
 console.log('');
 
 for (const tab of TABS) {
