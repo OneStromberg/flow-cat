@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { t, DEFAULT_LANG } from '../../lib/i18n/strings';
 
 type EnumOpt = readonly { value: string; label: string }[];
 type Props = {
@@ -106,7 +107,7 @@ export function RegisterForm({ cities, enums }: Props) {
 
   return (
     <form className="mt-6 space-y-4" onSubmit={submit}>
-      {input('name', 'Full name')}
+      {input('name', t('register.name', DEFAULT_LANG))}
       {input('phone', 'Phone', 'tel')}
       {input('teudatZeut', 'Teudat zeut')}
       {select('city', 'City / Город', cities)}
@@ -114,7 +115,7 @@ export function RegisterForm({ cities, enums }: Props) {
       {select('transportation', 'Transportation', enums.transportation)}
       {select('hebrewLevel', 'Hebrew level', enums.hebrewLevel)}
       {select('gender', 'Gender', enums.gender)}
-      {select('schedule', 'Shift preference', enums.schedule)}
+      {select('schedule', t('register.schedule', DEFAULT_LANG), enums.schedule)}
       {fatal && <p className="text-sm text-red-600">{fatal}</p>}
       <button
         type="submit"

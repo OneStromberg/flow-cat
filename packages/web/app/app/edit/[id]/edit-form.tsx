@@ -3,10 +3,11 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { Widget } from '../../../../lib/form-widgets';
+import { t, DEFAULT_LANG, type Lang } from '../../../../lib/i18n/strings';
 
-type Props = { id: string; widgets: Widget[]; initial: Record<string, string>; today: string };
+type Props = { id: string; widgets: Widget[]; initial: Record<string, string>; today: string; lang?: Lang };
 
-export function EditForm({ id, widgets, initial, today }: Props) {
+export function EditForm({ id, widgets, initial, today, lang = DEFAULT_LANG }: Props) {
   const router = useRouter();
   const [answers, setAnswers] = useState<Record<string, string>>(initial);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -34,11 +35,11 @@ export function EditForm({ id, widgets, initial, today }: Props) {
         setErrors(data.errors);
         setBusy(false);
       } else {
-        setFatal(res.status === 403 ? 'This entry is locked.' : 'Could not save. Try again.');
+        setFatal(res.status === 403 ? 'This entry is locked.' : t('checkin.generic', lang));
         setBusy(false);
       }
     } catch {
-      setFatal('Network error. Try again.');
+      setFatal(t('checkin.network', lang));
       setBusy(false);
     }
   }
@@ -67,7 +68,7 @@ export function EditForm({ id, widgets, initial, today }: Props) {
       <div className="flex gap-3">
         <button type="submit" disabled={busy}
           className="flex-1 rounded-lg bg-gray-900 px-4 py-3 text-base font-medium text-white disabled:opacity-50">
-          {busy ? 'Saving…' : 'Save'}
+          {busy ? t('checkin.saving', lang) : 'Save'}
         </button>
         <a href="/app" className="rounded-lg border border-gray-300 px-4 py-3 text-base">Cancel</a>
       </div>

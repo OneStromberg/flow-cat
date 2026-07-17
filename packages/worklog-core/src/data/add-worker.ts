@@ -35,7 +35,7 @@ export interface AddWorkerInput {
 const WORKERS_COLUMNS = [
   'phone', 'name', 'greeting', 'places', 'active', 'token', 'teudat_zeut',
   'admin', 'city', 'age', 'birthdate', 'transportation', 'hebrew_level', 'pay_type', 'pay_amount', 'schedule', 'gender',
-  'pay_structure', 'pay_rate', 'telegram_chat_id',
+  'pay_structure', 'pay_rate', 'telegram_chat_id', 'lang',
 ];
 
 function inEnum(val: string, list: readonly { value: string }[]): boolean {
@@ -148,6 +148,33 @@ export async function setWorkerPhone(
   newRow[phoneCol] = p;
   await gateway.updateRow('Workers', idx + 1, newRow);
   return { ok: true };
+}
+
+/**
+ * Persists a worker's preferred UI language (`ru` | `en` | `he`) by phone.
+ * Callers should pass an already-resolved `Lang` (see `resolveLang` in
+ * `packages/web/lib/i18n/strings.ts`) so only valid locale codes land in the sheet.
+ */
+export async function setWorkerLang(gateway: SheetsGateway, phone: string, lang: string): Promise<void> {
+  const target = normalizePhone(phone);
+  const rows = await gateway.readTab('Workers');
+  if (rows.length === 0) return;
+
+  let header = rows[0].map((h) => h.trim());
+  if (!header.includes('lang')) {
+    header = [...header, 'lang'];
+    await gateway.writeHeaderRow('Workers', header);
+  }
+
+  const phoneIdx = header.indexOf('phone');
+  const langIdx = header.indexOf('lang');
+  const i = rows.findIndex((r, idx) => idx > 0 && normalizePhone(r[phoneIdx] ?? '') === target);
+  if (i < 0) return;
+
+  const row = [...rows[i]];
+  while (row.length < header.length) row.push('');
+  row[langIdx] = lang;
+  await gateway.updateRow('Workers', i + 1, row);
 }
 
 export async function updateWorker(
