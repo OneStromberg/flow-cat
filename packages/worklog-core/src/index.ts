@@ -18,7 +18,7 @@ export { submitWorklog } from './submit/submit-worklog.ts';
 export type { WorkEntry } from './entries/entries.ts';
 export { listWorkerEntries, getEntry, updateEntry } from './entries/entries.ts';
 export { createSession, readSession } from './session/session.ts';
-export { addWorker, type AddWorkerInput, updateWorker, type UpdateWorkerInput, setWorkerPhone } from './data/add-worker.ts';
+export { addWorker, type AddWorkerInput, updateWorker, type UpdateWorkerInput, setWorkerPhone, ageFromBirthdate } from './data/add-worker.ts';
 export { listTemplates, addTemplate, updateTemplate, deleteTemplate, copyTemplate, parseTemplate, formatTemplateOffer, WEEKDAYS, type ShiftTemplate, type AddTemplateInput, type DayTime } from './data/shift-templates.ts';
 export { listRecurring, addRecurring, removeRecurring, listAssignments, assignManual, removeAssignment, type RecurringAssignment, type ShiftAssignment } from './data/shift-assignments.ts';
 export { generateInstances, seedTemplateInstances, listInstances, cancelInstance, updateInstance, applyTemplateEdit, type ShiftInstance } from './data/shift-instances.ts';

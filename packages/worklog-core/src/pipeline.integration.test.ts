@@ -21,7 +21,7 @@ test('END-TO-END: worker → place → shift → generate → check-in/out → p
 
   // 1. Add an hourly worker (₪50/h) and a place (base ₪40/h, 100m geofence).
   const w = await addWorker(g, {
-    phone: PHONE, teudatZeut: '123', name: 'Dana', places: ['Site A'], city: 'TLV', age: '30',
+    phone: PHONE, teudatZeut: '123', name: 'Dana', places: ['Site A'], city: 'TLV', age: '30', birthdate: '',
     transportation: 'car', hebrewLevel: 'read_write', payType: 'amount', payAmount: '50',
     schedule: 'days', gender: 'female', payStructure: 'hourly', payRate: '50',
   });

@@ -8,7 +8,7 @@ const base = {
   phone: '+1 555-222-0000', teudatZeut: '987654321', name: 'New Guy',
   places: ['Warehouse'], city: 'Eilat', age: '30',
   transportation: 'car', hebrewLevel: 'speaks_good', payType: 'full', payAmount: '', schedule: 'days', gender: '',
-  payStructure: '', payRate: '',
+  payStructure: '', payRate: '', birthdate: '',
 };
 
 test('adds a valid worker (header-aligned row, active=yes)', async () => {
@@ -58,7 +58,7 @@ test('updateWorker edits an existing worker by phone (incl pay structure)', asyn
     ['972501234567','Ilya','Lod','yes','9','','monthly','37'],
   ]});
   const r = await updateWorker(g, '0501234567', {
-    teudatZeut:'9', name:'Ilya', places:['Lod'], city:'', age:'', transportation:'', hebrewLevel:'',
+    teudatZeut:'9', name:'Ilya', places:['Lod'], city:'', age:'', birthdate:'', transportation:'', hebrewLevel:'',
     payType:'', payAmount:'', schedule:'', gender:'', payStructure:'hourly', payRate:'37', active:true, admin:false,
   });
   assert.equal(r.ok, true);
@@ -89,9 +89,28 @@ test('setWorkerPhone repairs a blank-phone worker matched by token; rejects unkn
 
 test('addWorker accepts a valid gender and rejects an invalid one', async () => {
   const g = createMemoryGateway({ Workers: [['phone','name','places','active']] });
-  const ok = await addWorker(g, { phone: '15551112222', teudatZeut: '1', name: 'A', places: [], city: '', age: '', transportation: '', hebrewLevel: '', payType: '', payAmount: '', schedule: '', gender: 'male', payStructure: '', payRate: '' });
+  const ok = await addWorker(g, { phone: '15551112222', teudatZeut: '1', name: 'A', places: [], city: '', age: '', transportation: '', hebrewLevel: '', payType: '', payAmount: '', schedule: '', gender: 'male', payStructure: '', payRate: '', birthdate: '' });
   assert.deepEqual(ok, { ok: true });
-  const bad = await addWorker(g, { phone: '15553334444', teudatZeut: '1', name: 'B', places: [], city: '', age: '', transportation: '', hebrewLevel: '', payType: '', payAmount: '', schedule: '', gender: 'zzz', payStructure: '', payRate: '' });
+  const bad = await addWorker(g, { phone: '15553334444', teudatZeut: '1', name: 'B', places: [], city: '', age: '', transportation: '', hebrewLevel: '', payType: '', payAmount: '', schedule: '', gender: 'zzz', payStructure: '', payRate: '', birthdate: '' });
   assert.equal(bad.ok, false);
   if (!bad.ok) assert.equal(bad.errors.gender, 'Invalid');
+});
+
+import { ageFromBirthdate } from './add-worker.ts';
+
+test('ageFromBirthdate computes whole years and guards bad input', () => {
+  const now = new Date('2026-07-17T00:00:00.000Z');
+  assert.equal(ageFromBirthdate('2000-07-17', now), 26);
+  assert.equal(ageFromBirthdate('2000-07-18', now), 25); // birthday tomorrow
+  assert.equal(ageFromBirthdate('', now), null);
+  assert.equal(ageFromBirthdate('not-a-date', now), null);
+  assert.equal(ageFromBirthdate('2100-01-01', now), null); // future
+});
+
+test('addWorker persists birthdate into the Workers row', async () => {
+  const g = createMemoryGateway({ Workers: [] });
+  const r = await addWorker(g, { ...base, birthdate: '1990-01-15' });
+  assert.equal(r.ok, true);
+  const w = (await listWorkers(g)).find((x) => x.phone);
+  assert.equal(w?.birthdate, '1990-01-15');
 });
