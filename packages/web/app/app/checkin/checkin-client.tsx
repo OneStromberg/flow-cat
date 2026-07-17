@@ -59,6 +59,9 @@ export function CheckinClient({ items, workerName }: CheckinClientProps) {
         }
         router.refresh();
       } else {
+        // Regression note: a geofence-blocked checkout returns 422 (res.ok === false), so it
+        // always lands here as a blocking actionError — it can never fall into the soft
+        // geofenceWarning branch above, which only fires on a successful (res.ok) response.
         setActionError(data.message ?? data.error ?? 'Something went wrong. Please try again.');
       }
     } catch (err: unknown) {

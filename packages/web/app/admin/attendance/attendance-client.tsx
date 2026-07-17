@@ -60,6 +60,7 @@ export function AttendanceClient({ rows }: { rows: AttendanceRow[] }) {
 
   return (
     <div className="overflow-x-auto">
+      <p className="mb-2 text-xs text-gray-500">⚠ = outside allowed zone (in / out)</p>
       <table className="w-full text-sm">
         <thead>
           <tr className="border-b text-left text-gray-500">
@@ -114,8 +115,8 @@ export function AttendanceClient({ rows }: { rows: AttendanceRow[] }) {
                 </td>
                 <td>
                   <span className="flex gap-1">
-                    <span title="Check-in in geofence">{row.checkInInGeofence ? '✓' : '⚠'}</span>
-                    <span title="Check-out in geofence">{row.checkOutInGeofence ? '✓' : '⚠'}</span>
+                    <span title="Check-in outside the allowed zone">{row.checkInInGeofence ? '✓' : '⚠'}</span>
+                    <span title="Check-out outside the allowed zone">{row.checkOutInGeofence ? '✓' : '⚠'}</span>
                   </span>
                 </td>
                 <td className="flex gap-2 text-blue-600">
