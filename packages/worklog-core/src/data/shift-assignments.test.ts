@@ -50,6 +50,30 @@ test('assignManual reactivates a removed row instead of appending a duplicate', 
   assert.equal((await g.readTab('ShiftAssignments')).length, 2); // header + 1 row, no append
 });
 
+test('assignManual reactivation with a new rate updates the rate', async () => {
+  const g = createMemoryGateway({ ShiftAssignments: [
+    ['instance_id','employee_phone','source','status','assigned_at','assigned_by','rate'],
+    ['i1','p1','manual','removed','2026-07-01T00:00:00.000Z','admin','48'],
+  ]});
+  // Reactivate with a different rate
+  await assignManual(g, 'i1', 'p1', 'admin', '60');
+  const a = (await listAssignments(g, { instanceId: 'i1' })).filter((x) => x.employeePhone === 'p1');
+  assert.equal(a.length, 1);
+  assert.equal(a[0].rate, '60', 'Rate should be updated to the new value');
+});
+
+test('assignManual reactivation without rate keeps the existing rate', async () => {
+  const g = createMemoryGateway({ ShiftAssignments: [
+    ['instance_id','employee_phone','source','status','assigned_at','assigned_by','rate'],
+    ['i1','p1','manual','removed','2026-07-01T00:00:00.000Z','admin','48'],
+  ]});
+  // Reactivate without passing a rate
+  await assignManual(g, 'i1', 'p1', 'admin');
+  const a = (await listAssignments(g, { instanceId: 'i1' })).filter((x) => x.employeePhone === 'p1');
+  assert.equal(a.length, 1);
+  assert.equal(a[0].rate, '48', 'Rate should remain unchanged');
+});
+
 test('repairDuplicateAssignments collapses multiple assigned rows to one', async () => {
   const g = createMemoryGateway({ ShiftAssignments: [
     ['instance_id','employee_phone','source','status','assigned_at','assigned_by','rate'],

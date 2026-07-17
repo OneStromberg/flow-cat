@@ -91,3 +91,39 @@ test('reportSummary: monthly buckets per place, hours*rate, rollup + grand total
   assert.ok(sheet.rows.some((r) => r[0] === 'Place1' && r[4] === '320'));   // per-place rollup
   assert.ok(sheet.rows.some((r) => r[0] === 'Total' && r[4] === '320'));    // grand total
 });
+
+test('report totals round fractional hours to 2 decimals (0.1 + 0.2 → 0.3, not 0.30000000000000004)', () => {
+  const instById = new Map([['i1', inst({ location:'Place1' })]]);
+  const names = new Map([['p1','Victor']]);
+  const [sheet] = reportByObject(
+    [att({ instanceId:'i1', employeePhone:'p1', date:'2026-07-01', hours:'0.1' }),
+     att({ instanceId:'i1', employeePhone:'p1', date:'2026-07-02', hours:'0.2' })] as any,
+    instById, names, { from:'2026-07-01', to:'2026-07-31' });
+  // Grand total should be '0.3', not '0.30000000000000004'
+  const grandTotalRow = sheet.rows.find((r) => r[0] === 'Total');
+  assert.equal(grandTotalRow?.[1], '0.3', 'Grand total should be "0.3"');
+});
+
+test('reportByPerson totals round fractional hours to 2 decimals', () => {
+  const instById = new Map([['i1', inst({ location:'Place1' })]]);
+  const names = new Map([['p1','Victor']]);
+  const [sheet] = reportByPerson(
+    [att({ instanceId:'i1', employeePhone:'p1', date:'2026-07-01', hours:'0.1' }),
+     att({ instanceId:'i1', employeePhone:'p1', date:'2026-07-02', hours:'0.2' })] as any,
+    instById, names, { from:'2026-07-01', to:'2026-07-31' });
+  // Grand total should be '0.3'
+  const grandTotalRow = sheet.rows.find((r) => r[0] === 'Total');
+  assert.equal(grandTotalRow?.[1], '0.3', 'Grand total should be "0.3"');
+});
+
+test('reportSummary amount (hours*rate) rounds to 2 decimals for fractional hours', () => {
+  const instById = new Map([['i1', inst({ location:'Place1' })]]);
+  const rateByLoc = new Map([['Place1','30']]);
+  const sheet = reportSummary([att({ date:'2026-07-01', hours:'0.1' }), att({ date:'2026-07-01', hours:'0.2' })] as any, instById, rateByLoc, { from:'2026-07-01', to:'2026-07-31' });
+  // (0.1 + 0.2) * 30 = 0.3 * 30 = 9
+  const dataRow = sheet.rows.find((r) => r[0] === '2026-07' && r[1] === 'Place1');
+  assert.equal(dataRow?.[4], '9', 'Amount should be "9" not "8.999999999999998"');
+  // Grand total should also be '9'
+  const grandTotalRow = sheet.rows.find((r) => r[0] === 'Total');
+  assert.equal(grandTotalRow?.[4], '9', 'Grand total should be "9"');
+});

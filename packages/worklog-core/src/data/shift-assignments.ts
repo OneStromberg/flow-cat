@@ -145,6 +145,10 @@ export async function assignManual(
       if (!newRow[header.indexOf('assigned_at')] || (newRow[header.indexOf('assigned_at')] ?? '').trim() === '') {
         newRow[header.indexOf('assigned_at')] = new Date().toISOString();
       }
+      // Update rate if a non-empty rate is provided
+      if ((rate ?? '').trim() !== '') {
+        newRow[header.indexOf('rate')] = (rate ?? '').trim();
+      }
       await gateway.updateRow('ShiftAssignments', existingIdx + 1, newRow);
     }
   } else {

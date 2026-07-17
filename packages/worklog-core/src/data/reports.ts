@@ -4,6 +4,9 @@ import type { ShiftInstance } from './shift-instances.ts';
 
 type Range = { from: string; to: string };
 
+// Round to 2 decimals to eliminate floating point noise (e.g., 0.1 + 0.2 → 0.3, not 0.30000000000000004)
+const r2 = (n: number) => Math.round(n * 100) / 100;
+
 function inRange(date: string, r: Range): boolean {
   return date >= r.from && date <= r.to;
 }
@@ -109,10 +112,10 @@ export function reportByObject(
   }
   return [...byLoc.entries()].map(([location, g]) => {
     const body = blankRepeatDates(g.rows.sort((x, y) => x[0].localeCompare(y[0])));
-    const totalsBlock = [...g.totals.entries()].map(([name, hours]) => [name, String(hours), '', '', '']);
+    const totalsBlock = [...g.totals.entries()].map(([name, hours]) => [name, String(r2(hours)), '', '', '']);
     return {
       name: location, title: location, header: OBJECT_HEADER,
-      rows: [...body, ...totalsBlock, ['Total', String(g.grand), '', '', '']],
+      rows: [...body, ...totalsBlock, ['Total', String(r2(g.grand)), '', '', '']],
     };
   });
 }
@@ -135,10 +138,10 @@ export function reportByPerson(
   return [...byPhone.entries()].map(([phone, g]) => {
     const name = nameByPhone.get(phone) ?? phone;
     const body = blankRepeatDates(g.rows.sort((x, y) => x[0].localeCompare(y[0])));
-    const totalsBlock = [...g.totals.entries()].map(([loc, hours]) => [loc, String(hours), '', '', '']);
+    const totalsBlock = [...g.totals.entries()].map(([loc, hours]) => [loc, String(r2(hours)), '', '', '']);
     return {
       name, title: name, header: PERSON_HEADER,
-      rows: [...body, ...totalsBlock, ['Total', String(g.grand), '', '', '']],
+      rows: [...body, ...totalsBlock, ['Total', String(r2(g.grand)), '', '', '']],
     };
   });
 }
@@ -162,14 +165,14 @@ export function reportSummary(
   for (const month of [...byMonthLoc.keys()].sort()) {
     for (const [location, hours] of byMonthLoc.get(month)!) {
       const rate = rateByLocation.get(location) ?? '';
-      const amount = hours * (Number(rate) || 0);
-      rows.push([month, location, String(hours), rate, String(amount)]);
+      const amount = r2(hours * (Number(rate) || 0));
+      rows.push([month, location, String(r2(hours)), rate, String(amount)]);
       rollup.set(location, (rollup.get(location) ?? 0) + amount);
       grand += amount;
     }
   }
-  for (const [location, amount] of rollup) rows.push([location, '', '', '', String(amount)]);
-  rows.push(['Total', '', '', '', String(grand)]);
+  for (const [location, amount] of rollup) rows.push([location, '', '', '', String(r2(amount))]);
+  rows.push(['Total', '', '', '', String(r2(grand))]);
   return { name: 'Summary', title: 'Client / Selected places', header: SUMMARY_HEADER, rows };
 }
 
