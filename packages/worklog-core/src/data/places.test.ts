@@ -1,7 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createMemoryGateway } from '@scourage/sheets-helper';
-import { listPlaces, addPlace, updatePlace, deletePlace, wazeUrl, googleMapsUrl, placeGraceMins } from './places.ts';
+import { listPlaces, addPlace, updatePlace, deletePlace, wazeUrl, googleMapsUrl, placeGraceMins, cascadeDeletePlace } from './places.ts';
+import { listTemplates } from './shift-templates.ts';
 
 test('wazeUrl builds a navigate link', () => {
   assert.equal(wazeUrl('32.08', '34.78'), 'https://waze.com/ul?ll=32.08,34.78&navigate=yes');
@@ -160,4 +161,23 @@ test('placeGraceMins falls back to default when blank/invalid', () => {
   assert.equal(placeGraceMins({ graceMins: '' }), 10);
   assert.equal(placeGraceMins({ graceMins: 'x' }, 10), 10);
   assert.equal(placeGraceMins(undefined), 10);
+});
+
+test('cascadeDeletePlace soft-deletes place + its templates + cancels their future scheduled instances', async () => {
+  const g = createMemoryGateway({
+    Places: [['place_name','active'],['Gedera','yes']],
+    ShiftTemplates: [
+      ['id','location','label','days','start','end','headcount','valid_from','valid_to','active','rate','instructions','day_times'],
+      ['t1','Gedera','Guard','mon','08:00','16:00','1','','','yes','','',''],
+    ],
+    ShiftInstances: [
+      ['id','template_id','location','date','start','end','headcount','status','generated_at'],
+      ['i1','t1','Gedera','2026-07-20','08:00','16:00','1','scheduled',''],
+    ],
+  });
+  const r = await cascadeDeletePlace(g, 'Gedera', '2026-07-17');
+  assert.equal(r.ok, true);
+  assert.equal((await listPlaces(g)).find((p) => p.name === 'Gedera')?.active, false);
+  assert.equal((await listTemplates(g)).find((t) => t.id === 't1')?.active, false);
+  assert.equal((await g.readTab('ShiftInstances')).find((x) => x[0] === 'i1')?.[7], 'cancelled');
 });

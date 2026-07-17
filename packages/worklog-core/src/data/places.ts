@@ -1,4 +1,6 @@
 import { objectToRow, rowsToObjects, type SheetsGateway } from '@scourage/sheets-helper';
+import { deleteTemplate, listTemplates } from './shift-templates.ts';
+import { cancelFutureInstancesForTemplate } from './shift-instances.ts';
 
 export async function loadActivePlaces(gateway: SheetsGateway): Promise<string[]> {
   const objs = rowsToObjects(await gateway.readTab('Places'));
@@ -142,6 +144,23 @@ function numeric(s: string): boolean {
 export function placeGraceMins(place: { graceMins?: string } | undefined, def = 10): number {
   const n = Number((place?.graceMins ?? '').trim());
   return Number.isFinite(n) && n > 0 ? n : def;
+}
+
+export async function cascadeDeletePlace(
+  gateway: SheetsGateway, name: string, today: string,
+): Promise<{ ok: true; templatesDeleted: number; instancesCancelled: number } | { ok: false; error: string }> {
+  const del = await deletePlace(gateway, name);
+  if (!del.ok) return del;
+  const templates = (await listTemplates(gateway)).filter((t) => t.active && t.location === name);
+  let templatesDeleted = 0;
+  let instancesCancelled = 0;
+  for (const t of templates) {
+    await deleteTemplate(gateway, t.id);
+    templatesDeleted++;
+    const res = await cancelFutureInstancesForTemplate(gateway, t.id, today);
+    instancesCancelled += res.cancelled;
+  }
+  return { ok: true, templatesDeleted, instancesCancelled };
 }
 
 export async function addPlace(

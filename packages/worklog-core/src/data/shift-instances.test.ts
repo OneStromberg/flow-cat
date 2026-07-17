@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createMemoryGateway, rowsToObjects } from '@scourage/sheets-helper';
-import { generateInstances, listInstances, cancelInstance, updateInstance, applyTemplateEdit, seedTemplateInstances } from './shift-instances.ts';
+import { generateInstances, listInstances, cancelInstance, updateInstance, applyTemplateEdit, seedTemplateInstances, cancelFutureInstancesForTemplate } from './shift-instances.ts';
 import { listAssignments } from './shift-assignments.ts';
 
 function seed() {
@@ -318,4 +318,23 @@ test('applyTemplateEdit updates the matching slot only (multi-shift day)', async
   assert.equal(bySlot['20:00'], '22:00');
   const unmatched = inst.find((o) => o.start === '20:00');
   assert.equal(unmatched?.status, 'scheduled');
+});
+
+test('cancelFutureInstancesForTemplate cancels only future scheduled instances of the template', async () => {
+  const g = createMemoryGateway({ ShiftInstances: [
+    ['id','template_id','location','date','start','end','headcount','status','generated_at'],
+    ['i_past','t1','Gedera','2026-07-01','08:00','16:00','1','scheduled',''],   // past → keep
+    ['i_fut','t1','Gedera','2026-07-20','08:00','16:00','1','scheduled',''],     // future → cancel
+    ['i_other','t2','Elsewhere','2026-07-20','08:00','16:00','1','scheduled',''],// other tmpl → keep
+    ['i_cxl','t1','Gedera','2026-07-21','08:00','16:00','1','cancelled',''],      // already cancelled → keep
+  ]});
+  const r = await cancelFutureInstancesForTemplate(g, 't1', '2026-07-17');
+  assert.equal(r.cancelled, 1);
+  const rows = await g.readTab('ShiftInstances');
+  const status = (id: string) => rows.find((x) => x[0] === id)?.[7];
+  assert.equal(status('i_fut'), 'cancelled');
+  assert.equal(status('i_past'), 'scheduled');
+  assert.equal(status('i_other'), 'scheduled');
+  // idempotent
+  assert.equal((await cancelFutureInstancesForTemplate(g, 't1', '2026-07-17')).cancelled, 0);
 });
