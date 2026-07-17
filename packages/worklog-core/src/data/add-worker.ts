@@ -71,6 +71,11 @@ export async function addWorker(
 
   if (Object.keys(errors).length) return { ok: false, errors };
 
+  const birthdateTrimmed = input.birthdate.trim();
+  const age = birthdateTrimmed
+    ? String(ageFromBirthdate(birthdateTrimmed) ?? '')
+    : input.age.trim();
+
   const record: Record<string, string> = {
     phone,
     name: input.name.trim(),
@@ -81,8 +86,8 @@ export async function addWorker(
     teudat_zeut: input.teudatZeut.trim(),
     admin: '',
     city: input.city.trim(),
-    age: input.age.trim(),
-    birthdate: input.birthdate.trim(),
+    age,
+    birthdate: birthdateTrimmed,
     transportation: input.transportation,
     hebrew_level: input.hebrewLevel,
     pay_type: input.payType,
@@ -215,6 +220,12 @@ export async function updateWorker(
     await gateway.writeHeaderRow('Workers', fullHeader);
   }
 
+  const birthdateTrimmed = input.birthdate.trim();
+  const ageTrimmed = input.age.trim();
+  const age = birthdateTrimmed
+    ? String(ageFromBirthdate(birthdateTrimmed) ?? '')
+    : (ageTrimmed || get('age'));
+
   const record: Record<string, string> = {
     phone: target,
     name: input.name.trim(),
@@ -225,8 +236,8 @@ export async function updateWorker(
     teudat_zeut: input.teudatZeut.trim(),
     admin: input.admin ? 'yes' : '',
     city: input.city.trim(),
-    age: input.age.trim(),
-    birthdate: input.birthdate.trim(),
+    age,
+    birthdate: birthdateTrimmed,
     transportation: input.transportation,
     hebrew_level: input.hebrewLevel,
     pay_type: input.payType,

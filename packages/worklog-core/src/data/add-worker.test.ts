@@ -158,3 +158,47 @@ test('ageFromBirthdate: empty string vs whitespace-only string both return null'
   assert.equal(ageFromBirthdate('   ', now), null);
   assert.equal(ageFromBirthdate('\t\n', now), null);
 });
+
+test('addWorker with birthdate derives and stores the age', async () => {
+  const g = createMemoryGateway({ Workers: [] });
+  const now = new Date('2026-07-17T00:00:00.000Z');
+  const r = await addWorker(g, { ...base, birthdate: '1990-01-15' });
+  assert.equal(r.ok, true);
+  const w = (await listWorkers(g)).find((x) => x.phone);
+  assert.equal(w?.birthdate, '1990-01-15');
+  // Age should be derived from birthdate: 2026 - 1990 = 36, and we're past Jan 15, so 36
+  assert.equal(w?.age, '36');
+});
+
+test('updateWorker with empty age + empty birthdate preserves existing age (no data loss)', async () => {
+  const g = createMemoryGateway({ Workers: [
+    ['phone', 'name', 'places', 'active', 'teudat_zeut', 'admin', 'age', 'birthdate'],
+    ['972501234567', 'Legacy', 'Lod', 'yes', '9', '', '40', ''],
+  ] });
+  const r = await updateWorker(g, '0501234567', {
+    teudatZeut: '9', name: 'Legacy', places: ['Lod'], city: '', age: '', birthdate: '',
+    transportation: '', hebrewLevel: '', payType: '', payAmount: '', schedule: '', gender: '',
+    payStructure: '', payRate: '', active: true, admin: false,
+  });
+  assert.equal(r.ok, true);
+  const w = await findWorker(g, '972501234567');
+  assert.equal(w?.age, '40', 'existing age should NOT be blanked when input age is empty and no birthdate');
+});
+
+test('updateWorker with birthdate derives and stores the age (overrides legacy age)', async () => {
+  const g = createMemoryGateway({ Workers: [
+    ['phone', 'name', 'places', 'active', 'teudat_zeut', 'admin', 'age', 'birthdate'],
+    ['972501234567', 'Legacy', 'Lod', 'yes', '9', '', '40', ''],
+  ] });
+  const now = new Date('2026-07-17T00:00:00.000Z');
+  const r = await updateWorker(g, '0501234567', {
+    teudatZeut: '9', name: 'Legacy', places: ['Lod'], city: '', age: '', birthdate: '2000-01-15',
+    transportation: '', hebrewLevel: '', payType: '', payAmount: '', schedule: '', gender: '',
+    payStructure: '', payRate: '', active: true, admin: false,
+  });
+  assert.equal(r.ok, true);
+  const w = await findWorker(g, '972501234567');
+  assert.equal(w?.birthdate, '2000-01-15');
+  // Age should be derived: 2026 - 2000 = 26, we're past Jan 15, so 26
+  assert.equal(w?.age, '26', 'age should be derived from new birthdate');
+});
