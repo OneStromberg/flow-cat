@@ -55,7 +55,7 @@ export default async function HoursPage() {
       <h1 className="text-xl font-semibold">{t('hours.title', lang)}</h1>
 
       <section className="mt-6">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-500">New entry</h2>
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-500">{t('hours.newEntry', lang)}</h2>
         {valid.ok && worker.places.length > 0 ? (
           <div className="mt-3">
             <EntryForm widgets={questions.map((q) => questionToWidget(q, worker))} today={todayISO(COMPANY_TZ)} />
@@ -74,7 +74,7 @@ export default async function HoursPage() {
           My hours{totalHours > 0 && <span className="text-gray-400"> · {Math.round(totalHours * 100) / 100}h {t('hours.total', lang)}</span>}
         </h2>
         {entries.length === 0 ? (
-          <p className="mt-3 text-sm text-gray-600">No entries yet.</p>
+          <p className="mt-3 text-sm text-gray-600">{t('hours.noEntries', lang)}</p>
         ) : (
           <ul className="mt-3 divide-y divide-gray-200 rounded-lg border border-gray-200">
             {entries.map((e) => (
