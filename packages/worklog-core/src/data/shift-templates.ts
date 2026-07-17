@@ -186,17 +186,24 @@ export async function updateTemplate(gateway: SheetsGateway, id: string, input: 
 const WEEK_ORDER_LOWER = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
 
 export function formatTemplateOffer(
-  template: Pick<ShiftTemplate, 'location' | 'label' | 'validFrom' | 'dayTimes'>,
+  template: Pick<ShiftTemplate, 'location' | 'label' | 'validFrom' | 'validTo' | 'dayTimes'>,
   opts?: { contact?: string },
 ): string {
   const lines: string[] = [];
   lines.push('🆕 Доступна новая смена');
-  lines.push(`Location: ${template.location}`);
-  if (template.label) lines.push(`Label: ${template.label}`);
-  if (template.validFrom) lines.push(`From: ${template.validFrom}`);
+  lines.push('Постоянная смена (еженедельно)');
+  lines.push(`📍 Объект: ${template.location}`);
+  if (template.label) lines.push(`🏷 Роль: ${template.label}`);
+  if (template.validFrom) {
+    lines.push(template.validTo
+      ? `📅 Период: с ${template.validFrom} по ${template.validTo}`
+      : `📅 С ${template.validFrom}, далее постоянно`);
+  } else {
+    lines.push('📅 Постоянно');
+  }
 
   if (template.dayTimes && template.dayTimes.length > 0) {
-    lines.push('Schedule:');
+    lines.push('🗓 Рабочие дни (еженедельно):');
     const byDay = new Map<string, DayTime[]>();
     for (const dt of template.dayTimes) {
       const key = dt.day.toLowerCase();
@@ -218,7 +225,7 @@ export function formatTemplateOffer(
     }
   }
 
-  if (opts?.contact) lines.push(`Contact: ${opts.contact}`);
+  if (opts?.contact) lines.push(`📞 Контакт: ${opts.contact}`);
 
   return lines.join('\n');
 }

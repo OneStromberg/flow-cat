@@ -14,6 +14,7 @@ export interface Worker {
   city?: string;
   transportation?: string;
   age?: string;
+  birthdate?: string;
   hebrewLevel?: string;
   payType?: string;
   payAmount?: string;
@@ -43,6 +44,7 @@ export function parseWorker(row: Record<string, string>, master: string[]): Work
     city: (row.city ?? '').trim(),
     transportation: (row.transportation ?? '').trim(),
     age: (row.age ?? '').trim(),
+    birthdate: (row.birthdate ?? '').trim(),
     hebrewLevel: (row.hebrew_level ?? '').trim(),
     payType: (row.pay_type ?? '').trim(),
     payAmount: (row.pay_amount ?? '').trim(),

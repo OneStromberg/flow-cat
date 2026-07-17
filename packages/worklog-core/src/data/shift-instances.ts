@@ -14,7 +14,7 @@ export interface ShiftInstance {
 }
 
 const INSTANCE_COLUMNS = ['id', 'template_id', 'location', 'date', 'start', 'end', 'headcount', 'status', 'generated_at'];
-const ASSIGN_COLUMNS = ['instance_id', 'employee_phone', 'source', 'status', 'assigned_at', 'assigned_by'];
+const ASSIGN_COLUMNS = ['instance_id', 'employee_phone', 'source', 'status', 'assigned_at', 'assigned_by', 'rate'];
 
 // ── Date helpers ──────────────────────────────────────────────────────────────
 const WD = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -440,4 +440,27 @@ export async function seedTemplateInstances(
   }
 
   return { instancesCreated, assignmentsSeeded };
+}
+
+export async function cancelFutureInstancesForTemplate(
+  gateway: SheetsGateway, templateId: string, today: string,
+): Promise<{ cancelled: number }> {
+  const rows = await gateway.readTab('ShiftInstances');
+  if (!rows.length) return { cancelled: 0 };
+  const header = rows[0].map((h) => h.trim());
+  const iTmpl = header.indexOf('template_id');
+  const iDate = header.indexOf('date');
+  const iStatus = header.indexOf('status');
+  let cancelled = 0;
+  for (let i = 1; i < rows.length; i++) {
+    const r = rows[i];
+    if ((r[iTmpl] ?? '').trim() !== templateId) continue;
+    if ((r[iDate] ?? '').trim() < today) continue;
+    if ((r[iStatus] ?? '').trim() !== 'scheduled') continue;
+    const newRow = [...r];
+    newRow[iStatus] = 'cancelled';
+    await gateway.updateRow('ShiftInstances', i + 1, newRow); // 1-based
+    cancelled++;
+  }
+  return { cancelled };
 }

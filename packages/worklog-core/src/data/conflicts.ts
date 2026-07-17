@@ -46,3 +46,27 @@ export async function findConflicts(gateway: SheetsGateway, range: { from: strin
   }
   return out;
 }
+
+export async function findDuplicateAssignments(
+  gateway: SheetsGateway,
+): Promise<{ instanceId: string; employeePhone: string; count: number }[]> {
+  const groups = new Map<string, number>();
+  for (const o of rowsToObjects(await gateway.readTab('ShiftAssignments'))) {
+    if ((o.status ?? '').trim() !== 'assigned') continue;
+    const instanceId = (o.instance_id ?? '').trim();
+    const employeePhone = (o.employee_phone ?? '').trim();
+    if (!instanceId || !employeePhone) continue;
+
+    const key = `${instanceId}|${employeePhone}`;
+    groups.set(key, (groups.get(key) ?? 0) + 1);
+  }
+
+  const out: { instanceId: string; employeePhone: string; count: number }[] = [];
+  for (const [key, count] of groups) {
+    if (count > 1) {
+      const [instanceId, employeePhone] = key.split('|');
+      out.push({ instanceId, employeePhone, count });
+    }
+  }
+  return out;
+}

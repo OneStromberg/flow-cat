@@ -2,6 +2,18 @@ import { objectToRow, rowsToObjects, type SheetsGateway } from '@scourage/sheets
 import { normalizePhone } from './phone.ts';
 import { TRANSPORTATION, HEBREW_LEVEL, PAY_TYPE, SCHEDULE, GENDER } from './worker-fields.ts';
 
+export function ageFromBirthdate(birthdate: string, now: Date = new Date()): number | null {
+  const s = (birthdate ?? '').trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return null;
+  const d = new Date(`${s}T00:00:00.000Z`);
+  if (!Number.isFinite(d.getTime())) return null;
+  if (d.getTime() > now.getTime()) return null;
+  let age = now.getUTCFullYear() - d.getUTCFullYear();
+  const m = now.getUTCMonth() - d.getUTCMonth();
+  if (m < 0 || (m === 0 && now.getUTCDate() < d.getUTCDate())) age--;
+  return age >= 0 && age < 130 ? age : null;
+}
+
 export interface AddWorkerInput {
   phone: string;
   teudatZeut: string;
@@ -9,6 +21,7 @@ export interface AddWorkerInput {
   places: string[];
   city: string;
   age: string;
+  birthdate: string;
   transportation: string;
   hebrewLevel: string;
   payType: string;
@@ -21,7 +34,7 @@ export interface AddWorkerInput {
 
 const WORKERS_COLUMNS = [
   'phone', 'name', 'greeting', 'places', 'active', 'token', 'teudat_zeut',
-  'admin', 'city', 'age', 'transportation', 'hebrew_level', 'pay_type', 'pay_amount', 'schedule', 'gender',
+  'admin', 'city', 'age', 'birthdate', 'transportation', 'hebrew_level', 'pay_type', 'pay_amount', 'schedule', 'gender',
   'pay_structure', 'pay_rate', 'telegram_chat_id',
 ];
 
@@ -69,6 +82,7 @@ export async function addWorker(
     admin: '',
     city: input.city.trim(),
     age: input.age.trim(),
+    birthdate: input.birthdate.trim(),
     transportation: input.transportation,
     hebrew_level: input.hebrewLevel,
     pay_type: input.payType,
@@ -96,6 +110,7 @@ export interface UpdateWorkerInput {
   places: string[];
   city: string;
   age: string;
+  birthdate: string;
   transportation: string;
   hebrewLevel: string;
   payType: string;
@@ -184,6 +199,7 @@ export async function updateWorker(
     admin: input.admin ? 'yes' : '',
     city: input.city.trim(),
     age: input.age.trim(),
+    birthdate: input.birthdate.trim(),
     transportation: input.transportation,
     hebrew_level: input.hebrewLevel,
     pay_type: input.payType,

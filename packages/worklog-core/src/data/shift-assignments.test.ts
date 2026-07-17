@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createMemoryGateway } from '@scourage/sheets-helper';
-import { addRecurring, listRecurring, removeRecurring, assignManual, listAssignments, removeAssignment } from './shift-assignments.ts';
+import { addRecurring, listRecurring, removeRecurring, assignManual, listAssignments, removeAssignment, repairDuplicateAssignments } from './shift-assignments.ts';
 
 function gw() {
   return createMemoryGateway({
@@ -28,4 +28,60 @@ test('manual assign/list/remove (status filtered)', async () => {
   await removeAssignment(g, 'tpl_1_20260701', '15551230000');
   a = await listAssignments(g, { instanceId: 'tpl_1_20260701' });
   assert.equal(a.length, 0);
+});
+
+test('assignManual writes an optional rate and defaults empty', async () => {
+  const g = createMemoryGateway({ ShiftAssignments: [['instance_id','employee_phone','source','status','assigned_at','assigned_by','rate']] });
+  await assignManual(g, 'i1', 'p1', 'admin', '48');
+  await assignManual(g, 'i1', 'p2', 'admin'); // no rate
+  const a = await listAssignments(g, { instanceId: 'i1' });
+  assert.equal(a.find((x) => x.employeePhone === 'p1')?.rate, '48');
+  assert.equal(a.find((x) => x.employeePhone === 'p2')?.rate, '');
+});
+
+test('assignManual reactivates a removed row instead of appending a duplicate', async () => {
+  const g = createMemoryGateway({ ShiftAssignments: [
+    ['instance_id','employee_phone','source','status','assigned_at','assigned_by','rate'],
+    ['i1','p1','manual','removed','2026-07-01T00:00:00.000Z','admin',''],
+  ]});
+  await assignManual(g, 'i1', 'p1', 'admin');
+  const a = (await listAssignments(g, { instanceId: 'i1' })).filter((x) => x.employeePhone === 'p1');
+  assert.equal(a.filter((x) => x.status === 'assigned').length, 1);
+  assert.equal((await g.readTab('ShiftAssignments')).length, 2); // header + 1 row, no append
+});
+
+test('assignManual reactivation with a new rate updates the rate', async () => {
+  const g = createMemoryGateway({ ShiftAssignments: [
+    ['instance_id','employee_phone','source','status','assigned_at','assigned_by','rate'],
+    ['i1','p1','manual','removed','2026-07-01T00:00:00.000Z','admin','48'],
+  ]});
+  // Reactivate with a different rate
+  await assignManual(g, 'i1', 'p1', 'admin', '60');
+  const a = (await listAssignments(g, { instanceId: 'i1' })).filter((x) => x.employeePhone === 'p1');
+  assert.equal(a.length, 1);
+  assert.equal(a[0].rate, '60', 'Rate should be updated to the new value');
+});
+
+test('assignManual reactivation without rate keeps the existing rate', async () => {
+  const g = createMemoryGateway({ ShiftAssignments: [
+    ['instance_id','employee_phone','source','status','assigned_at','assigned_by','rate'],
+    ['i1','p1','manual','removed','2026-07-01T00:00:00.000Z','admin','48'],
+  ]});
+  // Reactivate without passing a rate
+  await assignManual(g, 'i1', 'p1', 'admin');
+  const a = (await listAssignments(g, { instanceId: 'i1' })).filter((x) => x.employeePhone === 'p1');
+  assert.equal(a.length, 1);
+  assert.equal(a[0].rate, '48', 'Rate should remain unchanged');
+});
+
+test('repairDuplicateAssignments collapses multiple assigned rows to one', async () => {
+  const g = createMemoryGateway({ ShiftAssignments: [
+    ['instance_id','employee_phone','source','status','assigned_at','assigned_by','rate'],
+    ['i1','p1','manual','assigned','2026-07-01T00:00:00.000Z','admin',''],
+    ['i1','p1','recurring','assigned','2026-07-02T00:00:00.000Z','seed',''],
+  ]});
+  const r = await repairDuplicateAssignments(g);
+  assert.equal(r.collapsed, 1);
+  const active = (await listAssignments(g, { instanceId: 'i1' })).filter((x) => x.status === 'assigned' && x.employeePhone === 'p1');
+  assert.equal(active.length, 1);
 });

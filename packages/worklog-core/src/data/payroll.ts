@@ -19,6 +19,12 @@ export function resolveHourlyRate(employeeRate: string, templateRate: string, lo
   return pos(employeeRate) || pos(templateRate) || pos(locationRate) || 0;
 }
 
+export function resolveAssignmentRate(
+  assignmentRate: string, employeeRate: string, templateRate: string, locationRate: string,
+): number {
+  return pos(assignmentRate) || pos(employeeRate) || pos(templateRate) || pos(locationRate) || 0;
+}
+
 export function computePay(structure: string, payRate: number, items: WorkedItem[], adjustments: Adjustment[]): PayBreakdown {
   let gross = 0, basis = structure;
   if (structure === 'hourly') gross = items.reduce((s, i) => s + i.hours * i.rate, 0);

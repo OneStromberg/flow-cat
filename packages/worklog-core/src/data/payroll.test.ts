@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createMemoryGateway } from '@scourage/sheets-helper';
-import { resolveHourlyRate, computePay, addAdjustment, listAdjustments } from './payroll.ts';
+import { resolveHourlyRate, resolveAssignmentRate, computePay, addAdjustment, listAdjustments } from './payroll.ts';
 
 test('resolveHourlyRate precedence: employee > template > location > 0', () => {
   assert.equal(resolveHourlyRate('50', '40', '30'), 50);
@@ -9,6 +9,15 @@ test('resolveHourlyRate precedence: employee > template > location > 0', () => {
   assert.equal(resolveHourlyRate('', '', '30'), 30);
   assert.equal(resolveHourlyRate('', '', ''), 0);
   assert.equal(resolveHourlyRate('0', '40', '30'), 40); // 0 is not a valid rate, fall through
+});
+
+test('resolveAssignmentRate prefers assignment, then employee/template/location', () => {
+  assert.equal(resolveAssignmentRate('55', '40', '30', '20'), 55);
+  assert.equal(resolveAssignmentRate('', '40', '30', '20'), 40);
+  assert.equal(resolveAssignmentRate('', '', '30', '20'), 30);
+  assert.equal(resolveAssignmentRate('', '', '', '20'), 20);
+  assert.equal(resolveAssignmentRate('', '', '', ''), 0);
+  assert.equal(resolveAssignmentRate('0', '40', '', ''), 40); // 0 is not an override
 });
 test('computePay hourly = sum(hours*rate) + bonuses - penalties', () => {
   const items = [{ date:'2026-07-01', hours:8, rate:50 }, { date:'2026-07-02', hours:4, rate:50 }];
