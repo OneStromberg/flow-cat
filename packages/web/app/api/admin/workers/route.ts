@@ -19,7 +19,7 @@ export async function POST(req: Request) {
   const input: AddWorkerInput = {
     phone: str(b.phone), teudatZeut: str(b.teudatZeut), name: str(b.name),
     places: Array.isArray(b.places) ? (b.places as unknown[]).map(str).filter(Boolean) : [],
-    city: str(b.city), age: str(b.age),
+    city: str(b.city), age: str(b.age), birthdate: str(b.birthdate),
     transportation: str(b.transportation), hebrewLevel: str(b.hebrewLevel),
     payType: str(b.payType), payAmount: str(b.payAmount), schedule: str(b.schedule), gender: str(b.gender),
     payStructure: str(b.payStructure), payRate: str(b.payRate),

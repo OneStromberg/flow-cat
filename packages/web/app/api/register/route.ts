@@ -20,6 +20,7 @@ export async function POST(req: Request) {
     places: [],
     city: str(b.city),
     age: str(b.age),
+    birthdate: str(b.birthdate),
     transportation: str(b.transportation),
     hebrewLevel: str(b.hebrewLevel),
     payType: '',

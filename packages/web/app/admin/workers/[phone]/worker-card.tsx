@@ -26,7 +26,7 @@ export function WorkerCard({ worker, places, cities, enums }: Props) {
     name: worker.name ?? '',
     teudatZeut: worker.teudatZeut ?? '',
     city: worker.city ?? '',
-    age: worker.age ?? '',
+    birthdate: worker.birthdate ?? '',
     transportation: worker.transportation ?? '',
     hebrewLevel: worker.hebrewLevel ?? '',
     payType: worker.payType ?? '',
@@ -111,7 +111,7 @@ export function WorkerCard({ worker, places, cities, enums }: Props) {
 
   return (
     <form className="mt-6 space-y-4" onSubmit={submit}>
-      {input('name', 'Name')}
+      {input('name', 'Full name')}
       {input('teudatZeut', 'Teudat zeut')}
       <div>
         <label className="block text-sm font-medium text-gray-700">Allowed places</label>
@@ -125,14 +125,14 @@ export function WorkerCard({ worker, places, cities, enums }: Props) {
         </div>
       </div>
       {selectWithFallback('city', 'City', cities)}
-      {input('age', 'Age', 'number')}
+      {input('birthdate', 'Date of birth', 'date')}
       {select('transportation', 'Transportation', enums.transportation)}
       {select('gender', 'Gender', enums.gender)}
       {select('hebrewLevel', 'Hebrew level', enums.hebrewLevel)}
       {select('payType', 'Pay eligibility', enums.payType)}
       {v.payType === 'amount' && input('payAmount', 'Amount', 'number')}
       {input('payRate', 'Pay rate', 'number')}
-      {select('schedule', 'Schedule', enums.schedule)}
+      {select('schedule', 'Shift preference', enums.schedule)}
 
       <div className="flex items-center gap-6 pt-2">
         <label className="flex items-center gap-2 text-sm font-medium text-gray-700">

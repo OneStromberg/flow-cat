@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation';
 import { requireAdmin } from '../../../lib/session';
 import { getRequestGateway } from '../../../lib/sheets';
-import { loadActivePlaces, loadCities, TRANSPORTATION, HEBREW_LEVEL, PAY_TYPE, SCHEDULE, GENDER, PAY_STRUCTURE } from '@scourage/worklog-core';
+import { loadActivePlaces, CITIES, TRANSPORTATION, HEBREW_LEVEL, PAY_TYPE, SCHEDULE, GENDER, PAY_STRUCTURE } from '@scourage/worklog-core';
 import { AddWorkerForm } from './add-worker-form';
 
 export const runtime = 'nodejs';
@@ -12,7 +12,6 @@ export default async function AddWorkerPage() {
   if (!admin) redirect('/');
   const gw = getRequestGateway();
   const places = await loadActivePlaces(gw);
-  const cities = await loadCities(gw);
   return (
     <main className="mx-auto max-w-md p-5">
       <div className="flex items-center justify-between">
@@ -21,7 +20,7 @@ export default async function AddWorkerPage() {
       </div>
       <AddWorkerForm
         places={places}
-        cities={cities}
+        cities={CITIES}
         enums={{ transportation: TRANSPORTATION, hebrewLevel: HEBREW_LEVEL, payType: PAY_TYPE, schedule: SCHEDULE, gender: GENDER, payStructure: PAY_STRUCTURE }}
       />
     </main>

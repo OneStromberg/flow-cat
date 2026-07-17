@@ -4,10 +4,10 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 
 type EnumOpt = readonly { value: string; label: string }[];
-type Props = { places: string[]; cities: string[]; enums: { transportation: EnumOpt; hebrewLevel: EnumOpt; payType: EnumOpt; schedule: EnumOpt; gender: EnumOpt; payStructure: EnumOpt } };
+type Props = { places: string[]; cities: EnumOpt; enums: { transportation: EnumOpt; hebrewLevel: EnumOpt; payType: EnumOpt; schedule: EnumOpt; gender: EnumOpt; payStructure: EnumOpt } };
 
 const FIELDS0 = {
-  phone: '', teudatZeut: '', name: '', city: '', age: '',
+  phone: '', teudatZeut: '', name: '', city: '', birthdate: '',
   transportation: '', hebrewLevel: '', payType: '', payAmount: '', schedule: '', gender: '',
   payStructure: '', payRate: '',
 };
@@ -74,7 +74,7 @@ export function AddWorkerForm({ places, cities, enums }: Props) {
     <form className="mt-6 space-y-4" onSubmit={submit}>
       {input('phone', 'Phone', 'tel')}
       {input('teudatZeut', 'Teudat zeut')}
-      {input('name', 'Name')}
+      {input('name', 'Full name')}
       <div>
         <label className="block text-sm font-medium text-gray-700">Allowed places</label>
         <div className="mt-1 flex flex-wrap gap-1.5">
@@ -84,15 +84,15 @@ export function AddWorkerForm({ places, cities, enums }: Props) {
           ))}
         </div>
       </div>
-      {select('city', 'City', cities.map(c => ({ value: c, label: c })) as EnumOpt)}
-      {input('age', 'Age', 'number')}
+      {select('city', 'City', cities)}
+      {input('birthdate', 'Date of birth', 'date')}
       {select('transportation', 'Transportation', enums.transportation)}
       {select('gender', 'Gender', enums.gender)}
       {select('hebrewLevel', 'Hebrew level', enums.hebrewLevel)}
       {select('payType', 'Pay eligibility', enums.payType)}
       {v.payType === 'amount' && input('payAmount', 'Amount', 'number')}
       {input('payRate', 'Pay rate', 'number')}
-      {select('schedule', 'Schedule', enums.schedule)}
+      {select('schedule', 'Shift preference', enums.schedule)}
       {fatal && <p className="text-sm text-red-600">{fatal}</p>}
       <button type="submit" disabled={busy} className="w-full rounded-lg bg-gray-900 px-4 py-3 text-base font-medium text-white disabled:opacity-50">
         {busy ? 'Saving…' : 'Add worker'}

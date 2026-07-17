@@ -21,7 +21,7 @@ export const PAY_TYPE = [
 export const SCHEDULE = [
   { value: 'days', label: 'Days' },
   { value: 'nights', label: 'Nights' },
-  { value: 'all', label: 'All' },
+  { value: 'all', label: 'Any' },
 ] as const;
 
 export const GENDER = [
