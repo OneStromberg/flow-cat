@@ -26,6 +26,8 @@ const EN = {
   'checkin.generic': 'Something went wrong. Please try again.',
   'hours.title': 'Hours',
   'hours.total': 'total',
+  'hours.newEntry': 'New entry',
+  'hours.noEntries': 'No entries yet.',
   'hours.attended': 'Attended shifts',
   'hours.noAttended': 'No attended shifts yet.',
   'profile.language': 'Language',
@@ -33,8 +35,14 @@ const EN = {
   'profile.langEn': 'English',
   'profile.langHe': 'עברית',
   'common.logout': 'Log out',
+  'common.save': 'Save',
+  'common.cancel': 'Cancel',
   'register.name': 'Full name',
   'register.schedule': 'Shift preference',
+  'edit.title': 'Edit entry',
+  'edit.locked': 'This entry is locked.',
+  'checkin.checkedIn': 'Checked in',
+  'checkin.out': 'out',
 } as const;
 
 export type StringKey = keyof typeof EN;
@@ -64,6 +72,8 @@ const RU: Record<StringKey, string> = {
   'checkin.generic': 'Что-то пошло не так. Повторите попытку.',
   'hours.title': 'Часы',
   'hours.total': 'всего',
+  'hours.newEntry': 'Новая запись',
+  'hours.noEntries': 'Пока нет записей.',
   'hours.attended': 'Отработанные смены',
   'hours.noAttended': 'Пока нет отработанных смен.',
   'profile.language': 'Язык',
@@ -71,8 +81,14 @@ const RU: Record<StringKey, string> = {
   'profile.langEn': 'English',
   'profile.langHe': 'עברית',
   'common.logout': 'Выйти',
+  'common.save': 'Сохранить',
+  'common.cancel': 'Отмена',
   'register.name': 'Полное имя',
   'register.schedule': 'Предпочтение по сменам',
+  'edit.title': 'Редактировать запись',
+  'edit.locked': 'Эта запись заблокирована.',
+  'checkin.checkedIn': 'Отметка прихода',
+  'checkin.out': 'уход',
 };
 
 // Hebrew is completed progressively — Partial is intentional; t() falls back he → en.
@@ -88,6 +104,9 @@ const HE: Partial<Record<StringKey, string>> = {
   'profile.langEn': 'English',
   'profile.langHe': 'עברית',
   'common.logout': 'התנתק',
+  'common.save': 'שמור',
+  'common.cancel': 'ביטול',
+  'edit.title': 'עריכת רשומה',
   // …remaining HE keys filled progressively; missing ones fall back to EN.
 };
 

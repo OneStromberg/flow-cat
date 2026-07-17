@@ -97,7 +97,7 @@ export async function POST(req: Request) {
     // Hard-block a geofence-failing check-out, mirroring the check-in guard above
     if (action === 'out' && place && place.lat && place.lng && inGeofence === false) {
       return Response.json(
-        { error: 'outside_geofence', message: `Вы вне разрешённой зоны объекта ${instance.location}. Подойдите ближе, чтобы завершить смену, или попросите менеджера расширить радиус.` },
+        { error: 'outside_geofence', message: `You are outside ${instance.location}'s allowed area. Move closer to end your shift, or ask your manager to widen the radius.` },
         { status: 422 },
       );
     }

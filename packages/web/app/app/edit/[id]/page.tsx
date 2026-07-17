@@ -3,7 +3,7 @@ import { requireWorker } from '../../../../lib/session';
 import { getRequestGateway, COMPANY_TZ } from '../../../../lib/sheets';
 import { loadQuestions, validateQuestions, getEntry, todayISO, normalizePhone } from '@scourage/worklog-core';
 import { questionToWidget } from '../../../../lib/form-widgets';
-import { resolveLang } from '../../../../lib/i18n/strings';
+import { t, resolveLang } from '../../../../lib/i18n/strings';
 import { EditForm } from './edit-form';
 
 export const runtime = 'nodejs';
@@ -36,7 +36,7 @@ export default async function EditPage({ params }: { params: Promise<{ id: strin
 
   return (
     <main className="mx-auto max-w-md p-5">
-      <h1 className="text-xl font-semibold">Edit entry</h1>
+      <h1 className="text-xl font-semibold">{t('edit.title', lang)}</h1>
       <div className="mt-6">
         <EditForm id={entry.id} widgets={widgets} initial={initial} today={todayISO(COMPANY_TZ)} lang={lang} />
       </div>

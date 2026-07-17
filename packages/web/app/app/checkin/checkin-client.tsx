@@ -169,7 +169,7 @@ export function CheckinClient({ items, workerName, lang = DEFAULT_LANG }: Checki
                 )}
                 {isClosed && attendance?.checkInAt && attendance?.checkOutAt && (
                   <div className="mt-1 text-xs text-gray-500">
-                    Checked in {formatTime(attendance.checkInAt)} → out {formatTime(attendance.checkOutAt)}{attendance.hours ? ` · ${attendance.hours}h` : ''}
+                    {t('checkin.checkedIn', lang)} {formatTime(attendance.checkInAt)} → {t('checkin.out', lang)} {formatTime(attendance.checkOutAt)}{attendance.hours ? ` · ${attendance.hours}h` : ''}
                   </div>
                 )}
               </div>

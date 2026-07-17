@@ -35,7 +35,7 @@ export function EditForm({ id, widgets, initial, today, lang = DEFAULT_LANG }: P
         setErrors(data.errors);
         setBusy(false);
       } else {
-        setFatal(res.status === 403 ? 'This entry is locked.' : t('checkin.generic', lang));
+        setFatal(res.status === 403 ? t('edit.locked', lang) : t('checkin.generic', lang));
         setBusy(false);
       }
     } catch {
@@ -68,9 +68,9 @@ export function EditForm({ id, widgets, initial, today, lang = DEFAULT_LANG }: P
       <div className="flex gap-3">
         <button type="submit" disabled={busy}
           className="flex-1 rounded-lg bg-gray-900 px-4 py-3 text-base font-medium text-white disabled:opacity-50">
-          {busy ? t('checkin.saving', lang) : 'Save'}
+          {busy ? t('checkin.saving', lang) : t('common.save', lang)}
         </button>
-        <a href="/app" className="rounded-lg border border-gray-300 px-4 py-3 text-base">Cancel</a>
+        <a href="/app" className="rounded-lg border border-gray-300 px-4 py-3 text-base">{t('common.cancel', lang)}</a>
       </div>
     </form>
   );
