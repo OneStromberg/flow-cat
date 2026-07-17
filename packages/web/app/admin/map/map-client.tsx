@@ -43,14 +43,28 @@ function statusLabel(status: MapMarker['status']): string {
   return 'No shifts today';
 }
 
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 function buildInfoHtml(m: MapMarker): string {
   const lines = m.shifts
-    .map((s) => `<div style="color:#374151;font-size:12px">${s.start}–${s.end} · ${s.assigned}/${s.headcount}</div>`)
+    .map((s) => {
+      const who = s.workers.length
+        ? `<div style="color:#6b7280;font-size:11px;margin-left:8px">${s.workers.map((n) => escapeHtml(n)).join(', ')}</div>`
+        : `<div style="color:#9ca3af;font-size:11px;margin-left:8px">—</div>`;
+      return `<div style="color:#374151;font-size:12px">${s.start}–${s.end} · ${s.assigned}/${s.headcount}</div>${who}`;
+    })
     .join('');
   return `
-    <div style="min-width:160px;font-family:sans-serif;padding:4px 2px">
-      <div style="font-weight:600;font-size:14px;margin-bottom:4px">${m.name}</div>
-      <div style="font-size:12px;margin-bottom:${m.shifts.length ? '6px' : '0'};color:${fillColor(m.status)}">${statusLabel(m.status)}</div>
+    <div style="min-width:160px;font-family:sans-serif;padding:2px 2px">
+      <div style="font-weight:600;font-size:13px;margin-bottom:2px">${escapeHtml(m.name)}</div>
+      <div style="font-size:11px;margin-bottom:${m.shifts.length ? '4px' : '0'};color:${fillColor(m.status)}">${statusLabel(m.status)}</div>
       ${lines}
     </div>
   `;
@@ -88,7 +102,7 @@ export function MapClient({ markers }: { markers: MapMarker[] }) {
 
         if (markers.length > 0) {
           const bounds = new window.google.maps.LatLngBounds();
-          const infoWindow = new window.google.maps.InfoWindow();
+          const infoWindow = new window.google.maps.InfoWindow({ maxWidth: 240 });
 
           for (const m of markers) {
             bounds.extend({ lat: m.lat, lng: m.lng });

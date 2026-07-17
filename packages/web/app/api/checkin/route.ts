@@ -13,6 +13,7 @@ import {
   checkOut,
   todayISO,
   localWallClockToUTC,
+  toE164,
 } from '@scourage/worklog-core';
 import { notifyAdmins, pickAdminChatIds } from '../../../lib/telegram';
 
@@ -93,6 +94,14 @@ export async function POST(req: Request) {
       return Response.json({ error: 'outside_geofence', message: `You are outside ${instance.location}'s allowed area. Move closer, or ask your manager to widen the radius.` }, { status: 422 });
     }
 
+    // Hard-block a geofence-failing check-out, mirroring the check-in guard above
+    if (action === 'out' && place && place.lat && place.lng && inGeofence === false) {
+      return Response.json(
+        { error: 'outside_geofence', message: `Вы вне разрешённой зоны объекта ${instance.location}. Подойдите ближе, чтобы завершить смену, или попросите менеджера расширить радиус.` },
+        { status: 422 },
+      );
+    }
+
     const at = new Date().toISOString();
     const photoUrl = await storeCheckinPhoto(
       photo,
@@ -118,7 +127,7 @@ export async function POST(req: Request) {
         const startMs = Date.parse(localWallClockToUTC(instance.date, instance.start, COMPANY_TZ));
         if (Number.isFinite(startMs) && startMs - Date.parse(at) > 15 * 60000) {
           const admins = pickAdminChatIds(await listWorkers(gw));
-          await notifyAdmins(`⏱ ${worker.name} checked in early at ${instance.location} (${hhmm(at, COMPANY_TZ)}, starts ${instance.start}) — 📞 ${worker.phone}`, admins);
+          await notifyAdmins(`⏱ Early check-in\n📍 ${instance.location}\n👤 ${worker.name}\n🕐 ${hhmm(at, COMPANY_TZ)} (starts ${instance.start})\n📞 ${toE164(worker.phone)}`, admins);
         }
       } catch (e) { console.error('early-checkin alert failed:', e); }
       return Response.json({ ok: true, inGeofence });
@@ -149,7 +158,7 @@ export async function POST(req: Request) {
       // RULE 2: Early-checkout alert (>15 min before scheduled end)
       if (Number.isFinite(endMs) && endMs - Date.parse(at) > 15 * 60000) {
         try {
-          await notifyAdmins(`⚠️ ${worker.name} checked out early at ${instance.location} (${hhmm(at, COMPANY_TZ)}, shift ends ${instance.end}) — 📞 ${worker.phone}`, admins);
+          await notifyAdmins(`⚠️ Early check-out\n📍 ${instance.location}\n👤 ${worker.name}\n🕐 ${hhmm(at, COMPANY_TZ)} (shift ends ${instance.end})\n📞 ${toE164(worker.phone)}`, admins);
         } catch (e) { console.error('early-checkout alert failed:', e); }
       }
 
@@ -157,7 +166,7 @@ export async function POST(req: Request) {
       try {
         const mins = Math.round(Number(result.hours) * 60);
         if (Number.isFinite(mins) && mins < 10) {
-          await notifyAdmins(`⚠️ ${worker.name} very short shift at ${instance.location} (${mins} min) — 📞 ${worker.phone}`, admins);
+          await notifyAdmins(`⚠️ Very short shift\n📍 ${instance.location}\n👤 ${worker.name}\n🕐 ${mins} min\n📞 ${toE164(worker.phone)}`, admins);
         }
       } catch (e) { console.error('short-shift alert failed:', e); }
 
@@ -178,7 +187,7 @@ export async function POST(req: Request) {
           if (otherPhones.length === 0) continue;
           const nextAtt = await listAttendance(gw, { instanceId: next.id });
           if (nextAtt.some((a) => a.status === 'open')) continue;
-          await notifyAdmins(`🔁 Coverage gap at ${instance.location}: ${worker.name} left before the next shift's worker checked in — 📞 ${worker.phone}`, admins);
+          await notifyAdmins(`🔁 Coverage gap\n📍 ${instance.location}\n👤 ${worker.name} left before the next shift's worker checked in\n📞 ${toE164(worker.phone)}`, admins);
           break;
         }
       } catch (e) { console.error('coverage-gap alert failed:', e); }

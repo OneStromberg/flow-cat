@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation';
 import { requireAdmin } from '../../../lib/session';
 import { getRequestGateway } from '../../../lib/sheets';
-import { listPlaces, listInstances, listAssignments } from '@scourage/worklog-core';
+import { listPlaces, listInstances, listAssignments, listWorkers } from '@scourage/worklog-core';
 import { MapClient } from './map-client';
 
 export const runtime = 'nodejs';
@@ -14,7 +14,7 @@ export interface MapMarker {
   lat: number;
   lng: number;
   status: MarkerStatus;
-  shifts: { start: string; end: string; assigned: number; headcount: number }[];
+  shifts: { start: string; end: string; assigned: number; headcount: number; workers: string[] }[];
 }
 
 export default async function MapPage() {
@@ -24,16 +24,24 @@ export default async function MapPage() {
   const today = new Date().toISOString().slice(0, 10);
   const gw = getRequestGateway();
 
-  const [places, instances, assignments] = await Promise.all([
+  const [places, instances, assignments, workers] = await Promise.all([
     listPlaces(gw),
     listInstances(gw, { from: today, to: today }),
     listAssignments(gw, {}),
+    listWorkers(gw),
   ]);
+
+  const nameByPhone = new Map(workers.map((w) => [w.phone, w.name]));
 
   // Count assigned workers per instance (already filtered to status='assigned' by listAssignments)
   const assignedByInstance = new Map<string, number>();
+  const namesByInstance = new Map<string, string[]>();
   for (const a of assignments) {
+    if (a.status !== 'assigned') continue;
     assignedByInstance.set(a.instanceId, (assignedByInstance.get(a.instanceId) ?? 0) + 1);
+    const list = namesByInstance.get(a.instanceId) ?? [];
+    list.push(nameByPhone.get(a.employeePhone) ?? a.employeePhone);
+    namesByInstance.set(a.instanceId, list);
   }
 
   const markers: MapMarker[] = [];
@@ -61,6 +69,7 @@ export default async function MapPage() {
       end: inst.end,
       assigned: assignedByInstance.get(inst.id) ?? 0,
       headcount: inst.headcount,
+      workers: namesByInstance.get(inst.id) ?? [],
     }));
 
     markers.push({ name: place.name, lat, lng, status, shifts });

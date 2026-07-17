@@ -2,7 +2,7 @@ import { getGateway } from '../../../../lib/sheets';
 import { getSigningKey } from '../../../../lib/session';
 import { verifyLinkToken } from '../../../../lib/telegram-link';
 import { sendTelegram, notifyAdmins, pickAdminChatIds, answerCallbackQuery } from '../../../../lib/telegram';
-import { linkTelegramChat, findWorker, findWorkerByChatId, listTemplates, listPlaces, listWorkers } from '@scourage/worklog-core';
+import { linkTelegramChat, findWorker, findWorkerByChatId, listTemplates, listPlaces, listWorkers, toE164 } from '@scourage/worklog-core';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -28,7 +28,7 @@ export async function POST(req: Request) {
           const origin = new URL(req.url).origin;
           const cardUrl = `${origin}/admin/workers/${encodeURIComponent(worker?.phone ?? '')}`;
           const label = tpl?.label ? ` — ${tpl.label}` : '';
-          await notifyAdmins(`✅ ${worker?.name ?? 'Someone'} accepted ${tpl?.location ?? 'a shift'}${label}. 📞 ${worker?.phone ?? ''} · ${cardUrl}`, pickAdminChatIds(await listWorkers(gw)));
+          await notifyAdmins(`✅ Shift accepted\n📍 ${tpl?.location ?? 'a shift'}${label}\n👤 ${worker?.name ?? 'Someone'}\n📞 ${toE164(worker?.phone ?? '')}\n🔗 ${cardUrl}`, pickAdminChatIds(await listWorkers(gw)));
           await answerCallbackQuery(cq.id, 'Спасибо! Менеджер свяжется с вами.');
         } else if (data.startsWith('contact:')) {
           const templateId = data.slice('contact:'.length);
