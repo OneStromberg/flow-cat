@@ -18,7 +18,7 @@ const FIELDS0 = {
   teudatZeut: '',
   name: '',
   city: '',
-  age: '',
+  birthdate: '',
   transportation: '',
   hebrewLevel: '',
   schedule: '',
@@ -106,15 +106,15 @@ export function RegisterForm({ cities, enums }: Props) {
 
   return (
     <form className="mt-6 space-y-4" onSubmit={submit}>
-      {input('name', 'Name')}
+      {input('name', 'Full name')}
       {input('phone', 'Phone', 'tel')}
       {input('teudatZeut', 'Teudat zeut')}
       {select('city', 'City / Город', cities)}
-      {input('age', 'Age', 'number')}
+      {input('birthdate', 'Date of birth', 'date')}
       {select('transportation', 'Transportation', enums.transportation)}
       {select('hebrewLevel', 'Hebrew level', enums.hebrewLevel)}
       {select('gender', 'Gender', enums.gender)}
-      {select('schedule', 'Schedule', enums.schedule)}
+      {select('schedule', 'Shift preference', enums.schedule)}
       {fatal && <p className="text-sm text-red-600">{fatal}</p>}
       <button
         type="submit"

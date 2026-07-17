@@ -24,6 +24,7 @@ export async function POST(req: Request, context: { params: Promise<{ phone: str
     places: Array.isArray(b.places) ? (b.places as unknown[]).map(str).filter(Boolean) : [],
     city: str(b.city),
     age: str(b.age),
+    birthdate: str(b.birthdate),
     transportation: str(b.transportation),
     hebrewLevel: str(b.hebrewLevel),
     payType: str(b.payType),
