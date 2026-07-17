@@ -115,8 +115,8 @@ export function AttendanceClient({ rows }: { rows: AttendanceRow[] }) {
                 </td>
                 <td>
                   <span className="flex gap-1">
-                    <span title="Check-in outside the allowed zone">{row.checkInInGeofence ? '✓' : '⚠'}</span>
-                    <span title="Check-out outside the allowed zone">{row.checkOutInGeofence ? '✓' : '⚠'}</span>
+                    <span title={row.checkInInGeofence ? 'Check-in inside the allowed zone' : 'Check-in outside the allowed zone'}>{row.checkInInGeofence ? '✓' : '⚠'}</span>
+                    <span title={row.checkOutInGeofence ? 'Check-out inside the allowed zone' : 'Check-out outside the allowed zone'}>{row.checkOutInGeofence ? '✓' : '⚠'}</span>
                   </span>
                 </td>
                 <td className="flex gap-2 text-blue-600">

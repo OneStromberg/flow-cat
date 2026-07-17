@@ -94,6 +94,14 @@ export async function POST(req: Request) {
       return Response.json({ error: 'outside_geofence', message: `You are outside ${instance.location}'s allowed area. Move closer, or ask your manager to widen the radius.` }, { status: 422 });
     }
 
+    // Hard-block a geofence-failing check-out, mirroring the check-in guard above
+    if (action === 'out' && place && place.lat && place.lng && inGeofence === false) {
+      return Response.json(
+        { error: 'outside_geofence', message: `Вы вне разрешённой зоны объекта ${instance.location}. Подойдите ближе, чтобы завершить смену, или попросите менеджера расширить радиус.` },
+        { status: 422 },
+      );
+    }
+
     const at = new Date().toISOString();
     const photoUrl = await storeCheckinPhoto(
       photo,
@@ -124,14 +132,6 @@ export async function POST(req: Request) {
       } catch (e) { console.error('early-checkin alert failed:', e); }
       return Response.json({ ok: true, inGeofence });
     } else {
-      // Hard-block a geofence-failing check-out, mirroring the check-in guard above
-      if (action === 'out' && place && place.lat && place.lng && inGeofence === false) {
-        return Response.json(
-          { error: 'outside_geofence', message: `Вы вне разрешённой зоны объекта ${instance.location}. Подойдите ближе, чтобы завершить смену, или попросите менеджера расширить радиус.` },
-          { status: 422 },
-        );
-      }
-
       const result = await checkOut(gw, {
         instanceId,
         employeePhone: worker.phone,
