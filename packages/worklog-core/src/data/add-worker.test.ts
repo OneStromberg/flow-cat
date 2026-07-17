@@ -134,3 +134,71 @@ test('setWorkerLang supports ru and en too', async () => {
   await setWorkerLang(g, '972501234568', 'ru');
   assert.equal((await listWorkers(g)).find((w) => w.phone === '972501234568')?.lang, 'ru');
 });
+
+test('ageFromBirthdate: leap-day birthday', () => {
+  // Born on a leap day; evaluated exactly on the leap day 24 years later → full year counted
+  assert.equal(ageFromBirthdate('2000-02-29', new Date('2024-02-29T00:00:00.000Z')), 24);
+  // One day before the leap-day anniversary → birthday hasn't occurred yet this year
+  assert.equal(ageFromBirthdate('2000-02-29', new Date('2024-02-28T00:00:00.000Z')), 23);
+  // Evaluated in a non-leap year on Feb 28 (Feb 29 doesn't exist) → birthday not yet reached
+  assert.equal(ageFromBirthdate('2000-02-29', new Date('2023-02-28T00:00:00.000Z')), 22);
+  // Evaluated in a non-leap year on Mar 1 → birthday has passed (no Feb 29 that year)
+  assert.equal(ageFromBirthdate('2000-02-29', new Date('2023-03-01T00:00:00.000Z')), 23);
+});
+
+test('ageFromBirthdate: exactly-today birthday counts the full year', () => {
+  const now = new Date('2026-07-17T00:00:00.000Z');
+  assert.equal(ageFromBirthdate('2026-07-17', now), 0); // born today → 0
+  assert.equal(ageFromBirthdate('2000-07-17', now), 26); // birthday is today → full year counted, no off-by-one
+});
+
+test('ageFromBirthdate: empty string vs whitespace-only string both return null', () => {
+  const now = new Date('2026-07-17T00:00:00.000Z');
+  assert.equal(ageFromBirthdate('', now), null);
+  assert.equal(ageFromBirthdate('   ', now), null);
+  assert.equal(ageFromBirthdate('\t\n', now), null);
+});
+
+test('addWorker with birthdate derives and stores the age', async () => {
+  const g = createMemoryGateway({ Workers: [] });
+  const now = new Date('2026-07-17T00:00:00.000Z');
+  const r = await addWorker(g, { ...base, birthdate: '1990-01-15' });
+  assert.equal(r.ok, true);
+  const w = (await listWorkers(g)).find((x) => x.phone);
+  assert.equal(w?.birthdate, '1990-01-15');
+  // Age should be derived from birthdate: 2026 - 1990 = 36, and we're past Jan 15, so 36
+  assert.equal(w?.age, '36');
+});
+
+test('updateWorker with empty age + empty birthdate preserves existing age (no data loss)', async () => {
+  const g = createMemoryGateway({ Workers: [
+    ['phone', 'name', 'places', 'active', 'teudat_zeut', 'admin', 'age', 'birthdate'],
+    ['972501234567', 'Legacy', 'Lod', 'yes', '9', '', '40', ''],
+  ] });
+  const r = await updateWorker(g, '0501234567', {
+    teudatZeut: '9', name: 'Legacy', places: ['Lod'], city: '', age: '', birthdate: '',
+    transportation: '', hebrewLevel: '', payType: '', payAmount: '', schedule: '', gender: '',
+    payStructure: '', payRate: '', active: true, admin: false,
+  });
+  assert.equal(r.ok, true);
+  const w = await findWorker(g, '972501234567');
+  assert.equal(w?.age, '40', 'existing age should NOT be blanked when input age is empty and no birthdate');
+});
+
+test('updateWorker with birthdate derives and stores the age (overrides legacy age)', async () => {
+  const g = createMemoryGateway({ Workers: [
+    ['phone', 'name', 'places', 'active', 'teudat_zeut', 'admin', 'age', 'birthdate'],
+    ['972501234567', 'Legacy', 'Lod', 'yes', '9', '', '40', ''],
+  ] });
+  const now = new Date('2026-07-17T00:00:00.000Z');
+  const r = await updateWorker(g, '0501234567', {
+    teudatZeut: '9', name: 'Legacy', places: ['Lod'], city: '', age: '', birthdate: '2000-01-15',
+    transportation: '', hebrewLevel: '', payType: '', payAmount: '', schedule: '', gender: '',
+    payStructure: '', payRate: '', active: true, admin: false,
+  });
+  assert.equal(r.ok, true);
+  const w = await findWorker(g, '972501234567');
+  assert.equal(w?.birthdate, '2000-01-15');
+  // Age should be derived: 2026 - 2000 = 26, we're past Jan 15, so 26
+  assert.equal(w?.age, '26', 'age should be derived from new birthdate');
+});

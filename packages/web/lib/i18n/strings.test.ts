@@ -22,3 +22,27 @@ test('resolveLang normalizes to ru/en/he', () => {
   assert.equal(resolveLang(undefined), 'ru');
   assert.equal(DEFAULT_LANG, 'ru');
 });
+
+test('t returns an unknown/nonexistent key as-is (never throws, never blank/undefined)', () => {
+  // @ts-expect-error — intentionally passing a key outside the StringKey union to test the runtime fallback
+  const result = t('this.key.does.not.exist', 'en');
+  assert.equal(result, 'this.key.does.not.exist');
+  assert.notEqual(result, undefined);
+  assert.notEqual(result, '');
+});
+
+test('resolveLang uppercases "EN"/"HE" resolve case-insensitively', () => {
+  assert.equal(resolveLang('EN'), 'en');
+  assert.equal(resolveLang('HE'), 'he');
+  assert.equal(resolveLang('He'), 'he');
+  assert.equal(resolveLang('En'), 'en');
+});
+
+test('a key missing in the he dictionary but present in en falls back to the en string, never blank', () => {
+  // 'hours.noAttended' is present in EN but intentionally not yet filled in HE
+  const heValue = t('hours.noAttended', 'he');
+  const enValue = t('hours.noAttended', 'en');
+  assert.equal(heValue, enValue);
+  assert.notEqual(heValue, '');
+  assert.notEqual(heValue, undefined);
+});

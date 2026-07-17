@@ -338,3 +338,36 @@ test('cancelFutureInstancesForTemplate cancels only future scheduled instances o
   // idempotent
   assert.equal((await cancelFutureInstancesForTemplate(g, 't1', '2026-07-17')).cancelled, 0);
 });
+
+test('cancelFutureInstancesForTemplate: instance dated exactly today is cancelled (date >= today, not > today)', async () => {
+  const g = createMemoryGateway({ ShiftInstances: [
+    ['id','template_id','location','date','start','end','headcount','status','generated_at'],
+    ['i_today','t1','Gedera','2026-07-17','08:00','16:00','1','scheduled',''],
+  ]});
+  const r = await cancelFutureInstancesForTemplate(g, 't1', '2026-07-17');
+  assert.equal(r.cancelled, 1);
+  const rows = await g.readTab('ShiftInstances');
+  assert.equal(rows.find((x) => x[0] === 'i_today')?.[7], 'cancelled');
+});
+
+test('cancelFutureInstancesForTemplate: an already-cancelled instance is skipped, not double-processed', async () => {
+  const g = createMemoryGateway({ ShiftInstances: [
+    ['id','template_id','location','date','start','end','headcount','status','generated_at'],
+    ['i_cxl','t1','Gedera','2026-07-20','08:00','16:00','1','cancelled',''],
+  ]});
+  const r = await cancelFutureInstancesForTemplate(g, 't1', '2026-07-17');
+  assert.equal(r.cancelled, 0);
+  const rows = await g.readTab('ShiftInstances');
+  assert.equal(rows.find((x) => x[0] === 'i_cxl')?.[7], 'cancelled'); // unchanged
+});
+
+test('cancelFutureInstancesForTemplate: unknown/nonexistent template ID cancels 0 instances', async () => {
+  const g = createMemoryGateway({ ShiftInstances: [
+    ['id','template_id','location','date','start','end','headcount','status','generated_at'],
+    ['i_fut','t1','Gedera','2026-07-20','08:00','16:00','1','scheduled',''],
+  ]});
+  const r = await cancelFutureInstancesForTemplate(g, 'does_not_exist', '2026-07-17');
+  assert.equal(r.cancelled, 0);
+  const rows = await g.readTab('ShiftInstances');
+  assert.equal(rows.find((x) => x[0] === 'i_fut')?.[7], 'scheduled'); // untouched
+});
