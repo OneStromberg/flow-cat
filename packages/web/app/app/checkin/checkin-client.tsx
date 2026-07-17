@@ -124,27 +124,43 @@ export function CheckinClient({ items, workerName, lang = DEFAULT_LANG }: Checki
         )}
       </div>
 
-      <ul className="divide-y divide-gray-200 rounded-lg border border-gray-200">
-        {items.map(({ instance, attendance, role, instructions }) => {
+      <ul className="space-y-3">
+        {items.map(({ instance, attendance, role, instructions, address, contact, wazeUrl: navUrl }, index) => {
           const isOpen = attendance?.status === 'open';
           const isClosed = attendance?.status === 'closed' || attendance?.status === 'corrected';
           const busyKey = instance.id + (isOpen ? ':out' : ':in');
           const isBusy = busy === busyKey;
+          const isPrimary = index === 0;
 
           return (
-            <li key={instance.id} className="flex items-start justify-between gap-4 p-4">
+            <li
+              key={instance.id}
+              className={
+                isPrimary
+                  ? 'flex items-start justify-between gap-4 rounded-lg border-2 border-gray-900 bg-gray-50 p-4'
+                  : 'flex items-start justify-between gap-4 rounded-lg border border-gray-200 p-3'
+              }
+            >
               <div className="min-w-0 flex-1">
-                <div className="font-medium text-gray-900">{instance.location}</div>
+                <div className={isPrimary ? 'text-base font-semibold text-gray-900' : 'text-sm font-medium text-gray-700'}>
+                  {instance.location}
+                </div>
                 <div className="mt-0.5 text-sm text-gray-500">
                   {instance.start} – {instance.end}
                 </div>
                 {role && (
                   <div className="mt-1 text-sm font-bold text-gray-800">{role}</div>
                 )}
-                {instructions && (
-                  <div className="mt-1 whitespace-pre-wrap text-sm text-gray-600">
-                    <span className="font-medium">{t('checkin.instructions', lang)}: </span>{instructions}
-                  </div>
+                {(instructions || address || contact) && (
+                  <details className="mt-2 text-sm text-gray-600">
+                    <summary className="cursor-pointer font-medium text-gray-700">{t('checkin.details', lang)}</summary>
+                    <div className="mt-1 space-y-1">
+                      {instructions && <div className="whitespace-pre-wrap"><span className="font-medium">{t('checkin.instructions', lang)}: </span>{instructions}</div>}
+                      {address && <div><span className="font-medium">{t('checkin.address', lang)}: </span>{address}</div>}
+                      {contact && <div><span className="font-medium">{t('checkin.contact', lang)}: </span>{contact}</div>}
+                      {navUrl && <a href={navUrl} target="_blank" rel="noreferrer" className="text-blue-600 underline">{t('checkin.navigate', lang)}</a>}
+                    </div>
+                  </details>
                 )}
                 {isOpen && attendance?.checkInAt && (
                   <div className="mt-1 text-xs text-green-700">
