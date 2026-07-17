@@ -12,6 +12,7 @@ import {
 } from '@scourage/worklog-core';
 import { questionToWidget } from '../../../lib/form-widgets';
 import { EntryForm } from '../entry-form';
+import { t, resolveLang } from '../../../lib/i18n/strings';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -29,6 +30,7 @@ function fmtTime(iso: string): string {
 export default async function HoursPage() {
   const worker = await requireWorker();
   if (!worker || !worker.active) redirect('/login');
+  const lang = resolveLang(worker.lang);
 
   const gw = getRequestGateway();
 
@@ -50,7 +52,7 @@ export default async function HoursPage() {
 
   return (
     <main className="mx-auto max-w-md p-5">
-      <h1 className="text-xl font-semibold">Hours</h1>
+      <h1 className="text-xl font-semibold">{t('hours.title', lang)}</h1>
 
       <section className="mt-6">
         <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-500">New entry</h2>
@@ -69,7 +71,7 @@ export default async function HoursPage() {
 
       <section className="mt-8">
         <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-500">
-          My hours{totalHours > 0 && <span className="text-gray-400"> · {Math.round(totalHours * 100) / 100}h total</span>}
+          My hours{totalHours > 0 && <span className="text-gray-400"> · {Math.round(totalHours * 100) / 100}h {t('hours.total', lang)}</span>}
         </h2>
         {entries.length === 0 ? (
           <p className="mt-3 text-sm text-gray-600">No entries yet.</p>
@@ -93,9 +95,9 @@ export default async function HoursPage() {
       </section>
 
       <section className="mt-8">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-500">Attended shifts</h2>
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-gray-500">{t('hours.attended', lang)}</h2>
         {closedAttendance.length === 0 ? (
-          <p className="mt-3 text-sm text-gray-600">No attended shifts yet.</p>
+          <p className="mt-3 text-sm text-gray-600">{t('hours.noAttended', lang)}</p>
         ) : (
           <ul className="mt-3 divide-y divide-gray-200 rounded-lg border border-gray-200">
             {closedAttendance.map((a: Attendance) => {

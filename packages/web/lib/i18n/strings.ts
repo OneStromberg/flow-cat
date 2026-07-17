@@ -33,6 +33,8 @@ const EN = {
   'profile.langEn': 'English',
   'profile.langHe': 'עברית',
   'common.logout': 'Log out',
+  'register.name': 'Full name',
+  'register.schedule': 'Shift preference',
 } as const;
 
 export type StringKey = keyof typeof EN;
@@ -69,6 +71,8 @@ const RU: Record<StringKey, string> = {
   'profile.langEn': 'English',
   'profile.langHe': 'עברית',
   'common.logout': 'Выйти',
+  'register.name': 'Полное имя',
+  'register.schedule': 'Предпочтение по сменам',
 };
 
 // Hebrew is completed progressively — Partial is intentional; t() falls back he → en.

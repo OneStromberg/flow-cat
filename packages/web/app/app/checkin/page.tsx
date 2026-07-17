@@ -10,6 +10,7 @@ import {
   type ShiftInstance,
   type Attendance,
 } from '@scourage/worklog-core';
+import { t, resolveLang } from '../../../lib/i18n/strings';
 import { CheckinClient } from './checkin-client';
 
 export const runtime = 'nodejs';
@@ -25,6 +26,7 @@ export interface InstanceWithAttendance {
 export default async function CheckinPage() {
   const worker = await requireWorker();
   if (!worker || !worker.active) redirect('/login');
+  const lang = resolveLang(worker.lang);
 
   const gw = getRequestGateway();
   const today = todayISO(COMPANY_TZ);
@@ -60,10 +62,10 @@ export default async function CheckinPage() {
 
   return (
     <main className="mx-auto max-w-md p-5">
-      <h1 className="text-xl font-semibold">Check in / out</h1>
-      <p className="mt-1 text-sm text-gray-500">Today · {today}</p>
+      <h1 className="text-xl font-semibold">{t('checkin.title', lang)}</h1>
+      <p className="mt-1 text-sm text-gray-500">{t('checkin.today', lang)} · {today}</p>
       <div className="mt-6">
-        <CheckinClient items={items} workerName={worker.name ?? worker.phone} />
+        <CheckinClient items={items} workerName={worker.name ?? worker.phone} lang={lang} />
       </div>
     </main>
   );

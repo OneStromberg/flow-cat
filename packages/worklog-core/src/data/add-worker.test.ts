@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createMemoryGateway } from '@scourage/sheets-helper';
-import { addWorker, updateWorker, setWorkerPhone } from './add-worker.ts';
+import { addWorker, updateWorker, setWorkerPhone, setWorkerLang } from './add-worker.ts';
 import { findWorker, listWorkers } from './workers.ts';
 
 const base = {
@@ -10,6 +10,10 @@ const base = {
   transportation: 'car', hebrewLevel: 'speaks_good', payType: 'full', payAmount: '', schedule: 'days', gender: '',
   payStructure: '', payRate: '', birthdate: '',
 };
+
+function baseInput(overrides: Partial<typeof base> = {}) {
+  return { ...base, ...overrides };
+}
 
 test('adds a valid worker (header-aligned row, active=yes)', async () => {
   const g = createMemoryGateway({ Workers: [['phone', 'name', 'active']] });
@@ -113,4 +117,20 @@ test('addWorker persists birthdate into the Workers row', async () => {
   assert.equal(r.ok, true);
   const w = (await listWorkers(g)).find((x) => x.phone);
   assert.equal(w?.birthdate, '1990-01-15');
+});
+
+test('setWorkerLang persists a per-worker language (ru/en/he)', async () => {
+  const g = createMemoryGateway({ Workers: [] });
+  await addWorker(g, baseInput({ phone: '0501234567' }));
+  await setWorkerLang(g, '972501234567', 'he');
+  assert.equal((await listWorkers(g)).find((w) => w.phone === '972501234567')?.lang, 'he');
+});
+
+test('setWorkerLang supports ru and en too', async () => {
+  const g = createMemoryGateway({ Workers: [] });
+  await addWorker(g, baseInput({ phone: '0501234568' }));
+  await setWorkerLang(g, '972501234568', 'en');
+  assert.equal((await listWorkers(g)).find((w) => w.phone === '972501234568')?.lang, 'en');
+  await setWorkerLang(g, '972501234568', 'ru');
+  assert.equal((await listWorkers(g)).find((w) => w.phone === '972501234568')?.lang, 'ru');
 });

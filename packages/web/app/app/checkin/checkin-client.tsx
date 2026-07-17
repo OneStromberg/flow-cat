@@ -4,13 +4,15 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { InstanceWithAttendance } from './page';
 import { GeoPoller } from './geo-poller';
+import { t, DEFAULT_LANG, type Lang } from '../../../lib/i18n/strings';
 
 interface CheckinClientProps {
   items: InstanceWithAttendance[];
   workerName: string;
+  lang?: Lang;
 }
 
-export function CheckinClient({ items, workerName }: CheckinClientProps) {
+export function CheckinClient({ items, workerName, lang = DEFAULT_LANG }: CheckinClientProps) {
   const router = useRouter();
   const [busy, setBusy] = useState<string | null>(null);
   const [geofenceWarning, setGeofenceWarning] = useState<string | null>(null);
@@ -53,22 +55,20 @@ export function CheckinClient({ items, workerName }: CheckinClientProps) {
 
       if (res.ok && data.ok) {
         if (data.inGeofence === false) {
-          setGeofenceWarning(
-            `Outside the allowed zone — your ${action === 'in' ? 'check-in' : 'check-out'} was recorded anyway.`,
-          );
+          setGeofenceWarning(t('checkin.outsideZone', lang));
         }
         router.refresh();
       } else {
         // Regression note: a geofence-blocked checkout returns 422 (res.ok === false), so it
         // always lands here as a blocking actionError — it can never fall into the soft
         // geofenceWarning branch above, which only fires on a successful (res.ok) response.
-        setActionError(data.message ?? data.error ?? 'Something went wrong. Please try again.');
+        setActionError(data.message ?? data.error ?? t('checkin.generic', lang));
       }
     } catch (err: unknown) {
       if (err instanceof GeolocationDeniedError) {
-        setGeoError('Location access denied. Please enable location in your browser settings and try again.');
+        setGeoError(t('checkin.geoDenied', lang));
       } else {
-        setActionError('Network error. Please try again.');
+        setActionError(t('checkin.network', lang));
       }
     } finally {
       setBusy(null);
@@ -78,7 +78,7 @@ export function CheckinClient({ items, workerName }: CheckinClientProps) {
   if (items.length === 0) {
     return (
       <p className="text-sm text-gray-600">
-        No shifts assigned to you today — contact your manager if this is a mistake.
+        {t('checkin.empty', lang)}
       </p>
     );
   }
@@ -87,7 +87,7 @@ export function CheckinClient({ items, workerName }: CheckinClientProps) {
 
   return (
     <div className="space-y-4">
-      <p className="text-sm text-gray-500">Hi {workerName}</p>
+      <p className="text-sm text-gray-500">{t('checkin.hi', lang)} {workerName}</p>
 
       {openInstanceId && <GeoPoller instanceId={openInstanceId} />}
 
@@ -109,7 +109,7 @@ export function CheckinClient({ items, workerName }: CheckinClientProps) {
 
       <div className="flex items-center gap-3">
         <label className="text-sm text-gray-600" htmlFor="checkin-photo">
-          Photo (optional)
+          {t('checkin.photoOptional', lang)}
         </label>
         <input
           id="checkin-photo"
@@ -120,7 +120,7 @@ export function CheckinClient({ items, workerName }: CheckinClientProps) {
           onChange={handlePhotoChange}
         />
         {photoDataUrl && (
-          <span className="text-xs text-green-700">Photo ready</span>
+          <span className="text-xs text-green-700">{t('checkin.photoReady', lang)}</span>
         )}
       </div>
 
@@ -143,12 +143,12 @@ export function CheckinClient({ items, workerName }: CheckinClientProps) {
                 )}
                 {instructions && (
                   <div className="mt-1 whitespace-pre-wrap text-sm text-gray-600">
-                    <span className="font-medium">Instructions: </span>{instructions}
+                    <span className="font-medium">{t('checkin.instructions', lang)}: </span>{instructions}
                   </div>
                 )}
                 {isOpen && attendance?.checkInAt && (
                   <div className="mt-1 text-xs text-green-700">
-                    Checked in at {formatTime(attendance.checkInAt)}
+                    {t('checkin.checkedInAt', lang)} {formatTime(attendance.checkInAt)}
                   </div>
                 )}
                 {isClosed && attendance?.checkInAt && attendance?.checkOutAt && (
@@ -163,17 +163,17 @@ export function CheckinClient({ items, workerName }: CheckinClientProps) {
                   <button
                     disabled={isBusy}
                     onClick={() => handleAction(instance.id, 'out')}
-                    className="rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+                    className="rounded-lg bg-gray-900 px-5 py-3 text-base font-medium text-white disabled:opacity-50"
                   >
-                    {isBusy ? 'Saving…' : 'Check out'}
+                    {isBusy ? t('checkin.saving', lang) : t('checkin.end', lang)}
                   </button>
                 ) : (
                   <button
                     disabled={isBusy}
                     onClick={() => handleAction(instance.id, 'in')}
-                    className="rounded-lg bg-gray-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+                    className="rounded-lg bg-gray-900 px-5 py-3 text-base font-medium text-white disabled:opacity-50"
                   >
-                    {isBusy ? 'Saving…' : 'Check in'}
+                    {isBusy ? t('checkin.saving', lang) : t('checkin.start', lang)}
                   </button>
                 )}
               </div>
