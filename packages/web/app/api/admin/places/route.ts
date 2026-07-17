@@ -1,6 +1,6 @@
-import { getGateway } from '../../../../lib/sheets';
+import { getGateway, COMPANY_TZ } from '../../../../lib/sheets';
 import { requireAdmin } from '../../../../lib/session';
-import { addPlace, updatePlace, deletePlace, type AddPlaceInput } from '@scourage/worklog-core';
+import { addPlace, updatePlace, cascadeDeletePlace, todayISO, type AddPlaceInput } from '@scourage/worklog-core';
 
 export const runtime = 'nodejs';
 
@@ -47,9 +47,9 @@ export async function DELETE(req: Request) {
   if (!name) return Response.json({ error: 'name required' }, { status: 400 });
 
   try {
-    const r = await deletePlace(getGateway(), name);
+    const r = await cascadeDeletePlace(getGateway(), name, todayISO(COMPANY_TZ));
     if (!r.ok) return Response.json({ error: r.error }, { status: 404 });
-    return Response.json({ ok: true });
+    return Response.json({ ok: true, templatesDeleted: r.templatesDeleted, instancesCancelled: r.instancesCancelled });
   } catch (err) {
     console.error('delete place failed:', err);
     return Response.json({ error: 'save failed' }, { status: 503 });
