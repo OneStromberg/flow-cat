@@ -6,7 +6,7 @@ export { loadActivePlaces, listPlaces, addPlace, updatePlace, deletePlace, wazeU
 export type { Place, AddPlaceInput } from './data/places.ts';
 export { loadCities } from './data/cities.ts';
 export { appendWorkLog } from './data/worklogs.ts';
-export { normalizePhone } from './data/phone.ts';
+export { normalizePhone, toE164 } from './data/phone.ts';
 export type { Question, QuestionType } from './questions/types.ts';
 export { loadQuestions } from './questions/load-questions.ts';
 export { validateQuestions } from './questions/validate-config.ts';

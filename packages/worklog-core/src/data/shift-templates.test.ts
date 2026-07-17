@@ -133,12 +133,23 @@ test('validate rejects dayTimes with duplicate (day, start) pairs', async () => 
 });
 
 test('formatTemplateOffer lists the full weekly schedule incl. multi-slot days', () => {
-  const t = { id:'t1', location:'Big Gedera', label:'Guard', validFrom:'2026-07-10', headcount:1,
+  const t = { id:'t1', location:'Big Gedera', label:'Guard', validFrom:'2026-07-10', validTo:'', headcount:1,
     dayTimes:[{day:'mon',start:'06:00',end:'14:00'},{day:'mon',start:'14:00',end:'22:00'},{day:'tue',start:'08:00',end:'16:00'}] } as any;
   const s = formatTemplateOffer(t, { contact:'972500000000' });
   assert.ok(s.includes('Big Gedera') && s.includes('Guard'));
   assert.ok(s.includes('06:00') && s.includes('14:00') && s.includes('22:00') && s.includes('08:00'));
   assert.ok(s.includes('972500000000'));
+});
+
+test('formatTemplateOffer reads as a recurring weekly shift with validity window', () => {
+  const t = { location:'Big Gedera', label:'Guard', validFrom:'2026-07-10', validTo:'',
+    dayTimes:[{day:'mon',start:'06:00',end:'14:00'},{day:'mon',start:'14:00',end:'22:00'},{day:'tue',start:'08:00',end:'16:00'}] } as any;
+  const s = formatTemplateOffer(t, { contact:'972500000000' });
+  assert.ok(s.includes('еженедельно'));           // recurring/weekly signal
+  assert.ok(s.includes('Big Gedera') && s.includes('Guard'));
+  assert.ok(s.includes('06:00') && s.includes('22:00') && s.includes('08:00'));
+  assert.ok(s.includes('2026-07-10'));
+  assert.ok(s.includes('постоянно'));              // open-ended validTo
 });
 
 test('deleteTemplate soft-deletes (active=no) so listTemplates marks it inactive', async () => {
