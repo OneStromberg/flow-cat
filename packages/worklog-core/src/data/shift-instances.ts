@@ -14,7 +14,7 @@ export interface ShiftInstance {
 }
 
 const INSTANCE_COLUMNS = ['id', 'template_id', 'location', 'date', 'start', 'end', 'headcount', 'status', 'generated_at'];
-const ASSIGN_COLUMNS = ['instance_id', 'employee_phone', 'source', 'status', 'assigned_at', 'assigned_by'];
+const ASSIGN_COLUMNS = ['instance_id', 'employee_phone', 'source', 'status', 'assigned_at', 'assigned_by', 'rate'];
 
 // ── Date helpers ──────────────────────────────────────────────────────────────
 const WD = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];

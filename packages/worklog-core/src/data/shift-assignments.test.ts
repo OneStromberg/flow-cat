@@ -29,3 +29,12 @@ test('manual assign/list/remove (status filtered)', async () => {
   a = await listAssignments(g, { instanceId: 'tpl_1_20260701' });
   assert.equal(a.length, 0);
 });
+
+test('assignManual writes an optional rate and defaults empty', async () => {
+  const g = createMemoryGateway({ ShiftAssignments: [['instance_id','employee_phone','source','status','assigned_at','assigned_by','rate']] });
+  await assignManual(g, 'i1', 'p1', 'admin', '48');
+  await assignManual(g, 'i1', 'p2', 'admin'); // no rate
+  const a = await listAssignments(g, { instanceId: 'i1' });
+  assert.equal(a.find((x) => x.employeePhone === 'p1')?.rate, '48');
+  assert.equal(a.find((x) => x.employeePhone === 'p2')?.rate, '');
+});

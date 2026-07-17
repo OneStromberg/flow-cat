@@ -11,10 +11,11 @@ export interface ShiftAssignment {
   employeePhone: string;
   source: string;
   status: string;
+  rate: string;
 }
 
 const RECURRING_COLUMNS = ['template_id', 'employee_phone', 'active', 'created_at'];
-const ASSIGN_COLUMNS = ['instance_id', 'employee_phone', 'source', 'status', 'assigned_at', 'assigned_by'];
+const ASSIGN_COLUMNS = ['instance_id', 'employee_phone', 'source', 'status', 'assigned_at', 'assigned_by', 'rate'];
 
 async function ensureRecurringHeader(gateway: SheetsGateway): Promise<string[]> {
   const rows = await gateway.readTab('RecurringAssignments');
@@ -111,6 +112,7 @@ export async function listAssignments(
       employeePhone: (o.employee_phone ?? '').trim(),
       source: (o.source ?? '').trim(),
       status: (o.status ?? '').trim(),
+      rate: (o.rate ?? '').trim(),
     }))
     .filter((a) => a.instanceId && a.employeePhone);
 }
@@ -120,6 +122,7 @@ export async function assignManual(
   instanceId: string,
   phone: string,
   assignedBy: string,
+  rate = '',
 ): Promise<void> {
   const header = await ensureAssignHeader(gateway);
   const rows = await gateway.readTab('ShiftAssignments');
@@ -142,6 +145,7 @@ export async function assignManual(
       status: 'assigned',
       assigned_at: new Date().toISOString(),
       assigned_by: assignedBy,
+      rate: (rate ?? '').trim(),
     };
     await gateway.appendRow('ShiftAssignments', objectToRow(record, header));
   }

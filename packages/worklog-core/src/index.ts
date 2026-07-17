@@ -24,7 +24,7 @@ export { listRecurring, addRecurring, removeRecurring, listAssignments, assignMa
 export { generateInstances, seedTemplateInstances, listInstances, cancelInstance, updateInstance, applyTemplateEdit, type ShiftInstance } from './data/shift-instances.ts';
 export { distanceMeters, withinGeofence, hoursBetween, checkIn, checkOut, adminCorrect, listAttendance, type Attendance } from './data/attendance.ts';
 export { instancesOverlap, findConflicts, type ShiftWindow, type Conflict } from './data/conflicts.ts';
-export { PAY_STRUCTURE, resolveHourlyRate, computePay, listAdjustments, addAdjustment, type WorkedItem, type Adjustment, type PayBreakdown } from './data/payroll.ts';
+export { PAY_STRUCTURE, resolveHourlyRate, resolveAssignmentRate, computePay, listAdjustments, addAdjustment, type WorkedItem, type Adjustment, type PayBreakdown } from './data/payroll.ts';
 export { findMissedCheckins, listSentAlerts, recordAlerts, lastAlertAtByKey, shouldRealert, type MissedEvent } from './data/missed-checkins.ts';
 export { LEAVE_TYPES, addLeave, listLeave, setLeaveStatus, isOnLeave, type Leave } from './data/leave.ts';
 export { hoursByEmployee, hoursByLocation, attendanceExceptions, writeReportTab, filterAttendanceForReport } from './data/reports.ts';
