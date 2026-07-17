@@ -39,3 +39,36 @@ test('findDuplicateAssignments flags >1 active row for same worker+instance', as
   assert.equal(dups.length, 1);
   assert.deepEqual(dups[0], { instanceId: 'i1', employeePhone: 'p1', count: 2 });
 });
+
+test('findDuplicateAssignments: no duplicates returns an empty array', async () => {
+  const g = createMemoryGateway({ ShiftAssignments: [
+    ['instance_id','employee_phone','source','status','assigned_at','assigned_by','rate'],
+    ['i1','p1','manual','assigned','2026-07-01T00:00:00.000Z','a',''],
+    ['i2','p2','manual','assigned','2026-07-01T00:00:00.000Z','a',''],
+  ]});
+  const dups = await findDuplicateAssignments(g);
+  assert.deepEqual(dups, []);
+});
+
+test('findDuplicateAssignments: three duplicate rows for the same (instance, worker) count as one group of 3', async () => {
+  const g = createMemoryGateway({ ShiftAssignments: [
+    ['instance_id','employee_phone','source','status','assigned_at','assigned_by','rate'],
+    ['i1','p1','manual','assigned','2026-07-01T00:00:00.000Z','a',''],
+    ['i1','p1','recurring','assigned','2026-07-02T00:00:00.000Z','s',''],
+    ['i1','p1','manual','assigned','2026-07-03T00:00:00.000Z','a',''],
+  ]});
+  const dups = await findDuplicateAssignments(g);
+  assert.equal(dups.length, 1);
+  assert.deepEqual(dups[0], { instanceId: 'i1', employeePhone: 'p1', count: 3 });
+});
+
+test('findDuplicateAssignments: rows already marked removed are ignored, not counted as dups', async () => {
+  const g = createMemoryGateway({ ShiftAssignments: [
+    ['instance_id','employee_phone','source','status','assigned_at','assigned_by','rate'],
+    ['i1','p1','manual','assigned','2026-07-01T00:00:00.000Z','a',''],
+    ['i1','p1','recurring','removed','2026-07-02T00:00:00.000Z','s',''],
+    ['i1','p1','recurring','removed','2026-07-03T00:00:00.000Z','s',''],
+  ]});
+  const dups = await findDuplicateAssignments(g);
+  assert.deepEqual(dups, []); // only 1 active 'assigned' row → not a duplicate
+});

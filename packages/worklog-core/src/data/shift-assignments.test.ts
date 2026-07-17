@@ -85,3 +85,48 @@ test('repairDuplicateAssignments collapses multiple assigned rows to one', async
   const active = (await listAssignments(g, { instanceId: 'i1' })).filter((x) => x.status === 'assigned' && x.employeePhone === 'p1');
   assert.equal(active.length, 1);
 });
+
+test('repairDuplicateAssignments: no duplicates leaves everything untouched and returns collapsed=0', async () => {
+  const g = createMemoryGateway({ ShiftAssignments: [
+    ['instance_id','employee_phone','source','status','assigned_at','assigned_by','rate'],
+    ['i1','p1','manual','assigned','2026-07-01T00:00:00.000Z','admin',''],
+    ['i2','p2','manual','assigned','2026-07-01T00:00:00.000Z','admin',''],
+  ]});
+  const r = await repairDuplicateAssignments(g);
+  assert.equal(r.collapsed, 0);
+  const active = (await listAssignments(g)).filter((x) => x.status === 'assigned');
+  assert.equal(active.length, 2);
+});
+
+test('repairDuplicateAssignments: three duplicate rows collapse to exactly one surviving row (earliest kept)', async () => {
+  const g = createMemoryGateway({ ShiftAssignments: [
+    ['instance_id','employee_phone','source','status','assigned_at','assigned_by','rate'],
+    ['i1','p1','manual','assigned','2026-07-03T00:00:00.000Z','admin',''],
+    ['i1','p1','recurring','assigned','2026-07-01T00:00:00.000Z','seed',''], // earliest — should survive
+    ['i1','p1','manual','assigned','2026-07-02T00:00:00.000Z','admin',''],
+  ]});
+  const r = await repairDuplicateAssignments(g);
+  assert.equal(r.collapsed, 2);
+  const active = (await listAssignments(g, { instanceId: 'i1' })).filter((x) => x.status === 'assigned' && x.employeePhone === 'p1');
+  assert.equal(active.length, 1);
+  const rows = await g.readTab('ShiftAssignments');
+  const header = rows[0];
+  const survivor = rows.find((r) => r[header.indexOf('status')] === 'assigned' && r[header.indexOf('employee_phone')] === 'p1');
+  assert.equal(survivor?.[header.indexOf('assigned_at')], '2026-07-01T00:00:00.000Z');
+});
+
+test('repairDuplicateAssignments: rows already marked removed are ignored, not counted as dups', async () => {
+  const g = createMemoryGateway({ ShiftAssignments: [
+    ['instance_id','employee_phone','source','status','assigned_at','assigned_by','rate'],
+    ['i1','p1','manual','assigned','2026-07-01T00:00:00.000Z','admin',''],
+    ['i1','p1','recurring','removed','2026-07-02T00:00:00.000Z','seed',''],
+    ['i1','p1','manual','removed','2026-07-03T00:00:00.000Z','admin',''],
+  ]});
+  const r = await repairDuplicateAssignments(g);
+  assert.equal(r.collapsed, 0); // only one 'assigned' row → nothing to collapse
+  const rows = await g.readTab('ShiftAssignments');
+  const header = rows[0];
+  // the two already-removed rows must remain 'removed' (untouched, not re-processed)
+  const removedRows = rows.slice(1).filter((r) => r[header.indexOf('status')] === 'removed');
+  assert.equal(removedRows.length, 2);
+});

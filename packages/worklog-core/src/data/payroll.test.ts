@@ -19,6 +19,18 @@ test('resolveAssignmentRate prefers assignment, then employee/template/location'
   assert.equal(resolveAssignmentRate('', '', '', ''), 0);
   assert.equal(resolveAssignmentRate('0', '40', '', ''), 40); // 0 is not an override
 });
+test('resolveAssignmentRate: negative string, non-numeric string, and "0" are all treated as no override', () => {
+  // Negative strings are not a valid rate (pos() requires n > 0) → falls through
+  assert.equal(resolveAssignmentRate('-10', '40', '30', '20'), 40);
+  assert.equal(resolveAssignmentRate('-10', '', '', ''), 0);
+  // Non-numeric strings are not finite → falls through
+  assert.equal(resolveAssignmentRate('abc', '40', '30', '20'), 40);
+  assert.equal(resolveAssignmentRate('abc', '', '', ''), 0);
+  // '0' is explicitly treated as "no override", same as blank
+  assert.equal(resolveAssignmentRate('0', '', '30', '20'), 30);
+  assert.equal(resolveAssignmentRate('0', '0', '0', '20'), 20);
+});
+
 test('computePay hourly = sum(hours*rate) + bonuses - penalties', () => {
   const items = [{ date:'2026-07-01', hours:8, rate:50 }, { date:'2026-07-02', hours:4, rate:50 }];
   const adj = [{ id:'a', employeePhone:'1', date:'2026-07-01', type:'bonus', amount:100, reason:'x' },

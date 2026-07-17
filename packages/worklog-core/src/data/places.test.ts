@@ -181,3 +181,24 @@ test('cascadeDeletePlace soft-deletes place + its templates + cancels their futu
   assert.equal((await listTemplates(g)).find((t) => t.id === 't1')?.active, false);
   assert.equal((await g.readTab('ShiftInstances')).find((x) => x[0] === 'i1')?.[7], 'cancelled');
 });
+
+test('cascadeDeletePlace: place-not-found returns {ok:false}', async () => {
+  const g = createMemoryGateway({ Places: [['place_name','active'],['Gedera','yes']] });
+  const r = await cascadeDeletePlace(g, 'Nope', '2026-07-17');
+  assert.equal(r.ok, false);
+  if (!r.ok) assert.equal(r.error, 'Not found');
+});
+
+test('cascadeDeletePlace: a place with no templates still succeeds with counts of 0', async () => {
+  const g = createMemoryGateway({
+    Places: [['place_name','active'],['Lonely Site','yes']],
+    ShiftTemplates: [['id','location','label','days','start','end','headcount','valid_from','valid_to','active','rate','instructions','day_times']],
+  });
+  const r = await cascadeDeletePlace(g, 'Lonely Site', '2026-07-17');
+  assert.equal(r.ok, true);
+  if (r.ok) {
+    assert.equal(r.templatesDeleted, 0);
+    assert.equal(r.instancesCancelled, 0);
+  }
+  assert.equal((await listPlaces(g)).find((p) => p.name === 'Lonely Site')?.active, false);
+});

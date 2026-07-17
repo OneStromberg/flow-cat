@@ -134,3 +134,27 @@ test('setWorkerLang supports ru and en too', async () => {
   await setWorkerLang(g, '972501234568', 'ru');
   assert.equal((await listWorkers(g)).find((w) => w.phone === '972501234568')?.lang, 'ru');
 });
+
+test('ageFromBirthdate: leap-day birthday', () => {
+  // Born on a leap day; evaluated exactly on the leap day 24 years later → full year counted
+  assert.equal(ageFromBirthdate('2000-02-29', new Date('2024-02-29T00:00:00.000Z')), 24);
+  // One day before the leap-day anniversary → birthday hasn't occurred yet this year
+  assert.equal(ageFromBirthdate('2000-02-29', new Date('2024-02-28T00:00:00.000Z')), 23);
+  // Evaluated in a non-leap year on Feb 28 (Feb 29 doesn't exist) → birthday not yet reached
+  assert.equal(ageFromBirthdate('2000-02-29', new Date('2023-02-28T00:00:00.000Z')), 22);
+  // Evaluated in a non-leap year on Mar 1 → birthday has passed (no Feb 29 that year)
+  assert.equal(ageFromBirthdate('2000-02-29', new Date('2023-03-01T00:00:00.000Z')), 23);
+});
+
+test('ageFromBirthdate: exactly-today birthday counts the full year', () => {
+  const now = new Date('2026-07-17T00:00:00.000Z');
+  assert.equal(ageFromBirthdate('2026-07-17', now), 0); // born today → 0
+  assert.equal(ageFromBirthdate('2000-07-17', now), 26); // birthday is today → full year counted, no off-by-one
+});
+
+test('ageFromBirthdate: empty string vs whitespace-only string both return null', () => {
+  const now = new Date('2026-07-17T00:00:00.000Z');
+  assert.equal(ageFromBirthdate('', now), null);
+  assert.equal(ageFromBirthdate('   ', now), null);
+  assert.equal(ageFromBirthdate('\t\n', now), null);
+});

@@ -29,3 +29,14 @@ test('toE164 prepends + so Telegram auto-links', () => {
   assert.equal(toE164('972501234567'), '+972501234567');
   assert.equal(toE164(''), '');
 });
+
+test('toE164 normalizes input containing spaces and dashes', () => {
+  assert.equal(toE164('+972 50-123 4567'), '+972501234567');
+  assert.equal(toE164('050-123-4567'), '+0501234567'); // toE164 itself does no local→intl canonicalization
+});
+
+test('toE164 does not double-prefix an already-+-prefixed input', () => {
+  // The '+' is itself non-digit and gets stripped, then exactly one '+' is re-added
+  assert.equal(toE164('+972501234567'), '+972501234567');
+  assert.equal(toE164('+972501234567').startsWith('++'), false);
+});

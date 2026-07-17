@@ -127,3 +127,153 @@ test('reportSummary amount (hours*rate) rounds to 2 decimals for fractional hour
   const grandTotalRow = sheet.rows.find((r) => r[0] === 'Total');
   assert.equal(grandTotalRow?.[4], '9', 'Grand total should be "9"');
 });
+
+// ── filterAttendanceForReport: non-matching values + combined AND filters ─────
+test('filterAttendanceForReport: an array with a non-matching value filters it out', () => {
+  const loc = new Map([['i1','Place1'],['i2','Place2']]);
+  const rows = [att({ instanceId:'i1', employeePhone:'p1' }), att({ instanceId:'i2', employeePhone:'p2' })];
+  // 'Place3' doesn't match either row's location
+  assert.equal(filterAttendanceForReport(rows as any, loc, { location: ['Place3'] }).length, 0);
+  // Array containing one matching and one non-matching value still matches the one row
+  assert.equal(filterAttendanceForReport(rows as any, loc, { location: ['Place1', 'PlaceX'] }).length, 1);
+});
+
+test('filterAttendanceForReport: location and employee filters AND together', () => {
+  const loc = new Map([['i1','Place1'],['i2','Place1']]);
+  const rows = [
+    att({ instanceId:'i1', employeePhone:'p1' }), // matches both
+    att({ instanceId:'i1', employeePhone:'p2' }), // wrong employee
+    att({ instanceId:'i2', employeePhone:'p1' }), // matches both (same location, same employee)
+  ];
+  const result = filterAttendanceForReport(rows as any, loc, { location: 'Place1', employeePhone: 'p1' });
+  assert.equal(result.length, 2);
+  assert.ok(result.every((a) => a.employeePhone === 'p1'));
+});
+
+// ── reportByObject / reportByPerson: date-blank-on-repeat + grand-total-sum + no-sheet-for-no-closed ─
+test('reportByObject: first row for a group keeps its date; only later repeats are blanked', () => {
+  const instById = new Map([['i1', inst({ id:'i1', date:'2026-07-01' })]]);
+  const names = new Map([['p1','Victor']]);
+  const [sheet] = reportByObject(
+    [att({ instanceId:'i1', employeePhone:'p1', date:'2026-07-01', hours:'8' }),
+     att({ instanceId:'i1', employeePhone:'p1', date:'2026-07-01', hours:'4' }),
+     att({ instanceId:'i1', employeePhone:'p1', date:'2026-07-02', hours:'6' })] as any,
+    instById, names, { from:'2026-07-01', to:'2026-07-31' });
+  // Body rows are the first 3 entries (before the totals block)
+  assert.equal(sheet.rows[0][0], '2026-07-01'); // first row for 07-01 keeps its date
+  assert.equal(sheet.rows[1][0], '');           // repeat of 07-01 → blanked
+  assert.equal(sheet.rows[2][0], '2026-07-02'); // new date → keeps its date (not a repeat)
+});
+
+test('reportByObject: grand-total row equals the sum of all per-worker subtotal rows', () => {
+  const instById = new Map([
+    ['i1', inst({ id:'i1', date:'2026-07-01' })],
+    ['i2', inst({ id:'i2', date:'2026-07-02' })],
+  ]);
+  const names = new Map([['p1','Victor'],['p2','Igor']]);
+  const [sheet] = reportByObject(
+    [att({ instanceId:'i1', employeePhone:'p1', date:'2026-07-01', hours:'8' }),
+     att({ instanceId:'i2', employeePhone:'p2', date:'2026-07-02', hours:'6' }),
+     att({ instanceId:'i1', employeePhone:'p1', date:'2026-07-03', hours:'2' })] as any,
+    instById, names, { from:'2026-07-01', to:'2026-07-31' });
+  const subtotalRows = sheet.rows.filter((r) => r[0] === 'Victor' || r[0] === 'Igor');
+  const subtotalSum = subtotalRows.reduce((s, r) => s + Number(r[1]), 0);
+  const grandTotalRow = sheet.rows.find((r) => r[0] === 'Total');
+  assert.equal(Number(grandTotalRow?.[1]), subtotalSum);
+  assert.equal(Number(grandTotalRow?.[1]), 16); // 8 + 6 + 2
+});
+
+test('reportByObject: a place with no closed (non-open) attendance produces no sheet at all', () => {
+  const instById = new Map([['i1', inst({ id:'i1' })]]);
+  const names = new Map([['p1','Victor']]);
+  const sheets = reportByObject(
+    [att({ instanceId:'i1', employeePhone:'p1', status:'open' })] as any,
+    instById, names, { from:'2026-07-01', to:'2026-07-31' });
+  assert.deepEqual(sheets, []);
+});
+
+test('reportByPerson: first row for a group keeps its date; only later repeats are blanked', () => {
+  const instById = new Map([['i1', inst({ id:'i1', location:'Place1' })]]);
+  const [sheet] = reportByPerson(
+    [att({ instanceId:'i1', employeePhone:'p1', date:'2026-07-01', hours:'8' }),
+     att({ instanceId:'i1', employeePhone:'p1', date:'2026-07-01', hours:'4' })] as any,
+    instById, new Map([['p1','Victor']]), { from:'2026-07-01', to:'2026-07-31' });
+  assert.equal(sheet.rows[0][0], '2026-07-01');
+  assert.equal(sheet.rows[1][0], '');
+});
+
+test('reportByPerson: grand-total row equals the sum of all per-place subtotal rows', () => {
+  const instById = new Map([
+    ['i1', inst({ id:'i1', location:'Place1' })],
+    ['i2', inst({ id:'i2', location:'Place2' })],
+  ]);
+  const [sheet] = reportByPerson(
+    [att({ instanceId:'i1', employeePhone:'p1', date:'2026-07-01', hours:'8' }),
+     att({ instanceId:'i2', employeePhone:'p1', date:'2026-07-02', hours:'3' })] as any,
+    instById, new Map([['p1','Victor']]), { from:'2026-07-01', to:'2026-07-31' });
+  const subtotalRows = sheet.rows.filter((r) => r[0] === 'Place1' || r[0] === 'Place2');
+  const subtotalSum = subtotalRows.reduce((s, r) => s + Number(r[1]), 0);
+  const grandTotalRow = sheet.rows.find((r) => r[0] === 'Total');
+  assert.equal(Number(grandTotalRow?.[1]), subtotalSum);
+  assert.equal(Number(grandTotalRow?.[1]), 11);
+});
+
+test('reportByPerson: a worker with no closed (non-open) attendance produces no sheet at all', () => {
+  const instById = new Map([['i1', inst({ id:'i1' })]]);
+  const sheets = reportByPerson(
+    [att({ instanceId:'i1', employeePhone:'p1', status:'open' })] as any,
+    instById, new Map(), { from:'2026-07-01', to:'2026-07-31' });
+  assert.deepEqual(sheets, []);
+});
+
+// ── reportSummary: no-rate, multi-month, grand-total-sum, month label format ──
+test('reportSummary: a location with no configured rate → rate="" and amount=0 (not an error, not NaN)', () => {
+  const instById = new Map([['i1', inst({ location:'Place1' })]]);
+  const sheet = reportSummary([att({ date:'2026-07-01', hours:'5' })] as any, instById, new Map(), { from:'2026-07-01', to:'2026-07-31' });
+  const row = sheet.rows.find((r) => r[1] === 'Place1');
+  assert.equal(row?.[3], ''); // rate is blank, not '0' or 'NaN'
+  assert.equal(row?.[4], '0'); // amount is 0
+  const grandTotalRow = sheet.rows.find((r) => r[0] === 'Total');
+  assert.equal(grandTotalRow?.[4], '0');
+});
+
+test('reportSummary: two different months of activity for one place produce two body rows + one rollup row', () => {
+  const instById = new Map([['i1', inst({ location:'Place1' })]]);
+  const rateByLoc = new Map([['Place1', '10']]);
+  const sheet = reportSummary(
+    [att({ date:'2026-06-15', hours:'5' }), att({ date:'2026-07-10', hours:'3' })] as any,
+    instById, rateByLoc, { from:'2026-06-01', to:'2026-07-31' });
+  const juneRow = sheet.rows.find((r) => r[0] === '2026-06' && r[1] === 'Place1');
+  const julyRow = sheet.rows.find((r) => r[0] === '2026-07' && r[1] === 'Place1');
+  assert.ok(juneRow, 'expected a June body row');
+  assert.ok(julyRow, 'expected a July body row');
+  assert.equal(juneRow?.[4], '50'); // 5 * 10
+  assert.equal(julyRow?.[4], '30'); // 3 * 10
+  // exactly one rollup row for Place1 (month column blank)
+  const rollupRows = sheet.rows.filter((r) => r[0] === 'Place1');
+  assert.equal(rollupRows.length, 1);
+  assert.equal(rollupRows[0][4], '80'); // 50 + 30
+});
+
+test('reportSummary: grand total row equals the sum of all rollup row amounts', () => {
+  const instById = new Map([
+    ['i1', inst({ location:'Place1' })],
+    ['i2', inst({ location:'Place2' })],
+  ]);
+  const rateByLoc = new Map([['Place1', '10'], ['Place2', '20']]);
+  const sheet = reportSummary(
+    [att({ instanceId:'i1', date:'2026-06-15', hours:'5' }), att({ instanceId:'i2', date:'2026-07-10', hours:'3' })] as any,
+    instById, rateByLoc, { from:'2026-06-01', to:'2026-07-31' });
+  const rollupRows = sheet.rows.filter((r) => r[0] === 'Place1' || r[0] === 'Place2');
+  const rollupSum = rollupRows.reduce((s, r) => s + Number(r[4]), 0);
+  const grandTotalRow = sheet.rows.find((r) => r[0] === 'Total');
+  assert.equal(Number(grandTotalRow?.[4]), rollupSum);
+  assert.equal(Number(grandTotalRow?.[4]), 110); // (5*10) + (3*20)
+});
+
+test('reportSummary: month label format is date.slice(0,7) i.e. YYYY-MM', () => {
+  const instById = new Map([['i1', inst({ location:'Place1' })]]);
+  const sheet = reportSummary([att({ date:'2026-11-23', hours:'1' })] as any, instById, new Map(), { from:'2026-01-01', to:'2026-12-31' });
+  const row = sheet.rows.find((r) => r[1] === 'Place1');
+  assert.equal(row?.[0], '2026-11'); // '2026-11-23'.slice(0,7) === '2026-11'
+});
