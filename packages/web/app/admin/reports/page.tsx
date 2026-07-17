@@ -15,13 +15,19 @@ export default async function ReportsPage() {
   const [places, workers] = await Promise.all([listPlaces(gw), listWorkers(gw)]);
   const locationNames = places.map((p) => p.name);
   const workerOptions = workers.map((w) => ({ phone: w.phone, name: w.name }));
+  const placesByClient = places.reduce<Record<string, string[]>>((acc, p) => {
+    const client = p.client.trim();
+    if (!client) return acc;
+    (acc[client] ??= []).push(p.name);
+    return acc;
+  }, {});
 
   return (
     <main className="mx-auto max-w-4xl p-5">
       <div className="mb-6">
         <h1 className="text-xl font-semibold">Reports</h1>
       </div>
-      <ReportsClient locationNames={locationNames} workerOptions={workerOptions} />
+      <ReportsClient locationNames={locationNames} workerOptions={workerOptions} placesByClient={placesByClient} />
     </main>
   );
 }

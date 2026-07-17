@@ -1,3 +1,4 @@
+import ExcelJS from 'exceljs';
 import { requireAdmin } from '../../../../lib/session';
 import { getGateway } from '../../../../lib/sheets';
 import {
@@ -15,13 +16,49 @@ import {
   attendanceExceptions,
   writeReportTab,
   filterAttendanceForReport,
+  reportByObject,
+  reportByPerson,
+  reportSummary,
   type WorkedItem,
+  type ReportSheet,
 } from '@scourage/worklog-core';
 
 export const runtime = 'nodejs';
 
-const VALID_TYPES = ['hours_employee', 'hours_location', 'payroll', 'exceptions'] as const;
+const VALID_TYPES = [
+  'hours_employee',
+  'hours_location',
+  'payroll',
+  'exceptions',
+  'report_by_object',
+  'report_by_person',
+  'report_summary',
+] as const;
 type ReportType = (typeof VALID_TYPES)[number];
+
+async function workbookResponse(sheets: ReportSheet[], from: string, to: string): Promise<Response> {
+  const wb = new ExcelJS.Workbook();
+  const used = new Set<string>();
+  for (const s of sheets) {
+    // Excel sheet names: <=31 chars, no []:*?/\ — sanitize + de-dupe.
+    let name = (s.name || 'Sheet').replace(/[[\]:*?/\\]/g, ' ').slice(0, 31).trim() || 'Sheet';
+    let n = name, i = 2;
+    while (used.has(n)) { const suffix = ` (${i++})`; n = name.slice(0, 31 - suffix.length) + suffix; }
+    used.add(n);
+    const ws = wb.addWorksheet(n);
+    ws.addRow([s.title]);                 // title cell
+    ws.addRow(s.header);
+    for (const r of s.rows) ws.addRow(r);
+  }
+  const buf = await wb.xlsx.writeBuffer();
+  return new Response(buf, {
+    status: 200,
+    headers: {
+      'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'Content-Disposition': `attachment; filename="report ${from}..${to}.xlsx"`,
+    },
+  });
+}
 
 export async function POST(req: Request) {
   const admin = await requireAdmin();
@@ -40,6 +77,12 @@ export async function POST(req: Request) {
   const to = typeof b.to === 'string' ? b.to : '';
   const location = typeof b.location === 'string' ? b.location : '';
   const employeePhone = typeof b.employeePhone === 'string' ? b.employeePhone : '';
+  const locations = Array.isArray(b.locations)
+    ? b.locations.filter((x): x is string => typeof x === 'string')
+    : (typeof b.location === 'string' && b.location ? [b.location] : []);
+  const employeePhones = Array.isArray(b.employeePhones)
+    ? b.employeePhones.filter((x): x is string => typeof x === 'string')
+    : (typeof b.employeePhone === 'string' && b.employeePhone ? [b.employeePhone] : []);
 
   if (!(VALID_TYPES as readonly string[]).includes(type)) {
     return Response.json({ error: 'invalid type' }, { status: 400 });
@@ -60,7 +103,20 @@ export async function POST(req: Request) {
     const instLocById = new Map(instances.map((i) => [i.id, i.location]));
     const instById = new Map(instances.map((i) => [i.id, i]));
 
-    const filteredAtt = filterAttendanceForReport(att, instLocById, { location: location || undefined, employeePhone: employeePhone || undefined });
+    const filteredAtt = filterAttendanceForReport(att, instLocById, { location: locations, employeePhone: employeePhones });
+
+    if (type === 'report_by_object' || type === 'report_by_person' || type === 'report_summary') {
+      const places = await listPlaces(gw);
+      const rateByLocation = new Map(places.map((p) => [p.name, p.baseRate]));
+
+      if (type === 'report_by_object') {
+        return workbookResponse(reportByObject(filteredAtt, instById, nameByPhone, { from, to }), from, to);
+      } else if (type === 'report_by_person') {
+        return workbookResponse(reportByPerson(filteredAtt, instById, nameByPhone, { from, to }), from, to);
+      } else {
+        return workbookResponse([reportSummary(filteredAtt, instById, rateByLocation, { from, to })], from, to);
+      }
+    }
 
     let header: string[];
     let rows: string[][];
