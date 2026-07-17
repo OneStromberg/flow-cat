@@ -2,7 +2,8 @@ import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { requireAdmin } from '../../../lib/session';
 import { getRequestGateway } from '../../../lib/sheets';
-import { findConflicts, listWorkers, listInstances, listLeave, listAssignments, isOnLeave } from '@scourage/worklog-core';
+import { findConflicts, findDuplicateAssignments, listWorkers, listInstances, listLeave, listAssignments, isOnLeave } from '@scourage/worklog-core';
+import { RepairDuplicatesButton } from './repair-duplicates-button';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -30,8 +31,9 @@ export default async function ConflictsPage({
   const to = typeof params.to === 'string' ? params.to : addDays(from, 42);
 
   const gw = getRequestGateway();
-  const [conflicts, workers, instances, approvedLeaves, assignments] = await Promise.all([
+  const [conflicts, duplicates, workers, instances, approvedLeaves, assignments] = await Promise.all([
     findConflicts(gw, { from, to }),
+    findDuplicateAssignments(gw),
     listWorkers(gw),
     listInstances(gw, { from, to }),
     listLeave(gw, { status: 'approved', from, to }),
@@ -60,7 +62,35 @@ export default async function ConflictsPage({
 
   return (
     <main className="mx-auto max-w-2xl p-5">
-      <h1 className="text-xl font-semibold mb-6">Schedule conflicts</h1>
+      <div className="mb-6 flex items-center justify-between gap-2">
+        <h1 className="text-xl font-semibold">Schedule conflicts</h1>
+        <RepairDuplicatesButton />
+      </div>
+
+      {/* Duplicate assignments */}
+      {duplicates.length > 0 && (
+        <section className="mb-8">
+          <h2 className="text-sm font-semibold text-amber-700 mb-3">Duplicate assignments</h2>
+          <div className="space-y-3">
+            {duplicates.map((d, i) => {
+              const workerName = phoneToName.get(d.employeePhone) || d.employeePhone;
+              const inst = idToInstance.get(d.instanceId);
+              return (
+                <div key={i} className="border-l-4 border-amber-500 bg-amber-50 p-4 rounded">
+                  <div className="text-sm font-semibold text-gray-900">{workerName}</div>
+                  <div className="text-xs text-gray-600 mt-1">
+                    {d.count} active assignment rows for{' '}
+                    <strong>{inst?.location ?? '—'}</strong> on <strong>{inst?.date ?? '—'}</strong>
+                  </div>
+                  <Link href={`/admin/shifts/instances/${d.instanceId}`} className="text-blue-600 hover:underline text-xs mt-1 inline-block">
+                    View shift
+                  </Link>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+      )}
 
       {/* Assigned while on leave */}
       {leaveViolations.length > 0 && (
