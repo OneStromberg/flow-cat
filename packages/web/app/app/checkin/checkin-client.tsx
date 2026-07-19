@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import type { InstanceWithAttendance } from './page';
 import { GeoPoller } from './geo-poller';
 import { t, DEFAULT_LANG, type Lang } from '../../../lib/i18n/strings';
+import { compressImage } from '../../../lib/image-compress';
 
 interface CheckinClientProps {
   items: InstanceWithAttendance[];
@@ -54,7 +55,7 @@ export function CheckinClient({ items, workerName, lang = DEFAULT_LANG }: Checki
           setBusy(null);
           return;
         }
-        photo = captured; // Task 14 compresses before send
+        photo = await compressImage(captured);
       }
 
       const { lat, lng } = await getPosition();

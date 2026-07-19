@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { requireManagerOrAdmin } from '../../../../lib/session';
+import { ExportPhotosButton } from './ExportPhotosButton';
 import { getRequestGateway, COMPANY_TZ } from '../../../../lib/sheets';
 import {
   listPlaces,
@@ -76,6 +77,11 @@ export default async function PlaceDetailPage({ params }: { params: Promise<{ na
           </Link>
         </div>
         {place.notes && <p className="mt-2 text-sm text-gray-600">{place.notes}</p>}
+        {isAdmin && (
+          <div className="mt-4">
+            <ExportPhotosButton place={place.name} />
+          </div>
+        )}
       </div>
 
       {/* Details */}
