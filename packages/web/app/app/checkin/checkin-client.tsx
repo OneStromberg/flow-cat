@@ -125,7 +125,7 @@ export function CheckinClient({ items, workerName, lang = DEFAULT_LANG }: Checki
       </div>
 
       <ul className="space-y-3">
-        {items.map(({ instance, attendance, role, instructions, address, contact, wazeUrl: navUrl }, index) => {
+        {items.map(({ instance, attendance, role, instructions, address, contact, wazeUrl: navUrl, mapsUrl }, index) => {
           const isOpen = attendance?.status === 'open';
           const isClosed = attendance?.status === 'closed' || attendance?.status === 'corrected';
           const busyKey = instance.id + (isOpen ? ':out' : ':in');
@@ -158,7 +158,8 @@ export function CheckinClient({ items, workerName, lang = DEFAULT_LANG }: Checki
                       {instructions && <div className="whitespace-pre-wrap"><span className="font-medium">{t('checkin.instructions', lang)}: </span>{instructions}</div>}
                       {address && <div><span className="font-medium">{t('checkin.address', lang)}: </span>{address}</div>}
                       {contact && <div><span className="font-medium">{t('checkin.contact', lang)}: </span>{contact}</div>}
-                      {navUrl && <a href={navUrl} target="_blank" rel="noreferrer" className="text-blue-600 underline">{t('checkin.navigate', lang)}</a>}
+                      {navUrl && <a href={navUrl} target="_blank" rel="noreferrer" className="text-blue-600 underline">{t('checkin.waze', lang)}</a>}
+                      {mapsUrl && <a href={mapsUrl} target="_blank" rel="noreferrer" className="ml-3 text-blue-600 underline">{t('checkin.maps', lang)}</a>}
                     </div>
                   </details>
                 )}
