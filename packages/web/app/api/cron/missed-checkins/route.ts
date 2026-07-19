@@ -1,13 +1,10 @@
 import { getGateway, COMPANY_TZ } from '../../../../lib/sheets';
-import { findMissedCheckins, lastAlertAtByKey, shouldRealert, recordAlerts, listWorkers } from '@scourage/worklog-core';
+import { findMissedCheckins, lastAlertAtByKey, shouldRealert, recordAlerts, listWorkers, toE164 } from '@scourage/worklog-core';
 import { notifyAdmins, pickAdminChatIds } from '../../../../lib/telegram';
+import { formatHmInTz } from '../../../../lib/format-time';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
-
-function formatExpectedTime(iso: string): string {
-  return iso.slice(11, 16);
-}
 
 export async function GET(req: Request) {
   const secret = process.env.CRON_SECRET ?? '';
@@ -32,19 +29,26 @@ export async function GET(req: Request) {
 
     if (due.length > 0) {
       const workers = await listWorkers(gw);
-      const phoneToName = new Map(workers.map(w => [w.phone, w.name]));
-
-      const lines = due.map(m => {
-        const name = phoneToName.get(m.employeePhone) || m.employeePhone;
-        const checkType = m.type === 'in' ? 'check-in' : 'check-out';
-        const expectedTime = formatExpectedTime(m.expectedAt);
-        return `⚠️ ${name} missed ${checkType} at ${m.location} (expected ${expectedTime}) — 📞 ${m.employeePhone}`;
-      });
-
-      const message = `Missed checkins:\n${lines.join('\n')}`;
+      const phoneToName = new Map(workers.map((w) => [w.phone, w.name]));
       const admins = pickAdminChatIds(workers);
 
-      await notifyAdmins(message, admins);
+      const byLocation = new Map<string, typeof due>();
+      for (const m of due) {
+        const arr = byLocation.get(m.location) ?? [];
+        arr.push(m);
+        byLocation.set(m.location, arr);
+      }
+
+      for (const [location, events] of byLocation) {
+        const lines = events.map((m) => {
+          const name = phoneToName.get(m.employeePhone) || m.employeePhone;
+          const checkType = m.type === 'in' ? 'check-in' : 'check-out';
+          const expectedTime = formatHmInTz(m.expectedAt, COMPANY_TZ);
+          return `⚠️ ${name} missed ${checkType} (expected ${expectedTime}) — 📞 ${toE164(m.employeePhone)}`;
+        });
+        await notifyAdmins(`Missed check-ins — ${location}\n${lines.join('\n')}`, admins);
+      }
+
       await recordAlerts(gw, due);
     }
 
