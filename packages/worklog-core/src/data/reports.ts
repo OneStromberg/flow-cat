@@ -1,6 +1,13 @@
 import type { SheetsGateway } from '@scourage/sheets-helper';
 import type { Attendance } from './attendance.ts';
 import type { ShiftInstance } from './shift-instances.ts';
+import { normalizePhone } from './phone.ts';
+
+// normalize only when the value looks like a phone (i.e. is entirely digits); pass
+// alphanumeric test IDs like "p1" through unchanged (they'd otherwise collapse to "1").
+function njoin(phone: string): string {
+  return /^\d+$/.test(phone) ? normalizePhone(phone) : phone;
+}
 
 type Range = { from: string; to: string };
 
@@ -72,9 +79,12 @@ export function filterAttendanceForReport(
   instLocById: Map<string, string>,
   f: { location?: string | string[]; employeePhone?: string | string[] },
 ): Attendance[] {
+  const empSet = f.employeePhone === undefined
+    ? undefined
+    : (Array.isArray(f.employeePhone) ? f.employeePhone : [f.employeePhone]).map(njoin);
   return att.filter((a) =>
     matchesAny(instLocById.get(a.instanceId) ?? '', f.location) &&
-    matchesAny(a.employeePhone, f.employeePhone));
+    (empSet === undefined || empSet.length === 0 || empSet.includes(njoin(a.employeePhone))));
 }
 
 export type ReportRange = { from: string; to: string };
@@ -102,7 +112,7 @@ export function reportByObject(
     if (!isClosed(a) || !inRange(a.date, range)) continue;
     const inst = instById.get(a.instanceId);
     const location = inst?.location ?? '—';
-    const name = nameByPhone.get(a.employeePhone) ?? a.employeePhone;
+    const name = nameByPhone.get(njoin(a.employeePhone)) ?? a.employeePhone;
     const hours = Number(a.hours) || 0;
     if (!byLoc.has(location)) byLoc.set(location, { rows: [], totals: new Map(), grand: 0 });
     const g = byLoc.get(location)!;
@@ -129,8 +139,9 @@ export function reportByPerson(
     const inst = instById.get(a.instanceId);
     const location = inst?.location ?? '—';
     const hours = Number(a.hours) || 0;
-    if (!byPhone.has(a.employeePhone)) byPhone.set(a.employeePhone, { rows: [], totals: new Map(), grand: 0 });
-    const g = byPhone.get(a.employeePhone)!;
+    const nphone = njoin(a.employeePhone);
+    if (!byPhone.has(nphone)) byPhone.set(nphone, { rows: [], totals: new Map(), grand: 0 });
+    const g = byPhone.get(nphone)!;
     g.rows.push([a.date, location, inst?.start ?? '', inst?.end ?? '', String(hours)]);
     g.totals.set(location, (g.totals.get(location) ?? 0) + hours);
     g.grand += hours;

@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { createMemoryGateway } from '@scourage/sheets-helper';
 import { hoursByEmployee, hoursByLocation, attendanceExceptions, writeReportTab, filterAttendanceForReport, reportByObject, reportByPerson, reportSummary } from './reports.ts';
+import { normalizePhone } from './phone.ts';
 import type { ShiftInstance } from './shift-instances.ts';
 
 const att = (over={}) => ({ id:'a', instanceId:'i1', employeePhone:'p1', date:'2026-07-01', checkInAt:'2026-07-01T08:10:00.000Z', checkInLat:'', checkInLng:'', checkInPhoto:'', checkInInGeofence:true, checkOutAt:'2026-07-01T16:00:00.000Z', checkOutLat:'', checkOutLng:'', checkOutPhoto:'', checkOutInGeofence:true, hours:'8', status:'closed', ...over });
@@ -276,4 +277,20 @@ test('reportSummary: month label format is date.slice(0,7) i.e. YYYY-MM', () => 
   const sheet = reportSummary([att({ date:'2026-11-23', hours:'1' })] as any, instById, new Map(), { from:'2026-01-01', to:'2026-12-31' });
   const row = sheet.rows.find((r) => r[1] === 'Place1');
   assert.equal(row?.[0], '2026-11'); // '2026-11-23'.slice(0,7) === '2026-11'
+});
+
+// ── R1: phone normalization in report joins/filter ────────────────────────
+test('reportByObject joins names across un-normalized attendance phones', () => {
+  const instById = new Map([['i1', { id:'i1', templateId:'t', location:'Site A', date:'2026-07-01', start:'08:00', end:'16:00', headcount:1, status:'scheduled' }]]);
+  const names = new Map([['972506918673', 'Victor']]);           // worker phone: normalized
+  const rows = [att({ instanceId:'i1', employeePhone:'0506918673', hours:'8' })]; // attendance: local form
+  const [sheet] = reportByObject(rows as any, instById as any, names, { from:'2026-07-01', to:'2026-07-31' });
+  assert.equal(sheet.rows[0][1], 'Victor');                       // name, not the raw number
+  assert.ok(sheet.rows.some((r) => r[0] === 'Victor' && r[1] === '8'));
+});
+test('filterAttendanceForReport matches un-normalized attendance against normalized filter', () => {
+  const loc = new Map([['i1','Site A']]);
+  const rows = [att({ instanceId:'i1', employeePhone:'0506918673' })] as any;
+  assert.equal(filterAttendanceForReport(rows, loc, { employeePhone: ['972506918673'] }).length, 1);
+  assert.equal(filterAttendanceForReport(rows, loc, { employeePhone: [normalizePhone('0506918673')] }).length, 1);
 });
