@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation';
-import { requireAdmin } from '../../../lib/session';
+import { requireManagerOrAdmin } from '../../../lib/session';
 import { getRequestGateway } from '../../../lib/sheets';
 import { listPlaces, wazeUrl, googleMapsUrl } from '@scourage/worklog-core';
 import { DeletePlaceButton } from './DeletePlaceButton';
@@ -8,7 +8,7 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export default async function PlacesPage() {
-  const admin = await requireAdmin();
+  const admin = await requireManagerOrAdmin();
   if (!admin) redirect('/');
   const allPlaces = await listPlaces(getRequestGateway());
   const places = allPlaces

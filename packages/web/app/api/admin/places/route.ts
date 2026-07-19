@@ -1,11 +1,11 @@
 import { getGateway, COMPANY_TZ } from '../../../../lib/sheets';
-import { requireAdmin } from '../../../../lib/session';
+import { requireManagerOrAdmin } from '../../../../lib/session';
 import { addPlace, updatePlace, cascadeDeletePlace, todayISO, type AddPlaceInput } from '@scourage/worklog-core';
 
 export const runtime = 'nodejs';
 
 export async function POST(req: Request) {
-  const admin = await requireAdmin();
+  const admin = await requireManagerOrAdmin();
   if (!admin) return Response.json({ error: 'unauthorized' }, { status: 401 });
 
   let body: unknown;
@@ -33,7 +33,7 @@ export async function POST(req: Request) {
 }
 
 export async function DELETE(req: Request) {
-  const admin = await requireAdmin();
+  const admin = await requireManagerOrAdmin();
   if (!admin) return Response.json({ error: 'unauthorized' }, { status: 401 });
 
   let body: unknown;
@@ -57,7 +57,7 @@ export async function DELETE(req: Request) {
 }
 
 export async function PUT(req: Request) {
-  const admin = await requireAdmin();
+  const admin = await requireManagerOrAdmin();
   if (!admin) return Response.json({ error: 'unauthorized' }, { status: 401 });
 
   let body: unknown;

@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation';
-import { requireAdmin } from '../../lib/session';
+import { requireManagerOrAdmin } from '../../lib/session';
 import { getRequestGateway } from '../../lib/sheets';
 import { listWorkers, listBrokenWorkers, loadActivePlaces, CITIES, TRANSPORTATION, HEBREW_LEVEL, PAY_TYPE, SCHEDULE, GENDER } from '@scourage/worklog-core';
 import { WorkersFilter } from './workers-filter';
@@ -10,7 +10,7 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export default async function AdminPage() {
-  const admin = await requireAdmin();
+  const admin = await requireManagerOrAdmin();
   if (!admin) redirect('/');
 
   const gw = getRequestGateway();

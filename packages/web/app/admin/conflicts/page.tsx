@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
-import { requireAdmin } from '../../../lib/session';
+import { requireManagerOrAdmin } from '../../../lib/session';
 import { getRequestGateway } from '../../../lib/sheets';
 import { findConflicts, findDuplicateAssignments, listWorkers, listInstances, listLeave, listAssignments, isOnLeave } from '@scourage/worklog-core';
 import { RepairDuplicatesButton } from './repair-duplicates-button';
@@ -23,7 +23,7 @@ export default async function ConflictsPage({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const admin = await requireAdmin();
+  const admin = await requireManagerOrAdmin();
   if (!admin) redirect('/');
 
   const params = await searchParams;

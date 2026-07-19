@@ -1,11 +1,11 @@
 import { getGateway, COMPANY_TZ } from '../../../../../../lib/sheets';
-import { requireAdmin } from '../../../../../../lib/session';
+import { requireManagerOrAdmin } from '../../../../../../lib/session';
 import { deleteTemplate, cancelFutureInstancesForTemplate, todayISO } from '@scourage/worklog-core';
 
 export const runtime = 'nodejs';
 
 export async function DELETE(_req: Request, context: { params: Promise<{ id: string }> }) {
-  const admin = await requireAdmin();
+  const admin = await requireManagerOrAdmin();
   if (!admin) return Response.json({ error: 'unauthorized' }, { status: 401 });
 
   const { id } = await context.params;

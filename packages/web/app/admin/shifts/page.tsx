@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation';
-import { requireAdmin } from '../../../lib/session';
+import { requireManagerOrAdmin } from '../../../lib/session';
 import { getRequestGateway, COMPANY_TZ } from '../../../lib/sheets';
 import { listInstances, listAssignments, listWorkers, listAttendance, listPlaces, placeGraceMins } from '@scourage/worklog-core';
 import type { ShiftInstance } from '@scourage/worklog-core';
@@ -29,7 +29,7 @@ export default async function ShiftsPage({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const admin = await requireAdmin();
+  const admin = await requireManagerOrAdmin();
   if (!admin) redirect('/');
 
   const sp = await searchParams;

@@ -1,12 +1,12 @@
 import { getGateway, COMPANY_TZ } from '../../../../../lib/sheets';
-import { requireAdmin } from '../../../../../lib/session';
+import { requireManagerOrAdmin } from '../../../../../lib/session';
 import { listTemplates, listInstances, cancelFutureInstancesForTemplate, listPlaces, todayISO } from '@scourage/worklog-core';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export async function POST() {
-  const admin = await requireAdmin();
+  const admin = await requireManagerOrAdmin();
   if (!admin) return Response.json({ error: 'Unauthorized' }, { status: 401 });
   const gw = getGateway();
   const today = todayISO(COMPANY_TZ);

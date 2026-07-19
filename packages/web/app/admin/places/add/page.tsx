@@ -1,12 +1,12 @@
 import { redirect } from 'next/navigation';
-import { requireAdmin } from '../../../../lib/session';
+import { requireManagerOrAdmin } from '../../../../lib/session';
 import { AddPlaceForm } from './add-place-form';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export default async function AddPlacePage() {
-  const admin = await requireAdmin();
+  const admin = await requireManagerOrAdmin();
   if (!admin) redirect('/');
   return (
     <main className="mx-auto max-w-md p-5">

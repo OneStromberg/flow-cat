@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation';
-import { requireAdmin } from '../../../lib/session';
+import { requireManagerOrAdmin } from '../../../lib/session';
 import { getRequestGateway } from '../../../lib/sheets';
 import { listPlaces, listInstances, listAssignments, listWorkers } from '@scourage/worklog-core';
 import { MapClient } from './map-client';
@@ -18,7 +18,7 @@ export interface MapMarker {
 }
 
 export default async function MapPage() {
-  const admin = await requireAdmin();
+  const admin = await requireManagerOrAdmin();
   if (!admin) redirect('/');
 
   const today = new Date().toISOString().slice(0, 10);

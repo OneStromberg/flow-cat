@@ -1,10 +1,10 @@
-import { requireAdmin } from '../../../../../lib/session';
+import { requireManagerOrAdmin } from '../../../../../lib/session';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: Request) {
-  const admin = await requireAdmin();
+  const admin = await requireManagerOrAdmin();
   if (!admin) return Response.json({ error: 'unauthorized' }, { status: 401 });
   const token = process.env.TELEGRAM_BOT_TOKEN ?? '';
   const secret = process.env.TELEGRAM_WEBHOOK_SECRET ?? '';

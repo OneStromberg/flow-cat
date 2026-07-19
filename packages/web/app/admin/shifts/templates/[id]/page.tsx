@@ -1,5 +1,5 @@
 import { notFound, redirect } from 'next/navigation';
-import { requireAdmin } from '../../../../../lib/session';
+import { requireManagerOrAdmin } from '../../../../../lib/session';
 import { getRequestGateway } from '../../../../../lib/sheets';
 import {
   listTemplates,
@@ -41,7 +41,7 @@ export default async function TemplateDetailPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const admin = await requireAdmin();
+  const admin = await requireManagerOrAdmin();
   if (!admin) redirect('/');
 
   const { id } = await params;

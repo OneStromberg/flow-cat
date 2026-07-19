@@ -1,5 +1,5 @@
 import { getGateway } from '../../../../../lib/sheets';
-import { requireAdmin } from '../../../../../lib/session';
+import { requireManagerOrAdmin } from '../../../../../lib/session';
 import {
   updateTemplate,
   applyTemplateEdit,
@@ -10,7 +10,7 @@ import {
 export const runtime = 'nodejs';
 
 export async function POST(req: Request, context: { params: Promise<{ id: string }> }) {
-  const admin = await requireAdmin();
+  const admin = await requireManagerOrAdmin();
   if (!admin) return Response.json({ error: 'unauthorized' }, { status: 401 });
 
   const { id } = await context.params;

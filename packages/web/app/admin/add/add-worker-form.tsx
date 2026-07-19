@@ -4,15 +4,15 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 
 type EnumOpt = readonly { value: string; label: string }[];
-type Props = { places: string[]; cities: EnumOpt; enums: { transportation: EnumOpt; hebrewLevel: EnumOpt; payType: EnumOpt; schedule: EnumOpt; gender: EnumOpt; payStructure: EnumOpt } };
+type Props = { places: string[]; cities: EnumOpt; enums: { transportation: EnumOpt; hebrewLevel: EnumOpt; payType: EnumOpt; schedule: EnumOpt; gender: EnumOpt; payStructure: EnumOpt }; isAdmin: boolean };
 
 const FIELDS0 = {
   phone: '', teudatZeut: '', name: '', city: '', birthdate: '',
   transportation: '', hebrewLevel: '', payType: '', payAmount: '', schedule: '', gender: '',
-  payStructure: '', payRate: '',
+  payStructure: '', payRate: '', role: 'worker',
 };
 
-export function AddWorkerForm({ places, cities, enums }: Props) {
+export function AddWorkerForm({ places, cities, enums, isAdmin }: Props) {
   const router = useRouter();
   const [v, setV] = useState({ ...FIELDS0 });
   const [selPlaces, setSelPlaces] = useState<string[]>([]);
@@ -93,6 +93,17 @@ export function AddWorkerForm({ places, cities, enums }: Props) {
       {v.payType === 'amount' && input('payAmount', 'Amount', 'number')}
       {input('payRate', 'Pay rate', 'number')}
       {select('schedule', 'Shift preference', enums.schedule)}
+      {isAdmin && (
+        <div>
+          <label className="block text-sm font-medium text-gray-700">Role</label>
+          <select className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-base" value={v.role} onChange={(e) => set('role', e.target.value)}>
+            <option value="worker">Worker</option>
+            <option value="manager">Manager</option>
+            <option value="admin">Admin</option>
+          </select>
+          {errors.role && <p className="mt-1 text-sm text-red-600">{errors.role}</p>}
+        </div>
+      )}
       {fatal && <p className="text-sm text-red-600">{fatal}</p>}
       <button type="submit" disabled={busy} className="w-full rounded-lg bg-gray-900 px-4 py-3 text-base font-medium text-white disabled:opacity-50">
         {busy ? 'Saving…' : 'Add worker'}

@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation';
-import { requireAdmin } from '../../../lib/session';
+import { requireManagerOrAdmin } from '../../../lib/session';
 import { getRequestGateway } from '../../../lib/sheets';
 import { listLeave, listWorkers, LEAVE_TYPES } from '@scourage/worklog-core';
 import { LeaveClient } from './leave-client';
@@ -8,7 +8,7 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export default async function LeavePage() {
-  const admin = await requireAdmin();
+  const admin = await requireManagerOrAdmin();
   if (!admin) redirect('/');
 
   const gw = getRequestGateway();

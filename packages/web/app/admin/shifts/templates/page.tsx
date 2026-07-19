@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
-import { requireAdmin } from '../../../../lib/session';
+import { requireManagerOrAdmin } from '../../../../lib/session';
 import { getRequestGateway } from '../../../../lib/sheets';
 import { listTemplates } from '@scourage/worklog-core';
 
@@ -8,7 +8,7 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export default async function ShiftTemplatesPage() {
-  const admin = await requireAdmin();
+  const admin = await requireManagerOrAdmin();
   if (!admin) redirect('/');
   const allTemplates = await listTemplates(getRequestGateway());
   const templates = allTemplates.filter((t) => t.active);

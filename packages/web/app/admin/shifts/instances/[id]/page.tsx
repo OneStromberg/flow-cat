@@ -1,5 +1,5 @@
 import { notFound, redirect } from 'next/navigation';
-import { requireAdmin } from '../../../../../lib/session';
+import { requireManagerOrAdmin } from '../../../../../lib/session';
 import { getRequestGateway } from '../../../../../lib/sheets';
 import { listInstances, listAssignments, listWorkers, listTemplates, listPlaces, resolveAssignmentRate } from '@scourage/worklog-core';
 import type { ShiftInstance, ShiftAssignment, Worker } from '@scourage/worklog-core';
@@ -18,7 +18,7 @@ export default async function InstancePage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const admin = await requireAdmin();
+  const admin = await requireManagerOrAdmin();
   if (!admin) redirect('/');
 
   const { id } = await params;

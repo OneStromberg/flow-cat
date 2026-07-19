@@ -1,11 +1,11 @@
 import { getGateway } from '../../../../../lib/sheets';
-import { requireAdmin } from '../../../../../lib/session';
-import { updateWorker, type UpdateWorkerInput } from '@scourage/worklog-core';
+import { requireManagerOrAdmin } from '../../../../../lib/session';
+import { updateWorker, findWorker, type UpdateWorkerInput } from '@scourage/worklog-core';
 
 export const runtime = 'nodejs';
 
 export async function POST(req: Request, context: { params: Promise<{ phone: string }> }) {
-  const admin = await requireAdmin();
+  const admin = await requireManagerOrAdmin();
   if (!admin) return Response.json({ error: 'unauthorized' }, { status: 401 });
 
   const { phone } = await context.params;
@@ -18,6 +18,21 @@ export async function POST(req: Request, context: { params: Promise<{ phone: str
   }
   const b = (body ?? {}) as Record<string, unknown>;
   const str = (v: unknown) => (typeof v === 'string' ? v : '');
+  const gw = getGateway();
+
+  // Only an admin caller may change a worker's role. A manager caller (also
+  // gated in here since this route now allows requireManagerOrAdmin) has
+  // their requested role silently ignored — the target's existing stored
+  // role is preserved, so a manager can never grant admin/manager to
+  // anyone (incl. themselves) via this form. Other field edits still apply.
+  let role: string;
+  if (admin.role === 'admin') {
+    role = typeof b.role === 'string' ? b.role : 'worker';
+  } else {
+    const target = await findWorker(gw, phone);
+    role = target?.role ?? 'worker';
+  }
+
   const input: UpdateWorkerInput = {
     teudatZeut: str(b.teudatZeut),
     name: str(b.name),
@@ -35,11 +50,11 @@ export async function POST(req: Request, context: { params: Promise<{ phone: str
     payRate: str(b.payRate),
     active: Boolean(b.active),
     admin: Boolean(b.admin),
-    role: str(b.role),
+    role,
   };
 
   try {
-    const r = await updateWorker(getGateway(), phone, input);
+    const r = await updateWorker(gw, phone, input);
     if (!r.ok) return Response.json({ errors: r.errors }, { status: 400 });
     return Response.json({ ok: true });
   } catch (err) {

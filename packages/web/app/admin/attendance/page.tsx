@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation';
-import { requireAdmin } from '../../../lib/session';
+import { requireManagerOrAdmin } from '../../../lib/session';
 import { getRequestGateway } from '../../../lib/sheets';
 import { listAttendance, listWorkers, listInstances } from '@scourage/worklog-core';
 import { AttendanceClient } from './attendance-client';
@@ -21,7 +21,7 @@ export default async function AttendancePage({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const admin = await requireAdmin();
+  const admin = await requireManagerOrAdmin();
   if (!admin) redirect('/');
 
   const params = await searchParams;

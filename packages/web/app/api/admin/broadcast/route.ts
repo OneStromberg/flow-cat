@@ -1,14 +1,14 @@
 import type { WorkerFilters } from '../../../../lib/filter-workers';
 import { filterWorkers } from '../../../../lib/filter-workers';
 import { getGateway } from '../../../../lib/sheets';
-import { requireAdmin } from '../../../../lib/session';
+import { requireManagerOrAdmin } from '../../../../lib/session';
 import { sendToChatIds } from '../../../../lib/telegram';
 import { listWorkers } from '@scourage/worklog-core';
 
 export const runtime = 'nodejs';
 
 export async function POST(req: Request) {
-  const admin = await requireAdmin();
+  const admin = await requireManagerOrAdmin();
   if (!admin) return Response.json({ error: 'unauthorized' }, { status: 401 });
 
   let body: unknown;

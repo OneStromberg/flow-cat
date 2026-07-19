@@ -14,11 +14,13 @@ const TABS = [
   { href: '/admin/reports', label: 'Reports', icon: '📊' },
 ];
 
-export function AdminNav() {
+export function AdminNav({ role }: { role: string }) {
   const path = usePathname();
+  const isAdmin = role === 'admin';
+  const tabs = TABS.filter((t) => isAdmin || (t.href !== '/admin/payroll' && t.href !== '/admin/reports'));
   return (
     <nav className="fixed inset-x-0 bottom-0 z-10 flex border-t border-gray-200 bg-white">
-      {TABS.map((t) => {
+      {tabs.map((t) => {
         const active = t.exact ? path === t.href : path.startsWith(t.href);
         return (
           <Link key={t.href} href={t.href}

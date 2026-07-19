@@ -17,9 +17,10 @@ type Props = {
     schedule: EnumOpt;
     payStructure: EnumOpt;
   };
+  isAdmin: boolean;
 };
 
-export function WorkerCard({ worker, places, cities, enums }: Props) {
+export function WorkerCard({ worker, places, cities, enums, isAdmin }: Props) {
   const router = useRouter();
 
   const [v, setV] = useState({
@@ -38,7 +39,7 @@ export function WorkerCard({ worker, places, cities, enums }: Props) {
   });
   const [selPlaces, setSelPlaces] = useState<string[]>(worker.places ?? []);
   const [active, setActive] = useState(worker.active ?? false);
-  const [isAdmin, setIsAdmin] = useState(worker.admin ?? false);
+  const [role, setRole] = useState(worker.role ?? 'worker');
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [fatal, setFatal] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
@@ -57,7 +58,7 @@ export function WorkerCard({ worker, places, cities, enums }: Props) {
       const res = await fetch(`/api/admin/workers/${worker.phone}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...v, places: selPlaces, active, admin: isAdmin }),
+        body: JSON.stringify({ ...v, places: selPlaces, active, ...(isAdmin ? { role } : {}) }),
       });
       const data = await res.json();
       if (res.ok && data.ok) {
@@ -139,11 +140,23 @@ export function WorkerCard({ worker, places, cities, enums }: Props) {
           <input type="checkbox" className="h-4 w-4 rounded border-gray-300" checked={active} onChange={(e) => { setActive(e.target.checked); setSaved(false); }} />
           Active
         </label>
-        <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
-          <input type="checkbox" className="h-4 w-4 rounded border-gray-300" checked={isAdmin} onChange={(e) => { setIsAdmin(e.target.checked); setSaved(false); }} />
-          Admin
-        </label>
       </div>
+
+      {isAdmin && (
+        <div>
+          <label className="block text-sm font-medium text-gray-700">Role</label>
+          <select
+            className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-base"
+            value={role}
+            onChange={(e) => { setRole(e.target.value); setSaved(false); }}
+          >
+            <option value="worker">Worker</option>
+            <option value="manager">Manager</option>
+            <option value="admin">Admin</option>
+          </select>
+          {errors.role && <p className="mt-1 text-sm text-red-600">{errors.role}</p>}
+        </div>
+      )}
 
       {fatal && <p className="text-sm text-red-600">{fatal}</p>}
       {saved && <p className="text-sm text-green-600">Saved ✓</p>}

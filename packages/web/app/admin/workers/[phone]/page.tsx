@@ -1,6 +1,6 @@
 import { redirect, notFound } from 'next/navigation';
 import Link from 'next/link';
-import { requireAdmin } from '../../../../lib/session';
+import { requireManagerOrAdmin } from '../../../../lib/session';
 import { getRequestGateway } from '../../../../lib/sheets';
 import { findWorker, loadActivePlaces, CITIES, GENDER, TRANSPORTATION, HEBREW_LEVEL, PAY_TYPE, SCHEDULE, PAY_STRUCTURE } from '@scourage/worklog-core';
 import { WorkerCard } from './worker-card';
@@ -9,8 +9,9 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export default async function WorkerPage({ params }: { params: Promise<{ phone: string }> }) {
-  const admin = await requireAdmin();
+  const admin = await requireManagerOrAdmin();
   if (!admin) redirect('/');
+  const isAdmin = admin.role === 'admin';
 
   const { phone } = await params;
   const gw = getRequestGateway();
@@ -47,6 +48,7 @@ export default async function WorkerPage({ params }: { params: Promise<{ phone: 
           schedule: SCHEDULE,
           payStructure: PAY_STRUCTURE,
         }}
+        isAdmin={isAdmin}
       />
     </main>
   );

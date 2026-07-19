@@ -1,11 +1,11 @@
 import { getGateway } from '../../../../lib/sheets';
-import { requireAdmin } from '../../../../lib/session';
+import { requireManagerOrAdmin } from '../../../../lib/session';
 import { addWorker, type AddWorkerInput } from '@scourage/worklog-core';
 
 export const runtime = 'nodejs';
 
 export async function POST(req: Request) {
-  const admin = await requireAdmin();
+  const admin = await requireManagerOrAdmin();
   if (!admin) return Response.json({ error: 'unauthorized' }, { status: 401 });
 
   let body: unknown;
@@ -16,6 +16,12 @@ export async function POST(req: Request) {
   }
   const b = (body ?? {}) as Record<string, unknown>;
   const str = (v: unknown) => (typeof v === 'string' ? v : '');
+  // Only an admin caller may set a worker's role. A manager caller (also
+  // gated in here since this route now allows requireManagerOrAdmin) can
+  // never grant admin/manager to anyone, including themselves — every
+  // worker they add is forced to 'worker' regardless of the request body.
+  const requestedRole = typeof b.role === 'string' ? b.role : 'worker';
+  const role = admin.role === 'admin' ? requestedRole : 'worker';
   const input: AddWorkerInput = {
     phone: str(b.phone), teudatZeut: str(b.teudatZeut), name: str(b.name),
     places: Array.isArray(b.places) ? (b.places as unknown[]).map(str).filter(Boolean) : [],
@@ -23,7 +29,7 @@ export async function POST(req: Request) {
     transportation: str(b.transportation), hebrewLevel: str(b.hebrewLevel),
     payType: str(b.payType), payAmount: str(b.payAmount), schedule: str(b.schedule), gender: str(b.gender),
     payStructure: str(b.payStructure), payRate: str(b.payRate),
-    role: str(b.role),
+    role,
   };
 
   try {
