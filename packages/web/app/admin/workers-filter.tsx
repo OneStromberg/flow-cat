@@ -8,7 +8,7 @@ import { MultiSelectDropdown } from '../components/multi-select-dropdown';
 type EnumOpt = readonly { value: string; label: string }[];
 type Props = {
   workers: Worker[];
-  cities: string[];
+  cities: EnumOpt;
   places: string[];
   enums: { transportation: EnumOpt; hebrewLevel: EnumOpt; payType: EnumOpt; schedule: EnumOpt; gender: EnumOpt };
 };
@@ -22,7 +22,6 @@ export function WorkersFilter({ workers, cities, places, enums }: Props) {
   const [f, setF] = useState<WorkerFilters>(EMPTY);
 
   const shown = useMemo(() => filterWorkers(workers, f), [workers, f]);
-  const cityOpts = cities.map((c) => ({ value: c, label: c }));
   const placeOpts = places.map((p) => ({ value: p, label: p }));
 
   return (
@@ -36,7 +35,7 @@ export function WorkersFilter({ workers, cities, places, enums }: Props) {
           <MultiSelectDropdown label="Pay" options={[...enums.payType]} selected={f.payType} onChange={(v) => setF((p) => ({ ...p, payType: v }))} />
           <MultiSelectDropdown label="Schedule" options={[...enums.schedule]} selected={f.schedule} onChange={(v) => setF((p) => ({ ...p, schedule: v }))} />
           <MultiSelectDropdown label="Gender" options={[...enums.gender]} selected={f.gender} onChange={(v) => setF((p) => ({ ...p, gender: v }))} />
-          {cityOpts.length > 0 && <MultiSelectDropdown label="City" options={cityOpts} selected={f.cities} onChange={(v) => setF((p) => ({ ...p, cities: v }))} />}
+          {cities.length > 0 && <MultiSelectDropdown label="City" options={[...cities]} selected={f.cities} onChange={(v) => setF((p) => ({ ...p, cities: v }))} />}
           {placeOpts.length > 0 && <MultiSelectDropdown label="Places" options={placeOpts} selected={f.places} onChange={(v) => setF((p) => ({ ...p, places: v }))} />}
         </div>
         <div className="flex flex-wrap items-end gap-3">

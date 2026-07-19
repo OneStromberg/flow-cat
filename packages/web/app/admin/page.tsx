@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation';
 import { requireAdmin } from '../../lib/session';
 import { getRequestGateway } from '../../lib/sheets';
-import { listWorkers, listBrokenWorkers, loadActivePlaces, TRANSPORTATION, HEBREW_LEVEL, PAY_TYPE, SCHEDULE, GENDER } from '@scourage/worklog-core';
+import { listWorkers, listBrokenWorkers, loadActivePlaces, CITIES, TRANSPORTATION, HEBREW_LEVEL, PAY_TYPE, SCHEDULE, GENDER } from '@scourage/worklog-core';
 import { WorkersFilter } from './workers-filter';
 import { TelegramConnect } from '../components/telegram-connect';
 import { BrokenWorkerFix } from './broken-worker-fix';
@@ -19,7 +19,6 @@ export default async function AdminPage() {
     listBrokenWorkers(gw),
     loadActivePlaces(gw),
   ]);
-  const cities = [...new Set(workers.map((w) => w.city ?? '').filter(Boolean))].sort();
   // Filter chips = master active places ∪ every place actually assigned in the sheet.
   const places = [...new Set([...activePlaces, ...workers.flatMap((w) => w.places)])].sort();
 
@@ -35,7 +34,7 @@ export default async function AdminPage() {
       <BrokenWorkerFix workers={brokenWorkers} />
       <WorkersFilter
         workers={workers}
-        cities={cities}
+        cities={CITIES}
         places={places}
         enums={{ transportation: TRANSPORTATION, hebrewLevel: HEBREW_LEVEL, payType: PAY_TYPE, schedule: SCHEDULE, gender: GENDER }}
       />
