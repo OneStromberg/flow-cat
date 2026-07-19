@@ -66,6 +66,8 @@ function EditTemplateForm({
   const [headcount, setHeadcount] = useState(String(template.headcount));
   const [rate, setRate] = useState(template.rate != null ? String(template.rate) : '');
   const [instructions, setInstructions] = useState(template.instructions ?? '');
+  const [selfieStart, setSelfieStart] = useState(template.selfieStart);
+  const [selfieEnd, setSelfieEnd] = useState(template.selfieEnd);
 
   // per-day grid — prefilled from template.dayTimes
   const [grid, setGrid] = useState<DayGrid>(() => initGrid(template));
@@ -151,7 +153,7 @@ function EditTemplateForm({
       const res = await fetch(`/api/admin/shifts/${template.id}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ location, label, headcount, rate, instructions, validFrom, validTo, dayTimes }),
+        body: JSON.stringify({ location, label, headcount, rate, instructions, validFrom, validTo, dayTimes, selfieStart, selfieEnd }),
       });
       const data = await res.json();
       if (res.ok && data.ok) {
@@ -417,6 +419,28 @@ function EditTemplateForm({
             onChange={(e) => setInstructions(e.target.value)}
           />
           {errors.instructions && <p className="mt-1 text-sm text-red-600">{errors.instructions}</p>}
+        </div>
+
+        {/* Selfie requirements */}
+        <div className="space-y-2">
+          <label className="flex cursor-pointer items-center gap-2 text-sm text-gray-700">
+            <input
+              type="checkbox"
+              checked={selfieStart}
+              onChange={(e) => setSelfieStart(e.target.checked)}
+              className="h-4 w-4 rounded border-gray-300"
+            />
+            Require selfie at check-in
+          </label>
+          <label className="flex cursor-pointer items-center gap-2 text-sm text-gray-700">
+            <input
+              type="checkbox"
+              checked={selfieEnd}
+              onChange={(e) => setSelfieEnd(e.target.checked)}
+              className="h-4 w-4 rounded border-gray-300"
+            />
+            Require selfie at check-out
+          </label>
         </div>
 
         {fatal && <p className="text-sm text-red-600">{fatal}</p>}

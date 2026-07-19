@@ -29,6 +29,8 @@ export interface InstanceWithAttendance {
   contact: string;
   wazeUrl: string;
   mapsUrl: string;
+  selfieStart: boolean;
+  selfieEnd: boolean;
 }
 
 export default async function CheckinPage() {
@@ -72,6 +74,8 @@ export default async function CheckinPage() {
       contact: place?.contact ?? '',
       wazeUrl: place ? wazeUrl(place.lat, place.lng) : '',
       mapsUrl: place ? googleMapsUrl(place.lat, place.lng, place.placeId) : '',
+      selfieStart: tpl?.selfieStart ?? false,
+      selfieEnd: tpl?.selfieEnd ?? false,
     };
   });
 

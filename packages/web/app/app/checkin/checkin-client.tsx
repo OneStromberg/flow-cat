@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { InstanceWithAttendance } from './page';
 import { GeoPoller } from './geo-poller';
@@ -18,16 +18,23 @@ export function CheckinClient({ items, workerName, lang = DEFAULT_LANG }: Checki
   const [geofenceWarning, setGeofenceWarning] = useState<string | null>(null);
   const [geoError, setGeoError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
-  const [photoDataUrl, setPhotoDataUrl] = useState<string | undefined>(undefined);
+  const fileRef = useRef<HTMLInputElement | null>(null);
 
-  function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (typeof reader.result === 'string') setPhotoDataUrl(reader.result);
-    };
-    reader.readAsDataURL(file);
+  function captureSelfie(): Promise<string | null> {
+    const input = fileRef.current;
+    if (!input) return Promise.resolve(null);
+    return new Promise((resolve) => {
+      input.value = '';
+      input.onchange = () => {
+        const file = input.files?.[0];
+        if (!file) { resolve(null); return; }
+        const reader = new FileReader();
+        reader.onload = () => resolve(typeof reader.result === 'string' ? reader.result : null);
+        reader.onerror = () => resolve(null);
+        reader.readAsDataURL(file);
+      };
+      input.click();
+    });
   }
 
   async function handleAction(instanceId: string, action: 'in' | 'out') {
@@ -37,12 +44,25 @@ export function CheckinClient({ items, workerName, lang = DEFAULT_LANG }: Checki
     setBusy(instanceId + ':' + action);
 
     try {
+      const item = items.find((it) => it.instance.id === instanceId);
+      const needsSelfie = action === 'in' ? !!item?.selfieStart : !!item?.selfieEnd;
+      let photo: string | undefined;
+      if (needsSelfie) {
+        const captured = await captureSelfie();
+        if (!captured) {
+          setActionError(t('checkin.cameraFailed', lang));
+          setBusy(null);
+          return;
+        }
+        photo = captured; // Task 14 compresses before send
+      }
+
       const { lat, lng } = await getPosition();
 
       const res = await fetch('/api/checkin', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ instanceId, action, lat, lng, photo: photoDataUrl }),
+        body: JSON.stringify({ instanceId, action, lat, lng, photo }),
       });
 
       const data = (await res.json()) as {
@@ -107,22 +127,7 @@ export function CheckinClient({ items, workerName, lang = DEFAULT_LANG }: Checki
         </div>
       )}
 
-      <div className="flex items-center gap-3">
-        <label className="text-sm text-gray-600" htmlFor="checkin-photo">
-          {t('checkin.photoOptional', lang)}
-        </label>
-        <input
-          id="checkin-photo"
-          type="file"
-          accept="image/*"
-          capture="user"
-          className="text-sm text-gray-700"
-          onChange={handlePhotoChange}
-        />
-        {photoDataUrl && (
-          <span className="text-xs text-green-700">{t('checkin.photoReady', lang)}</span>
-        )}
-      </div>
+      <input ref={fileRef} type="file" accept="image/*" capture="user" className="hidden" />
 
       <ul className="space-y-3">
         {items.map(({ instance, attendance, role, instructions, address, contact, wazeUrl: navUrl, mapsUrl }, index) => {

@@ -30,6 +30,8 @@ export async function POST(req: Request) {
     dayTimes: Array.isArray(b.dayTimes)
       ? (b.dayTimes as any[]).map((d) => ({ day: str(d?.day), start: str(d?.start), end: str(d?.end) })).filter((d) => d.day)
       : undefined,
+    selfieStart: Boolean(b.selfieStart),
+    selfieEnd: Boolean(b.selfieEnd),
   };
 
   try {

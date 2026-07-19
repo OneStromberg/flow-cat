@@ -6,6 +6,7 @@ import {
   listAttendance,
   listInstances,
   listPlaces,
+  listTemplates,
   listWorkers,
   distanceMeters,
   withinGeofence,
@@ -98,6 +99,19 @@ export async function POST(req: Request) {
     if (action === 'out' && place && place.lat && place.lng && inGeofence === false) {
       return Response.json(
         { error: 'outside_geofence', message: `You are outside ${instance.location}'s allowed area. Move closer to end your shift, or ask your manager to widen the radius.` },
+        { status: 422 },
+      );
+    }
+
+    // Hard-block a required-but-missing selfie BEFORE any attendance is recorded, mirroring
+    // the geofence guards above. The client capture-on-demand is UX only — this is the real
+    // enforcement, since a crafted request could omit `photo` entirely.
+    const templates = await listTemplates(gw);
+    const template = templates.find((tpl) => tpl.id === instance.templateId);
+    const selfieRequired = action === 'in' ? !!template?.selfieStart : !!template?.selfieEnd;
+    if (selfieRequired && !(typeof photo === 'string' && photo.trim())) {
+      return Response.json(
+        { error: 'selfie_required', message: `A selfie is required to ${action === 'in' ? 'check in' : 'check out'} at ${instance.location}.` },
         { status: 422 },
       );
     }
