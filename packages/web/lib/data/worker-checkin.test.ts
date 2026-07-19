@@ -82,7 +82,6 @@ test('loadCheckinData: today-only assigned instances, attendance join, selfie fl
 
   const data = await loadCheckinData(gw, worker);
 
-  assert.equal(data.workerName, 'Jane');
   assert.equal(data.today, TODAY);
   assert.equal(data.items.length, 2);
 
@@ -114,7 +113,7 @@ test('loadCheckinData: today-only assigned instances, attendance join, selfie fl
   assert.doesNotMatch(i2.mapsUrl, /query_place_id/);
 });
 
-test('loadCheckinData: no assigned instances today -> empty items; workerName falls back to phone', async () => {
+test('loadCheckinData: no assigned instances today -> empty items', async () => {
   const gw = createMemoryGateway({
     ShiftTemplates: [TEMPLATES_HEADER],
     ShiftInstances: [INSTANCES_HEADER],
@@ -123,13 +122,9 @@ test('loadCheckinData: no assigned instances today -> empty items; workerName fa
     Attendance: [ATTENDANCE_HEADER],
   });
 
-  // `name` typed as required `string`, but real Sheets rows can still come back
-  // missing it at runtime — cast to exercise the `worker.name ?? worker.phone` fallback.
-  const noNameWorker = { ...worker, name: undefined } as unknown as Worker;
-  const data = await loadCheckinData(gw, noNameWorker);
+  const data = await loadCheckinData(gw, worker);
 
   assert.deepEqual(data.items, []);
-  assert.equal(data.workerName, worker.phone);
 });
 
 test('loadCheckinData: closed attendance preferred when no open record exists for the instance', async () => {

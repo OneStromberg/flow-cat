@@ -35,7 +35,6 @@ export interface InstanceWithAttendance {
 
 export interface CheckinData {
   items: InstanceWithAttendance[];
-  workerName: string;
   /** Company-timezone "today" (server-computed) — the header date must not drift to the browser's local date. */
   today: string;
 }
@@ -104,7 +103,6 @@ export async function loadCheckinData(gw: SheetsGateway, worker: Worker): Promis
 
   return {
     items,
-    workerName: worker.name ?? worker.phone,
     today,
   };
 }

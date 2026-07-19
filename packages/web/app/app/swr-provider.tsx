@@ -8,9 +8,15 @@ import { UnauthorizedError } from '../../lib/swr-fetcher';
 // load, not recreated on every render.
 const swrConfig = {
   provider: sessionStorageProvider,
-  keepPreviousData: true,
+  // No keepPreviousData: the worker-screen SWR keys never change (each screen
+  // subscribes to exactly one fixed URL), so there's never a "previous key's
+  // data" to keep — the sessionStorage provider + revalidateOnMount below are
+  // what actually give the instant-return.
   revalidateOnMount: true,
   revalidateOnFocus: true,
+  // Rapid revalidations (e.g. the selfie-capture `window.focus` handler firing
+  // mid-check-in, right on top of `revalidateOnFocus`) collapse into one request.
+  dedupingInterval: 5000,
   // An expired/deactivated session (401 -> UnauthorizedError, see swr-fetcher.ts)
   // means every worker-screen key is now unreadable — bounce to /login instead of
   // leaving the screen on stale/crashed data.
