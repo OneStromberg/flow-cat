@@ -1,6 +1,7 @@
 import { getGateway, COMPANY_TZ } from '../../../../lib/sheets';
 import { findMissedCheckins, lastAlertAtByKey, shouldRealert, recordAlerts, listWorkers, toE164 } from '@scourage/worklog-core';
 import { notifyAdmins, pickAdminChatIds } from '../../../../lib/telegram';
+import { notifyPhone, sendPushToPhone } from '../../../../lib/push';
 import { formatHmInTz } from '../../../../lib/format-time';
 
 export const runtime = 'nodejs';
@@ -30,7 +31,7 @@ export async function GET(req: Request) {
     if (due.length > 0) {
       const workers = await listWorkers(gw);
       const phoneToName = new Map(workers.map((w) => [w.phone, w.name]));
-      const admins = pickAdminChatIds(workers);
+      const admins = workers.filter((w) => w.admin);
 
       const byLocation = new Map<string, typeof due>();
       for (const m of due) {
@@ -46,7 +47,18 @@ export async function GET(req: Request) {
           const expectedTime = formatHmInTz(m.expectedAt, COMPANY_TZ);
           return `⚠️ ${name} missed ${checkType} (expected ${expectedTime}) — 📞 ${toE164(m.employeePhone)}`;
         });
-        await notifyAdmins(`Missed check-ins — ${location}\n${lines.join('\n')}`, admins);
+        const message = `Missed check-ins — ${location}\n${lines.join('\n')}`;
+        for (const admin of admins) {
+          await notifyPhone(gw, admin, message, { url: '/admin/attendance' });
+        }
+      }
+
+      for (const m of due) {
+        await sendPushToPhone(gw, m.employeePhone, {
+          title: 'FlowCat',
+          body: `You missed ${m.type === 'in' ? 'check-in' : 'check-out'} at ${m.location}`,
+          url: '/app/checkin',
+        });
       }
 
       await recordAlerts(gw, due);
