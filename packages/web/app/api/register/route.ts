@@ -29,6 +29,9 @@ export async function POST(req: Request) {
     gender: str(b.gender),
     payStructure: '',
     payRate: '',
+    // Public self-registration route (no requireAdmin gate) — role is never taken
+    // from the request body, so a caller cannot self-grant manager/admin.
+    role: '',
   };
 
   try {

@@ -159,3 +159,15 @@ test('linkTelegramChat writes telegram_chat_id onto the matching worker row', as
   assert.equal(w?.telegramChatId, '987654321');
   assert.equal(await linkTelegramChat(g, '10000000000', '111'), false); // unknown phone
 });
+
+test('parseWorker reads role, falling back from legacy admin flag', () => {
+  assert.equal(parseWorker({ phone:'972500000001', admin:'yes' } as any, []).role, 'admin');
+  assert.equal(parseWorker({ phone:'972500000001', admin:'yes' } as any, []).admin, true);
+  const manager = parseWorker({ phone:'972500000002', role:'manager' } as any, []);
+  assert.equal(manager.role, 'manager');
+  assert.equal(manager.admin, false);              // manager is NOT admin
+  assert.equal(parseWorker({ phone:'972500000003', role:'admin' } as any, []).admin, true); // role=admin ⇒ admin
+  const plain = parseWorker({ phone:'972500000004' } as any, []);
+  assert.equal(plain.role, 'worker');
+  assert.equal(plain.admin, false);
+});

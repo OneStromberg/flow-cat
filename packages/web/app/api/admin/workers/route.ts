@@ -23,6 +23,7 @@ export async function POST(req: Request) {
     transportation: str(b.transportation), hebrewLevel: str(b.hebrewLevel),
     payType: str(b.payType), payAmount: str(b.payAmount), schedule: str(b.schedule), gender: str(b.gender),
     payStructure: str(b.payStructure), payRate: str(b.payRate),
+    role: str(b.role),
   };
 
   try {

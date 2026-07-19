@@ -8,7 +8,7 @@ const base = {
   phone: '+1 555-222-0000', teudatZeut: '987654321', name: 'New Guy',
   places: ['Warehouse'], city: 'Eilat', age: '30',
   transportation: 'car', hebrewLevel: 'speaks_good', payType: 'full', payAmount: '', schedule: 'days', gender: '',
-  payStructure: '', payRate: '', birthdate: '',
+  payStructure: '', payRate: '', birthdate: '', role: '',
 };
 
 function baseInput(overrides: Partial<typeof base> = {}) {
@@ -63,7 +63,7 @@ test('updateWorker edits an existing worker by phone (incl pay structure)', asyn
   ]});
   const r = await updateWorker(g, '0501234567', {
     teudatZeut:'9', name:'Ilya', places:['Lod'], city:'', age:'', birthdate:'', transportation:'', hebrewLevel:'',
-    payType:'', payAmount:'', schedule:'', gender:'', payStructure:'hourly', payRate:'37', active:true, admin:false,
+    payType:'', payAmount:'', schedule:'', gender:'', payStructure:'hourly', payRate:'37', active:true, admin:false, role:'',
   });
   assert.equal(r.ok, true);
   const w = await findWorker(g, '972501234567');
@@ -93,9 +93,9 @@ test('setWorkerPhone repairs a blank-phone worker matched by token; rejects unkn
 
 test('addWorker accepts a valid gender and rejects an invalid one', async () => {
   const g = createMemoryGateway({ Workers: [['phone','name','places','active']] });
-  const ok = await addWorker(g, { phone: '15551112222', teudatZeut: '1', name: 'A', places: [], city: '', age: '', transportation: '', hebrewLevel: '', payType: '', payAmount: '', schedule: '', gender: 'male', payStructure: '', payRate: '', birthdate: '' });
+  const ok = await addWorker(g, { phone: '15551112222', teudatZeut: '1', name: 'A', places: [], city: '', age: '', transportation: '', hebrewLevel: '', payType: '', payAmount: '', schedule: '', gender: 'male', payStructure: '', payRate: '', birthdate: '', role: '' });
   assert.deepEqual(ok, { ok: true });
-  const bad = await addWorker(g, { phone: '15553334444', teudatZeut: '1', name: 'B', places: [], city: '', age: '', transportation: '', hebrewLevel: '', payType: '', payAmount: '', schedule: '', gender: 'zzz', payStructure: '', payRate: '', birthdate: '' });
+  const bad = await addWorker(g, { phone: '15553334444', teudatZeut: '1', name: 'B', places: [], city: '', age: '', transportation: '', hebrewLevel: '', payType: '', payAmount: '', schedule: '', gender: 'zzz', payStructure: '', payRate: '', birthdate: '', role: '' });
   assert.equal(bad.ok, false);
   if (!bad.ok) assert.equal(bad.errors.gender, 'Invalid');
 });
@@ -178,7 +178,7 @@ test('updateWorker with empty age + empty birthdate preserves existing age (no d
   const r = await updateWorker(g, '0501234567', {
     teudatZeut: '9', name: 'Legacy', places: ['Lod'], city: '', age: '', birthdate: '',
     transportation: '', hebrewLevel: '', payType: '', payAmount: '', schedule: '', gender: '',
-    payStructure: '', payRate: '', active: true, admin: false,
+    payStructure: '', payRate: '', active: true, admin: false, role: '',
   });
   assert.equal(r.ok, true);
   const w = await findWorker(g, '972501234567');
@@ -194,11 +194,22 @@ test('updateWorker with birthdate derives and stores the age (overrides legacy a
   const r = await updateWorker(g, '0501234567', {
     teudatZeut: '9', name: 'Legacy', places: ['Lod'], city: '', age: '', birthdate: '2000-01-15',
     transportation: '', hebrewLevel: '', payType: '', payAmount: '', schedule: '', gender: '',
-    payStructure: '', payRate: '', active: true, admin: false,
+    payStructure: '', payRate: '', active: true, admin: false, role: '',
   });
   assert.equal(r.ok, true);
   const w = await findWorker(g, '972501234567');
   assert.equal(w?.birthdate, '2000-01-15');
   // Age should be derived: 2026 - 2000 = 26, we're past Jan 15, so 26
   assert.equal(w?.age, '26', 'age should be derived from new birthdate');
+});
+
+test('addWorker persists role and derives admin from role=admin', async () => {
+  const g = createMemoryGateway({ Workers: [] });
+  await addWorker(g, baseInput({ phone:'0500000001', role:'manager' }));
+  await addWorker(g, baseInput({ phone:'0500000002', role:'admin' }));
+  const ws = await listWorkers(g);
+  const mgr = ws.find((w) => w.phone === '972500000001');
+  const adm = ws.find((w) => w.phone === '972500000002');
+  assert.equal(mgr?.role, 'manager'); assert.equal(mgr?.admin, false);
+  assert.equal(adm?.role, 'admin');   assert.equal(adm?.admin, true);
 });

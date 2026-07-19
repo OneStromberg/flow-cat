@@ -30,12 +30,13 @@ export interface AddWorkerInput {
   gender: string;
   payStructure: string;
   payRate: string;
+  role: string;
 }
 
 const WORKERS_COLUMNS = [
   'phone', 'name', 'greeting', 'places', 'active', 'token', 'teudat_zeut',
   'admin', 'city', 'age', 'birthdate', 'transportation', 'hebrew_level', 'pay_type', 'pay_amount', 'schedule', 'gender',
-  'pay_structure', 'pay_rate', 'telegram_chat_id', 'lang',
+  'pay_structure', 'pay_rate', 'telegram_chat_id', 'lang', 'role',
 ];
 
 function inEnum(val: string, list: readonly { value: string }[]): boolean {
@@ -61,6 +62,7 @@ export async function addWorker(
   if (input.payType === 'amount' && (!input.payAmount.trim() || !Number.isFinite(Number(input.payAmount)))) {
     errors.payAmount = 'Enter an amount';
   }
+  if (input.role && !['worker', 'manager', 'admin'].includes(input.role)) errors.role = 'Invalid';
 
   if (phone && !errors.phone) {
     const objs = rowsToObjects(await gateway.readTab('Workers'));
@@ -84,7 +86,8 @@ export async function addWorker(
     active: 'yes',
     token: '',
     teudat_zeut: input.teudatZeut.trim(),
-    admin: '',
+    admin: input.role === 'admin' ? 'yes' : '',
+    role: input.role,
     city: input.city.trim(),
     age,
     birthdate: birthdateTrimmed,
@@ -126,6 +129,7 @@ export interface UpdateWorkerInput {
   payRate: string;
   active: boolean;
   admin: boolean;
+  role: string;
 }
 
 export async function setWorkerPhone(
@@ -208,6 +212,7 @@ export async function updateWorker(
   if (input.payType === 'amount' && (!input.payAmount.trim() || !Number.isFinite(Number(input.payAmount)))) {
     errors.payAmount = 'Enter an amount';
   }
+  if (input.role && !['worker', 'manager', 'admin'].includes(input.role)) errors.role = 'Invalid';
 
   if (Object.keys(errors).length) return { ok: false, errors };
 
@@ -234,7 +239,8 @@ export async function updateWorker(
     active: input.active ? 'yes' : 'no',
     token: get('token'),
     teudat_zeut: input.teudatZeut.trim(),
-    admin: input.admin ? 'yes' : '',
+    admin: input.role === 'admin' ? 'yes' : '',
+    role: input.role,
     city: input.city.trim(),
     age,
     birthdate: birthdateTrimmed,

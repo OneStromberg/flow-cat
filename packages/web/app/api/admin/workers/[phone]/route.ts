@@ -35,6 +35,7 @@ export async function POST(req: Request, context: { params: Promise<{ phone: str
     payRate: str(b.payRate),
     active: Boolean(b.active),
     admin: Boolean(b.admin),
+    role: str(b.role),
   };
 
   try {

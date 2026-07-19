@@ -32,3 +32,9 @@ export async function requireAdmin(): Promise<Worker | null> {
   if (!worker || !worker.active || worker.admin !== true) return null;
   return worker;
 }
+
+export async function requireManagerOrAdmin(): Promise<Worker | null> {
+  const worker = await requireWorker();
+  if (!worker || !worker.active) return null;
+  return worker.role === 'manager' || worker.role === 'admin' ? worker : null;
+}

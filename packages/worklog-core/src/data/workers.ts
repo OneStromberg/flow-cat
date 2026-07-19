@@ -24,6 +24,7 @@ export interface Worker {
   payStructure?: string;
   payRate?: string;
   lang?: string;
+  role?: string;
 }
 
 /** Pure: build a Worker from a sheet row, filtering places against a pre-loaded master list. */
@@ -33,6 +34,11 @@ export function parseWorker(row: Record<string, string>, master: string[]): Work
   const places = master.length === 0
     ? workerPlaces
     : workerPlaces.filter((p) => masterLower.includes(p.toLowerCase()));
+  const rawAdmin = (row.admin ?? '').trim().toLowerCase() === 'yes';
+  const rawRole = (row.role ?? '').trim().toLowerCase();
+  const role = (rawRole === 'worker' || rawRole === 'manager' || rawRole === 'admin')
+    ? rawRole
+    : (rawAdmin ? 'admin' : 'worker');
   return {
     phone: normalizePhone(row.phone ?? ''),
     name: (row.name ?? '').trim(),
@@ -41,7 +47,8 @@ export function parseWorker(row: Record<string, string>, master: string[]): Work
     active: (row.active ?? '').trim().toLowerCase() !== 'no',
     token: (row.token ?? '').trim(),
     teudatZeut: (row.teudat_zeut ?? '').trim(),
-    admin: (row.admin ?? '').trim().toLowerCase() === 'yes',
+    admin: role === 'admin',
+    role,
     city: (row.city ?? '').trim(),
     transportation: (row.transportation ?? '').trim(),
     age: (row.age ?? '').trim(),
