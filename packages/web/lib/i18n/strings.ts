@@ -57,6 +57,16 @@ const EN = {
   'install.close': 'Close',
   'offline.title': "You’re offline",
   'offline.body': "FlowCat can’t reach the network right now. Reconnect to check in or view your hours.",
+  'push.enable': 'Turn on alerts',
+  'push.title': 'Get shift alerts',
+  'push.body': 'Get notified about your shifts and missed check-ins — right on this device.',
+  'push.enableBtn': 'Enable',
+  'push.notNow': 'Not now',
+  'push.on': 'Alerts on',
+  'push.sendTest': 'Send test',
+  'push.denied': 'Notifications are blocked — enable them in your browser settings.',
+  'push.iosInstallFirst': 'On iPhone, install the app first (Share → Add to Home Screen), then turn on alerts.',
+  'push.turnOff': 'Turn off',
 } as const;
 
 export type StringKey = keyof typeof EN;
@@ -117,6 +127,16 @@ const RU: Record<StringKey, string> = {
   'install.close': 'Закрыть',
   'offline.title': 'Нет подключения',
   'offline.body': 'FlowCat сейчас не может подключиться к сети. Восстановите связь, чтобы отметить смену или посмотреть часы.',
+  'push.enable': 'Включить уведомления',
+  'push.title': 'Уведомления о сменах',
+  'push.body': 'Получайте уведомления о сменах и пропущенных отметках прямо на этом устройстве.',
+  'push.enableBtn': 'Включить',
+  'push.notNow': 'Не сейчас',
+  'push.on': 'Уведомления включены',
+  'push.sendTest': 'Отправить тест',
+  'push.denied': 'Уведомления заблокированы — включите их в настройках браузера.',
+  'push.iosInstallFirst': 'На iPhone сначала установите приложение (Поделиться → На экран «Домой»), затем включите уведомления.',
+  'push.turnOff': 'Отключить',
 };
 
 // Hebrew is completed progressively — Partial is intentional; t() falls back he → en.
@@ -145,6 +165,12 @@ const HE: Partial<Record<StringKey, string>> = {
   'install.close': 'סגור',
   'offline.title': 'אין חיבור',
   'offline.body': 'FlowCat לא מצליח להתחבר לרשת כרגע. התחברו מחדש כדי לדווח משמרת או לצפות בשעות.',
+  'push.enable': 'הפעל התראות',
+  'push.title': 'התראות משמרות',
+  'push.enableBtn': 'הפעל',
+  'push.notNow': 'לא עכשיו',
+  'push.on': 'התראות פעילות',
+  'push.sendTest': 'שלח בדיקה',
   // …remaining HE keys filled progressively; missing ones fall back to EN.
 };
 
