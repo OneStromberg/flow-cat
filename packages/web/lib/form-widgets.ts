@@ -4,7 +4,10 @@ export type Widget =
   | { key: string; label: string; required: boolean; kind: 'select'; options: string[] }
   | { key: string; label: string; required: boolean; kind: 'date' | 'time' | 'text' | 'number' };
 
-export function questionToWidget(q: Question, worker: Worker): Widget {
+// Narrowed to just the one field this function reads (not the full `Worker`) so
+// client components can build widgets from serialized API data — e.g. the Hours
+// screen's `HoursData.places` — without needing a full `Worker` object.
+export function questionToWidget(q: Question, worker: Pick<Worker, 'places'>): Widget {
   const base = { key: q.key, label: q.text, required: q.required };
   switch (q.type) {
     case 'worker_places':
