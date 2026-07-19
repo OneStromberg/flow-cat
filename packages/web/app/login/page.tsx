@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 import { requireWorker } from '../../lib/session';
 import { LoginForm } from './login-form';
+import { InstallButton } from '../components/install-button';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -17,6 +18,9 @@ export default async function LoginPage() {
         New here?{' '}
         <a href="/register" className="underline text-gray-700">Register</a>
       </p>
+      <div className="mt-6 flex justify-center">
+        <InstallButton />
+      </div>
     </main>
   );
 }
