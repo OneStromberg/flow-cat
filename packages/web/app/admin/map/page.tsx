@@ -47,6 +47,7 @@ export default async function MapPage() {
   const markers: MapMarker[] = [];
 
   for (const place of places) {
+    if (!place.active) continue;
     const lat = parseFloat(place.lat);
     const lng = parseFloat(place.lng);
     if (!isFinite(lat) || !isFinite(lng)) continue;
