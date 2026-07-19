@@ -1,12 +1,13 @@
 import { getGateway, COMPANY_TZ } from '../../../../lib/sheets';
 import { requireManagerOrAdmin } from '../../../../lib/session';
-import { addPlace, updatePlace, cascadeDeletePlace, todayISO, type AddPlaceInput } from '@scourage/worklog-core';
+import { addPlace, updatePlace, cascadeDeletePlace, listPlaces, todayISO, type AddPlaceInput } from '@scourage/worklog-core';
 
 export const runtime = 'nodejs';
 
 export async function POST(req: Request) {
   const admin = await requireManagerOrAdmin();
   if (!admin) return Response.json({ error: 'unauthorized' }, { status: 401 });
+  const isAdmin = admin.role === 'admin';
 
   let body: unknown;
   try {
@@ -21,6 +22,7 @@ export async function POST(req: Request) {
     client: str(b.client), geofenceRadiusM: str(b.geofenceRadiusM), contact: str(b.contact), baseRate: str(b.baseRate), requiredAttributes: str(b.requiredAttributes), notes: str(b.notes),
     graceMins: str(b.graceMins ?? b.grace_mins),
   };
+  if (!isAdmin) input.baseRate = '';
 
   try {
     const r = await addPlace(getGateway(), input);
@@ -59,6 +61,7 @@ export async function DELETE(req: Request) {
 export async function PUT(req: Request) {
   const admin = await requireManagerOrAdmin();
   if (!admin) return Response.json({ error: 'unauthorized' }, { status: 401 });
+  const isAdmin = admin.role === 'admin';
 
   let body: unknown;
   try {
@@ -76,6 +79,10 @@ export async function PUT(req: Request) {
     client: str(b.client), geofenceRadiusM: str(b.geofenceRadiusM), contact: str(b.contact), baseRate: str(b.baseRate), requiredAttributes: str(b.requiredAttributes), notes: str(b.notes),
     graceMins: str(b.graceMins ?? b.grace_mins),
   };
+  if (!isAdmin) {
+    const existing = (await listPlaces(getGateway())).find((p) => p.name === existingName);
+    input.baseRate = existing?.baseRate ?? '';
+  }
 
   try {
     const r = await updatePlace(getGateway(), existingName, input);

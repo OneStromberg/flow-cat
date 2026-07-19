@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { Place } from '@scourage/worklog-core';
 
-export function EditPlaceForm({ place }: { place: Place }) {
+export function EditPlaceForm({ place, isAdmin }: { place: Place; isAdmin: boolean }) {
   const router = useRouter();
   const [lat, setLat] = useState(place.lat);
   const [lng, setLng] = useState(place.lng);
@@ -36,7 +36,7 @@ export function EditPlaceForm({ place }: { place: Place }) {
           client,
           contact,
           geofenceRadiusM,
-          baseRate,
+          ...(isAdmin ? { baseRate } : {}),
           requiredAttributes,
           notes,
           graceMins,
@@ -132,16 +132,18 @@ export function EditPlaceForm({ place }: { place: Place }) {
         />
       </div>
 
-      <div>
-        <label className="block text-sm font-medium text-gray-700">Base rate</label>
-        <input
-          type="text"
-          value={baseRate}
-          onChange={(e) => setBaseRate(e.target.value)}
-          className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm placeholder-gray-400"
-          placeholder="Base rate"
-        />
-      </div>
+      {isAdmin && (
+        <div>
+          <label className="block text-sm font-medium text-gray-700">Billing rate</label>
+          <input
+            type="text"
+            value={baseRate}
+            onChange={(e) => setBaseRate(e.target.value)}
+            className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm placeholder-gray-400"
+            placeholder="Billing rate"
+          />
+        </div>
+      )}
 
       <div>
         <label className="block text-sm font-medium text-gray-700">Grace minutes (missed-checkin alert)</label>

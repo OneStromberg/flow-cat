@@ -39,7 +39,7 @@ function loadMaps(key: string): Promise<void> {
   });
 }
 
-function ExtraFields({ extra, setExtra }: { extra: Extra; setExtra: (e: Extra) => void }) {
+function ExtraFields({ extra, setExtra, isAdmin }: { extra: Extra; setExtra: (e: Extra) => void; isAdmin: boolean }) {
   return (
     <div className="space-y-3">
       <div>
@@ -62,16 +62,18 @@ function ExtraFields({ extra, setExtra }: { extra: Extra; setExtra: (e: Extra) =
           placeholder="Contact info"
         />
       </div>
-      <div>
-        <label className="block text-sm font-medium text-gray-700">Base rate</label>
-        <input
-          type="text"
-          value={extra.baseRate}
-          onChange={(e) => setExtra({ ...extra, baseRate: e.target.value })}
-          className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm placeholder-gray-400"
-          placeholder="Base rate"
-        />
-      </div>
+      {isAdmin && (
+        <div>
+          <label className="block text-sm font-medium text-gray-700">Billing rate</label>
+          <input
+            type="text"
+            value={extra.baseRate}
+            onChange={(e) => setExtra({ ...extra, baseRate: e.target.value })}
+            className="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 text-sm placeholder-gray-400"
+            placeholder="Billing rate"
+          />
+        </div>
+      )}
       <div>
         <label className="block text-sm font-medium text-gray-700">Geofence radius (m)</label>
         <input
@@ -107,7 +109,7 @@ function ExtraFields({ extra, setExtra }: { extra: Extra; setExtra: (e: Extra) =
   );
 }
 
-export function AddPlaceForm() {
+export function AddPlaceForm({ isAdmin }: { isAdmin: boolean }) {
   const router = useRouter();
   const [mode, setMode] = useState<Mode>('search');
   const boxRef = useRef<HTMLDivElement>(null);
@@ -311,7 +313,7 @@ export function AddPlaceForm() {
           )}
           {sel && (
             <div className="space-y-3">
-              <ExtraFields extra={extra} setExtra={setExtra} />
+              <ExtraFields extra={extra} setExtra={setExtra} isAdmin={isAdmin} />
               <div>
                 <label className="block text-sm font-medium text-gray-700">Notes</label>
                 <input
@@ -389,7 +391,7 @@ export function AddPlaceForm() {
             />
           </div>
 
-          <ExtraFields extra={extra} setExtra={setExtra} />
+          <ExtraFields extra={extra} setExtra={setExtra} isAdmin={isAdmin} />
         </div>
       )}
 

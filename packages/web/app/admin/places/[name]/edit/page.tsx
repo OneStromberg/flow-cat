@@ -11,6 +11,7 @@ export const dynamic = 'force-dynamic';
 export default async function EditPlacePage({ params }: { params: Promise<{ name: string }> }) {
   const admin = await requireManagerOrAdmin();
   if (!admin) redirect('/');
+  const isAdmin = admin.role === 'admin';
 
   const { name: encodedName } = await params;
   const decoded = decodeURIComponent(encodedName);
@@ -40,7 +41,7 @@ export default async function EditPlacePage({ params }: { params: Promise<{ name
       <div className="mt-6">
         <h1 className="text-2xl font-bold text-gray-900">Edit place</h1>
       </div>
-      <EditPlaceForm place={place} />
+      <EditPlaceForm place={place} isAdmin={isAdmin} />
     </main>
   );
 }

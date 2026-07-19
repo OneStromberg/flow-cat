@@ -19,6 +19,7 @@ export const dynamic = 'force-dynamic';
 export default async function PlaceDetailPage({ params }: { params: Promise<{ name: string }> }) {
   const admin = await requireManagerOrAdmin();
   if (!admin) redirect('/');
+  const isAdmin = admin.role === 'admin';
 
   const { name: encodedName } = await params;
   const decoded = decodeURIComponent(encodedName);
@@ -88,6 +89,7 @@ export default async function PlaceDetailPage({ params }: { params: Promise<{ na
         {place.contact && (
           <Row label="Contact" value={place.contact} />
         )}
+        {isAdmin && place.baseRate && <Row label="Billing rate" value={place.baseRate} />}
         <Row label="Geofence radius" value={place.geofenceRadiusM ? `${place.geofenceRadiusM} m` : '100 m'} />
         <Row label="Grace period" value={graceMinsDisplay} />
         {hasCoords && (
