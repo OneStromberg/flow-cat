@@ -176,3 +176,42 @@ test('template round-trips selfieStart/selfieEnd flags', async () => {
   assert.equal(t.selfieStart, true);
   assert.equal(t.selfieEnd, false);
 });
+
+// ── S3: boundary + error-path cases ───────────────────────────────────────
+test('template round-trips both selfie flags false', async () => {
+  const g = createMemoryGateway({ ShiftTemplates: [] });
+  const r = await addTemplate(g, {
+    location:'Site B', label:'Guard', days:['Mon'], start:'08:00', end:'16:00',
+    headcount:'1', validFrom:'', validTo:'', rate:'', instructions:'',
+    selfieStart:false, selfieEnd:false,
+  } as any);
+  assert.equal(r.ok, true);
+  const t = (await listTemplates(g)).find((x) => x.location === 'Site B')!;
+  assert.equal(t.selfieStart, false);
+  assert.equal(t.selfieEnd, false);
+});
+
+test('copyTemplate carries the selfieStart/selfieEnd flags to the new template', async () => {
+  const g = createMemoryGateway({ ShiftTemplates: [] });
+  const src = await addTemplate(g, {
+    location:'Site A', label:'Guard', days:['Mon'], start:'08:00', end:'16:00',
+    headcount:'1', validFrom:'', validTo:'', rate:'', instructions:'',
+    selfieStart:true, selfieEnd:true,
+  } as any);
+  assert.equal(src.ok, true);
+  const cp = await copyTemplate(g, src.ok ? src.id : '', { location:'Site B', carryAssignments:false });
+  assert.equal(cp.ok, true);
+  const t = (await listTemplates(g)).find((x) => x.id === (cp.ok ? cp.id : ''))!;
+  assert.equal(t.selfieStart, true);
+  assert.equal(t.selfieEnd, true);
+});
+
+test('parseTemplate reads a legacy row without selfie_start/selfie_end columns as false', async () => {
+  const g = createMemoryGateway({ ShiftTemplates: [
+    ['id','location','label','days','start','end','headcount','valid_from','valid_to','active','rate','instructions'], // no selfie columns
+    ['t1','Legacy Site','Day','Mon','08:00','16:00','1','','','yes','',''],
+  ]});
+  const t = (await listTemplates(g))[0];
+  assert.equal(t.selfieStart, false);
+  assert.equal(t.selfieEnd, false);
+});

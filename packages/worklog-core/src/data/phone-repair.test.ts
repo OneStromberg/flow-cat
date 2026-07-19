@@ -27,3 +27,49 @@ test('repairAttendancePhones normalizes stored phones in Attendance + ShiftAssig
   assert.equal(r2.attendanceFixed, 0);
   assert.equal(r2.assignmentsFixed, 0);
 });
+
+// ── R1: boundary + error-path cases ───────────────────────────────────────
+test('repairAttendancePhones on an empty (header-only) tab returns 0/0', async () => {
+  const g = createMemoryGateway({
+    Attendance: [['id', 'instance_id', 'employee_phone', 'date', 'status']],
+    ShiftAssignments: [['instance_id', 'employee_phone', 'status']],
+  });
+  const r = await repairAttendancePhones(g);
+  assert.equal(r.attendanceFixed, 0);
+  assert.equal(r.assignmentsFixed, 0);
+});
+
+test('repairAttendancePhones on a completely missing tab returns 0/0 (never throws)', async () => {
+  const g = createMemoryGateway({});
+  const r = await repairAttendancePhones(g);
+  assert.equal(r.attendanceFixed, 0);
+  assert.equal(r.assignmentsFixed, 0);
+});
+
+test('repairAttendancePhones skips a blank employee_phone row without counting it', async () => {
+  const g = createMemoryGateway({
+    Attendance: [
+      ['id', 'instance_id', 'employee_phone', 'date', 'status'],
+      ['a1', 'i1', '', '2026-07-01', 'closed'],       // blank → skipped
+      ['a2', 'i1', '0506918673', '2026-07-01', 'closed'], // needs fixing
+    ],
+    ShiftAssignments: [['instance_id', 'employee_phone', 'status']],
+  });
+  const r = await repairAttendancePhones(g);
+  assert.equal(r.attendanceFixed, 1); // only the non-blank row counted
+  const att = await g.readTab('Attendance');
+  assert.equal(att[1][2], ''); // blank row left untouched
+  assert.equal(att[2][2], '972506918673');
+});
+
+test('repairAttendancePhones on a tab missing the employee_phone column returns 0', async () => {
+  const g = createMemoryGateway({
+    Attendance: [
+      ['id', 'instance_id', 'date', 'status'], // no employee_phone column at all
+      ['a1', 'i1', '2026-07-01', 'closed'],
+    ],
+    ShiftAssignments: [['instance_id', 'employee_phone', 'status']],
+  });
+  const r = await repairAttendancePhones(g);
+  assert.equal(r.attendanceFixed, 0);
+});

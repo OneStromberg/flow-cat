@@ -171,3 +171,29 @@ test('parseWorker reads role, falling back from legacy admin flag', () => {
   assert.equal(plain.role, 'worker');
   assert.equal(plain.admin, false);
 });
+
+// ── MR1: boundary + error-path cases ──────────────────────────────────────
+test('parseWorker resolves an uppercase role="ADMIN" to admin (case-insensitive)', () => {
+  const w = parseWorker({ phone:'972500000005', role:'ADMIN' } as any, []);
+  assert.equal(w.role, 'admin');
+  assert.equal(w.admin, true);
+});
+
+test('parseWorker falls back to the legacy admin flag for an unrecognized role value', () => {
+  // role="supervisor" is not one of worker/manager/admin → falls back to the legacy admin flag
+  const withAdminFlag = parseWorker({ phone:'972500000006', role:'supervisor', admin:'yes' } as any, []);
+  assert.equal(withAdminFlag.role, 'admin');
+  assert.equal(withAdminFlag.admin, true);
+  const withoutAdminFlag = parseWorker({ phone:'972500000007', role:'supervisor' } as any, []);
+  assert.equal(withoutAdminFlag.role, 'worker');
+  assert.equal(withoutAdminFlag.admin, false);
+});
+
+test('requireManagerOrAdmin proxy: an inactive worker never resolves as manager/admin-eligible', () => {
+  // requireManagerOrAdmin (packages/web/lib/session.ts) is `if (!worker || !worker.active) return null;`
+  // — proxied here via parseWorker since the session helper needs cookies()/a live gateway.
+  const w = parseWorker({ phone:'972500000008', active:'no', role:'manager' } as any, []);
+  assert.equal(w.active, false);
+  assert.equal(w.role, 'manager'); // role itself still parses correctly...
+  // ...but requireManagerOrAdmin's `!worker.active` guard would reject this worker regardless of role.
+});

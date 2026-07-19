@@ -59,6 +59,46 @@ test('missed check-OUT uses a fixed 15-min grace regardless of place grace', asy
   assert.equal((await findMissedCheckins(g, '2026-07-01T16:16:00.000Z', 60)).filter((m) => m.type === 'out').length, 1); // big check-in grace irrelevant
 });
 
+// ── AL1: boundary + error-path cases ──────────────────────────────────────
+test('missed check-OUT: checkout exactly at inEnd + 15min does NOT fire (strict >)', async () => {
+  const g = seed({ Attendance: [
+    ['id','instance_id','employee_phone','date','check_in_at','check_in_lat','check_in_lng','check_in_photo','check_in_in_geofence','check_out_at','check_out_lat','check_out_lng','check_out_photo','check_out_in_geofence','hours','status'],
+    ['a1','i1','972501234567','2026-07-01','2026-07-01T08:00:00.000Z','','','','no','','','','','no','','open'],
+  ]});
+  // end=16:00 UTC + checkoutGraceMins(15) = exactly 16:15:00.000Z → must NOT fire (strict `>`, not `>=`)
+  const atBoundary = await findMissedCheckins(g, '2026-07-01T16:15:00.000Z', 10);
+  assert.equal(atBoundary.filter((m) => m.type === 'out').length, 0);
+  // one ms later it does fire
+  const pastBoundary = await findMissedCheckins(g, '2026-07-01T16:15:00.001Z', 10);
+  assert.equal(pastBoundary.filter((m) => m.type === 'out').length, 1);
+});
+
+test('missed check-OUT: a very large per-place check-in grace does not delay the checkout firing at +16min', async () => {
+  const g = seed({
+    Places: [
+      ['place_name','active','lat','lng','place_id','address','client','geofence_radius_m','contact','base_rate','required_attributes','notes','grace_mins'],
+      ['Site A','yes','','','','','','100','','','','','1440'], // absurdly large 24h check-in grace
+    ],
+    Attendance: [
+      ['id','instance_id','employee_phone','date','check_in_at','check_in_lat','check_in_lng','check_in_photo','check_in_in_geofence','check_out_at','check_out_lat','check_out_lng','check_out_photo','check_out_in_geofence','hours','status'],
+      ['a1','i1','972501234567','2026-07-01','2026-07-01T08:00:00.000Z','','','','no','','','','','no','','open'],
+    ],
+  });
+  // Checkout grace is fixed at 15min regardless of the place's check-in grace_mins.
+  const m = await findMissedCheckins(g, '2026-07-01T16:16:00.000Z', 10);
+  assert.equal(m.filter((mm) => mm.type === 'out').length, 1);
+});
+
+test('a closed (non-open) attendance record never yields a missed check-OUT event', async () => {
+  const g = seed({ Attendance: [
+    ['id','instance_id','employee_phone','date','check_in_at','check_in_lat','check_in_lng','check_in_photo','check_in_in_geofence','check_out_at','check_out_lat','check_out_lng','check_out_photo','check_out_in_geofence','hours','status'],
+    ['a1','i1','972501234567','2026-07-01','2026-07-01T08:00:00.000Z','','','','no','2026-07-01T16:05:00.000Z','','','','no','8','closed'],
+  ]});
+  // Well past end+grace, but attendance is closed (not open) → no missed check-out.
+  const m = await findMissedCheckins(g, '2026-07-01T17:00:00.000Z', 10);
+  assert.equal(m.filter((mm) => mm.type === 'out').length, 0);
+});
+
 test('lastAlertAtByKey returns latest sent_at; shouldRealert respects the window', async () => {
   const g = createMemoryGateway({ Alerts: [
     ['instance_id','employee_phone','type','sent_at'],

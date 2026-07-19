@@ -294,3 +294,33 @@ test('filterAttendanceForReport matches un-normalized attendance against normali
   assert.equal(filterAttendanceForReport(rows, loc, { employeePhone: ['972506918673'] }).length, 1);
   assert.equal(filterAttendanceForReport(rows, loc, { employeePhone: [normalizePhone('0506918673')] }).length, 1);
 });
+
+// ── R1: boundary + error-path cases ───────────────────────────────────────
+test('reportByObject joins names across a 00972…-prefixed attendance phone', () => {
+  const instById = new Map([['i1', { id:'i1', templateId:'t', location:'Site A', date:'2026-07-01', start:'08:00', end:'16:00', headcount:1, status:'scheduled' }]]);
+  const names = new Map([['972506918673', 'Victor']]);
+  const rows = [att({ instanceId:'i1', employeePhone:'00972506918673', hours:'8' })]; // 00-prefixed international form
+  const [sheet] = reportByObject(rows as any, instById as any, names, { from:'2026-07-01', to:'2026-07-31' });
+  assert.equal(sheet.rows[0][1], 'Victor');
+});
+
+test('filterAttendanceForReport: an employeePhone filter mixing 05… and 972… forms matches both records', () => {
+  const loc = new Map([['i1','Site A']]);
+  const rows = [
+    att({ instanceId:'i1', employeePhone:'0506918673' }),   // local form
+    att({ instanceId:'i1', employeePhone:'972501112222' }), // already-international form
+  ] as any;
+  const result = filterAttendanceForReport(rows, loc, { employeePhone: ['0506918673', '972501112222'] });
+  assert.equal(result.length, 2);
+});
+
+test('reportByObject and filterAttendanceForReport leave an alphabetic test ID (e.g. "p1") untouched by the digit-guard', () => {
+  const instById = new Map([['i1', { id:'i1', templateId:'t', location:'Site A', date:'2026-07-01', start:'08:00', end:'16:00', headcount:1, status:'scheduled' }]]);
+  const names = new Map([['p1', 'Test Worker']]);
+  const rows = [att({ instanceId:'i1', employeePhone:'p1', hours:'8' })];
+  const [sheet] = reportByObject(rows as any, instById as any, names, { from:'2026-07-01', to:'2026-07-31' });
+  // If the digit-guard didn't skip normalizePhone(), 'p1' would collapse to '' and the name join would fail.
+  assert.equal(sheet.rows[0][1], 'Test Worker');
+  const loc = new Map([['i1','Site A']]);
+  assert.equal(filterAttendanceForReport(rows as any, loc, { employeePhone: ['p1'] }).length, 1);
+});
