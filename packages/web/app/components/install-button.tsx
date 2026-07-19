@@ -1,28 +1,36 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useSyncExternalStore, type ReactNode } from 'react';
 import { t, DEFAULT_LANG, type Lang } from '../../lib/i18n/strings';
 import { detectPlatform, type InstallPlatform } from '../../lib/pwa-install';
-
-// Chromium fires this before the install prompt; not in the standard DOM lib.
-interface BeforeInstallPromptEvent extends Event {
-  prompt: () => Promise<void>;
-  userChoice: Promise<{ outcome: 'accepted' | 'dismissed'; platform: string }>;
-}
+import {
+  subscribe,
+  hasPrompt,
+  getInstalled,
+  getServerSnapshot,
+  triggerInstall,
+} from '../../lib/pwa-install-store';
 
 /**
- * Self-hiding "Install app" button. Safe to mount anywhere (login + worker shell):
- * it renders `null` unless install is actually offerable.
+ * Self-hiding "Install app" button, mounted once app-wide (root layout):
+ * it renders `null` unless install is actually offerable, so it's safe on
+ * every screen (login, worker shell, admin shell).
  * - installed / unsupported / desktop → nothing.
- * - Android/Chromium → appears reactively when `beforeinstallprompt` fires; tap
- *   triggers the native prompt and hides on accept.
+ * - Android/Chromium → appears once `lib/pwa-install-store.ts` has a deferred
+ *   prompt (captured as early as the pre-hydration inline script in
+ *   `app/layout.tsx`); tap triggers the native prompt and hides on accept.
  * - iOS Safari → always visible; tap opens the "Add to Home Screen" guide sheet.
+ *
+ * Install state (deferred prompt + installed flag) lives in the external
+ * store, not local component state — that's what makes the native popup
+ * suppression race-proof: the store starts listening at module load, not on
+ * mount, and multiple mounts/pages all read the same snapshot.
  */
 export function InstallButton({ lang = DEFAULT_LANG }: { lang?: Lang }) {
   const [platform, setPlatform] = useState<InstallPlatform>('unsupported');
-  const [deferred, setDeferred] = useState<BeforeInstallPromptEvent | null>(null);
-  const [installed, setInstalled] = useState(false);
   const [showGuide, setShowGuide] = useState(false);
+  const installed = useSyncExternalStore(subscribe, getInstalled, getServerSnapshot);
+  const promptAvailable = useSyncExternalStore(subscribe, hasPrompt, getServerSnapshot);
 
   useEffect(() => {
     const standalone =
@@ -37,44 +45,43 @@ export function InstallButton({ lang = DEFAULT_LANG }: { lang?: Lang }) {
           }
         : { userAgent: '' };
     setPlatform(detectPlatform(nav, standalone));
-
-    const onBeforeInstall = (e: Event) => {
-      e.preventDefault();
-      setDeferred(e as BeforeInstallPromptEvent);
-    };
-    const onInstalled = () => {
-      setInstalled(true);
-      setDeferred(null);
-      setShowGuide(false);
-    };
-    window.addEventListener('beforeinstallprompt', onBeforeInstall);
-    window.addEventListener('appinstalled', onInstalled);
-    return () => {
-      window.removeEventListener('beforeinstallprompt', onBeforeInstall);
-      window.removeEventListener('appinstalled', onInstalled);
-    };
   }, []);
 
   if (installed || platform === 'installed' || platform === 'unsupported') return null;
 
   if (platform === 'android') {
     // Reveal only once the browser has actually offered installation.
-    if (!deferred) return null;
-    const onClick = async () => {
-      await deferred.prompt();
-      const choice = await deferred.userChoice;
-      setDeferred(null);
-      if (choice.outcome === 'accepted') setInstalled(true);
-    };
-    return <InstallCta label={t('install.button', lang)} onClick={onClick} />;
+    if (!promptAvailable) return null;
+    return (
+      <FixedInstallSlot>
+        <InstallCta label={t('install.button', lang)} onClick={() => void triggerInstall()} />
+      </FixedInstallSlot>
+    );
   }
 
   // iOS Safari — no programmatic install; open the manual guide.
   return (
     <>
-      <InstallCta label={t('install.button', lang)} onClick={() => setShowGuide(true)} />
+      <FixedInstallSlot>
+        <InstallCta label={t('install.button', lang)} onClick={() => setShowGuide(true)} />
+      </FixedInstallSlot>
       {showGuide && <A2hsSheet lang={lang} onClose={() => setShowGuide(false)} />}
     </>
+  );
+}
+
+// Fixed, unobtrusive top-center placement so the app-wide button never
+// collides with the fixed BOTTOM nav bars (WorkerNav / AdminNav). Safe-area
+// aware for notches/status bars; high z-index to stay above page content but
+// (deliberately) below the full-screen iOS guide sheet's own z-50 backdrop.
+function FixedInstallSlot({ children }: { children: ReactNode }) {
+  return (
+    <div
+      className="pointer-events-none fixed inset-x-0 z-40 flex justify-center"
+      style={{ top: 'max(0.75rem, env(safe-area-inset-top))' }}
+    >
+      <div className="pointer-events-auto">{children}</div>
+    </div>
   );
 }
 
@@ -83,7 +90,7 @@ function InstallCta({ label, onClick }: { label: string; onClick: () => void }) 
     <button
       type="button"
       onClick={onClick}
-      className="inline-flex items-center justify-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2.5 text-sm font-medium text-gray-800 shadow-sm active:bg-gray-50"
+      className="inline-flex items-center justify-center gap-1.5 rounded-full border border-gray-200 bg-white/95 px-3.5 py-2 text-xs font-medium text-gray-800 shadow-md backdrop-blur active:bg-gray-50"
     >
       <DownloadIcon />
       {label}
