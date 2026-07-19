@@ -12,6 +12,12 @@ const withSerwist = withSerwistInit({
 
 const config: NextConfig = {
   transpilePackages: ['@scourage/sheets-helper', '@scourage/worklog-core'],
+  experimental: {
+    staleTimes: {
+      dynamic: 30,
+      static: 180,
+    },
+  },
 };
 
 export default withSerwist(config);

@@ -1,4 +1,5 @@
 import { WorkerNav } from './worker-nav';
+import { SwrProvider } from './swr-provider';
 import { requireWorker } from '../../lib/session';
 import { resolveLang } from '../../lib/i18n/strings';
 
@@ -9,7 +10,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const lang = resolveLang(worker?.lang);
   return (
     <div className="pb-20">
-      {children}
+      <SwrProvider>{children}</SwrProvider>
       <WorkerNav lang={lang} role={worker?.role} />
     </div>
   );
