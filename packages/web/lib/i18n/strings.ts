@@ -48,6 +48,15 @@ const EN = {
   'edit.locked': 'This entry is locked.',
   'checkin.checkedIn': 'Checked in',
   'checkin.out': 'out',
+  'install.button': 'Install app',
+  'install.iosTitle': 'Add to Home Screen',
+  'install.iosIntro': 'Install FlowCat on your iPhone in two taps:',
+  'install.iosStep1': 'Tap the Share button in the toolbar.',
+  'install.iosStep2': "Choose “Add to Home Screen”.",
+  'install.iosStep3': "Tap “Add” — FlowCat appears on your home screen.",
+  'install.close': 'Close',
+  'offline.title': "You’re offline",
+  'offline.body': "FlowCat can’t reach the network right now. Reconnect to check in or view your hours.",
 } as const;
 
 export type StringKey = keyof typeof EN;
@@ -99,6 +108,15 @@ const RU: Record<StringKey, string> = {
   'edit.locked': 'Эта запись заблокирована.',
   'checkin.checkedIn': 'Отметка прихода',
   'checkin.out': 'уход',
+  'install.button': 'Установить приложение',
+  'install.iosTitle': 'Добавить на главный экран',
+  'install.iosIntro': 'Установите FlowCat на iPhone в два касания:',
+  'install.iosStep1': 'Нажмите кнопку «Поделиться» на панели инструментов.',
+  'install.iosStep2': 'Выберите «На экран „Домой“».',
+  'install.iosStep3': 'Нажмите «Добавить» — FlowCat появится на главном экране.',
+  'install.close': 'Закрыть',
+  'offline.title': 'Нет подключения',
+  'offline.body': 'FlowCat сейчас не может подключиться к сети. Восстановите связь, чтобы отметить смену или посмотреть часы.',
 };
 
 // Hebrew is completed progressively — Partial is intentional; t() falls back he → en.
@@ -118,6 +136,15 @@ const HE: Partial<Record<StringKey, string>> = {
   'common.save': 'שמור',
   'common.cancel': 'ביטול',
   'edit.title': 'עריכת רשומה',
+  'install.button': 'התקן אפליקציה',
+  'install.iosTitle': 'הוספה למסך הבית',
+  'install.iosIntro': 'התקינו את FlowCat על ה‑iPhone בשתי הקשות:',
+  'install.iosStep1': 'הקישו על כפתור השיתוף בסרגל הכלים.',
+  'install.iosStep2': 'בחרו ב“הוספה למסך הבית”.',
+  'install.iosStep3': 'הקישו “הוסף” — FlowCat יופיע במסך הבית.',
+  'install.close': 'סגור',
+  'offline.title': 'אין חיבור',
+  'offline.body': 'FlowCat לא מצליח להתחבר לרשת כרגע. התחברו מחדש כדי לדווח משמרת או לצפות בשעות.',
   // …remaining HE keys filled progressively; missing ones fall back to EN.
 };
 
