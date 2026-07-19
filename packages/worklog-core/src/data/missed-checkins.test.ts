@@ -49,6 +49,16 @@ test('start time is interpreted in the given tz (Jerusalem)', async () => {
   assert.equal((await findMissedCheckins(g, '2026-07-01T05:05:00.000Z', 10, 'Asia/Jerusalem')).length, 0);
 });
 
+test('missed check-OUT uses a fixed 15-min grace regardless of place grace', async () => {
+  const g = seed({ Attendance: [
+    ['id','instance_id','employee_phone','date','check_in_at','check_in_lat','check_in_lng','check_in_photo','check_in_in_geofence','check_out_at','check_out_lat','check_out_lng','check_out_photo','check_out_in_geofence','hours','status'],
+    ['a1','i1','972501234567','2026-07-01','2026-07-01T08:00:00.000Z','','','','no','','','','','no','','open'],
+  ]});
+  assert.equal((await findMissedCheckins(g, '2026-07-01T16:14:00.000Z', 10)).filter((m) => m.type === 'out').length, 0); // <15m
+  assert.equal((await findMissedCheckins(g, '2026-07-01T16:16:00.000Z', 10)).filter((m) => m.type === 'out').length, 1); // >15m
+  assert.equal((await findMissedCheckins(g, '2026-07-01T16:16:00.000Z', 60)).filter((m) => m.type === 'out').length, 1); // big check-in grace irrelevant
+});
+
 test('lastAlertAtByKey returns latest sent_at; shouldRealert respects the window', async () => {
   const g = createMemoryGateway({ Alerts: [
     ['instance_id','employee_phone','type','sent_at'],

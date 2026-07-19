@@ -34,6 +34,7 @@ export async function findMissedCheckins(
   nowISO: string,
   defaultGraceMins = 10,
   tz = 'UTC',
+  checkoutGraceMins = 15,
 ): Promise<MissedEvent[]> {
   const now = Date.parse(nowISO);
 
@@ -102,9 +103,9 @@ export async function findMissedCheckins(
       });
     }
 
-    // Missed check-out: grace after end passed and has an open attendance record
+    // Missed check-out: fixed grace after end passed and has an open attendance record
     const inEnd = endMs(date, start, end, tz);
-    if (now > inEnd + grace) {
+    if (now > inEnd + checkoutGraceMins * 60000) {
       const openRecord = attRecords.find((a) => (a.status ?? '').trim() === 'open');
       if (openRecord) {
         missed.push({
