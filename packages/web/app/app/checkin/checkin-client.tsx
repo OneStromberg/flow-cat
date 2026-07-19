@@ -6,16 +6,15 @@ import type { CheckinData } from '../../../lib/data/worker-checkin';
 import { GeoPoller } from './geo-poller';
 import { t, DEFAULT_LANG, type Lang } from '../../../lib/i18n/strings';
 import { compressImage } from '../../../lib/image-compress';
+import { swrFetcher } from '../../../lib/swr-fetcher';
 
 interface CheckinClientProps {
   workerName: string;
   lang?: Lang;
 }
 
-const fetcher = (url: string) => fetch(url).then((r) => r.json());
-
 export function CheckinClient({ workerName, lang = DEFAULT_LANG }: CheckinClientProps) {
-  const { data } = useSWR<CheckinData>('/api/worker/checkin', fetcher);
+  const { data } = useSWR<CheckinData>('/api/worker/checkin', swrFetcher);
   const { mutate } = useSWRConfig();
   const [busy, setBusy] = useState<string | null>(null);
   const [geofenceWarning, setGeofenceWarning] = useState<string | null>(null);

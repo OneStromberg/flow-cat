@@ -5,8 +5,7 @@ import { questionToWidget } from '../../../lib/form-widgets';
 import { EntryForm } from '../entry-form';
 import { t, DEFAULT_LANG, type Lang } from '../../../lib/i18n/strings';
 import type { HoursData } from '../../../lib/data/worker-hours';
-
-const fetcher = (url: string) => fetch(url).then((r) => r.json());
+import { swrFetcher } from '../../../lib/swr-fetcher';
 
 function fmtTime(iso: string): string {
   try {
@@ -19,7 +18,7 @@ function fmtTime(iso: string): string {
 }
 
 export function HoursClient({ lang = DEFAULT_LANG }: { lang?: Lang }) {
-  const { data } = useSWR<HoursData>('/api/worker/hours', fetcher);
+  const { data } = useSWR<HoursData>('/api/worker/hours', swrFetcher);
 
   if (!data) {
     return (

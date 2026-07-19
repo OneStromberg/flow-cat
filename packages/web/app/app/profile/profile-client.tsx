@@ -5,11 +5,10 @@ import { LogoutButton } from '../logout-button';
 import { LangSwitcher } from '../lang-switcher';
 import { t, DEFAULT_LANG, type Lang } from '../../../lib/i18n/strings';
 import type { ProfileData } from '../../../lib/data/worker-profile';
-
-const fetcher = (url: string) => fetch(url).then((r) => r.json());
+import { swrFetcher } from '../../../lib/swr-fetcher';
 
 export function ProfileClient({ lang = DEFAULT_LANG }: { lang?: Lang }) {
-  const { data } = useSWR<ProfileData>('/api/worker/profile', fetcher);
+  const { data } = useSWR<ProfileData>('/api/worker/profile', swrFetcher);
 
   if (!data) {
     return (
