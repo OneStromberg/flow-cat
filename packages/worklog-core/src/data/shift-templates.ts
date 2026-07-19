@@ -8,15 +8,15 @@ export interface DayTime { day: string; start: string; end: string }
 export interface ShiftTemplate {
   id: string; location: string; label: string; days: string[];
   start: string; end: string; headcount: number; validFrom: string; validTo: string; active: boolean;
-  rate: string; instructions: string; dayTimes: DayTime[];
+  rate: string; instructions: string; dayTimes: DayTime[]; selfieStart: boolean; selfieEnd: boolean;
 }
 export interface AddTemplateInput {
   location: string; label: string; days: string[];
   start: string; end: string; headcount: string; validFrom: string; validTo: string;
-  rate: string; instructions: string; dayTimes?: DayTime[];
+  rate: string; instructions: string; dayTimes?: DayTime[]; selfieStart?: boolean; selfieEnd?: boolean;
 }
 
-const TEMPLATE_COLUMNS = ['id', 'location', 'label', 'days', 'start', 'end', 'headcount', 'valid_from', 'valid_to', 'active', 'rate', 'instructions', 'day_times'];
+const TEMPLATE_COLUMNS = ['id', 'location', 'label', 'days', 'start', 'end', 'headcount', 'valid_from', 'valid_to', 'active', 'rate', 'instructions', 'day_times', 'selfie_start', 'selfie_end'];
 const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -57,6 +57,8 @@ export function parseTemplate(o: Record<string, string>): ShiftTemplate {
     rate: (o.rate ?? '').trim(),
     instructions: (o.instructions ?? '').trim(),
     dayTimes,
+    selfieStart: (o.selfie_start ?? '').trim().toLowerCase() === 'yes',
+    selfieEnd: (o.selfie_end ?? '').trim().toLowerCase() === 'yes',
   };
 }
 
@@ -113,6 +115,8 @@ function recordOf(id: string, input: AddTemplateInput): Record<string, string> {
     rate: (input.rate ?? '').trim(),
     instructions: (input.instructions ?? '').trim(),
     day_times: serializeDayTimes(effective),
+    selfie_start: (input.selfieStart ?? false) ? 'yes' : '',
+    selfie_end: (input.selfieEnd ?? false) ? 'yes' : '',
   };
 }
 
@@ -155,6 +159,8 @@ export async function copyTemplate(
     rate: src.rate,
     instructions: src.instructions,
     dayTimes: src.dayTimes,
+    selfieStart: src.selfieStart,
+    selfieEnd: src.selfieEnd,
   });
   if (!result.ok) return result;
 

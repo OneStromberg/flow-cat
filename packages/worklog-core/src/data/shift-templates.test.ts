@@ -163,3 +163,16 @@ test('deleteTemplate soft-deletes (active=no) so listTemplates marks it inactive
   assert.equal(t?.active, false);
   assert.equal((await deleteTemplate(g, 'nope')).ok, false);
 });
+
+test('template round-trips selfieStart/selfieEnd flags', async () => {
+  const g = createMemoryGateway({ ShiftTemplates: [] });
+  const r = await addTemplate(g, {
+    location:'Site A', label:'Guard', days:['Mon'], start:'08:00', end:'16:00',
+    headcount:'1', validFrom:'', validTo:'', rate:'', instructions:'',
+    selfieStart:true, selfieEnd:false,
+  } as any);
+  assert.equal(r.ok, true);
+  const t = (await listTemplates(g)).find((x) => x.location === 'Site A')!;
+  assert.equal(t.selfieStart, true);
+  assert.equal(t.selfieEnd, false);
+});
