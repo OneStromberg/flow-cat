@@ -258,8 +258,10 @@ export async function adminCorrect(
 
   const newRow = [...rows[i]];
 
-  if (fields.checkInAt !== undefined) newRow[idxCheckInAt] = fields.checkInAt;
-  if (fields.checkOutAt !== undefined) newRow[idxCheckOutAt] = fields.checkOutAt;
+  // Truthy guards, not `!== undefined`: an empty string must never blank an existing
+  // timestamp (blanking a real check-in/check-out is never a valid correction).
+  if (fields.checkInAt) newRow[idxCheckInAt] = fields.checkInAt;
+  if (fields.checkOutAt) newRow[idxCheckOutAt] = fields.checkOutAt;
 
   // An explicit hours override always wins; otherwise recompute from both timestamps.
   if (fields.hours !== undefined) {

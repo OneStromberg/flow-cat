@@ -46,6 +46,44 @@ test('adminCorrect uses an explicit hours override on a closed row', async () =>
   assert.ok(row);
   assert.equal(row.hours, '5');
 });
+test('adminCorrect: empty checkOutAt does not blank the existing timestamp or corrupt hours', async () => {
+  const g = createMemoryGateway({ Attendance: [
+    ['id','instance_id','employee_phone','date','check_in_at','check_in_lat','check_in_lng','check_in_photo','check_in_in_geofence','check_out_at','check_out_lat','check_out_lng','check_out_photo','check_out_in_geofence','hours','status'],
+    ['a1','i1','p1','2026-07-01','2026-07-01T08:00:00.000Z','','','','no','2026-07-01T16:00:00.000Z','','','','no','8','closed'],
+  ]});
+  const r = await adminCorrect(g, 'a1', { checkOutAt: '' });
+  assert.equal(r.ok, true);
+  const row = rowsToObjects(g.dump()['Attendance']).find((o) => o.id === 'a1');
+  assert.ok(row);
+  assert.equal(row.check_out_at, '2026-07-01T16:00:00.000Z');
+  assert.equal(row.hours, '8');
+  assert.equal(row.status, 'corrected');
+});
+test('adminCorrect: a valid checkOutAt updates the timestamp and recomputes hours', async () => {
+  const g = createMemoryGateway({ Attendance: [
+    ['id','instance_id','employee_phone','date','check_in_at','check_in_lat','check_in_lng','check_in_photo','check_in_in_geofence','check_out_at','check_out_lat','check_out_lng','check_out_photo','check_out_in_geofence','hours','status'],
+    ['a1','i1','p1','2026-07-01','2026-07-01T08:00:00.000Z','','','','no','2026-07-01T16:00:00.000Z','','','','no','8','closed'],
+  ]});
+  const r = await adminCorrect(g, 'a1', { checkOutAt: '2026-07-01T18:30:00.000Z' });
+  assert.equal(r.ok, true);
+  const row = rowsToObjects(g.dump()['Attendance']).find((o) => o.id === 'a1');
+  assert.ok(row);
+  assert.equal(row.check_out_at, '2026-07-01T18:30:00.000Z');
+  assert.equal(row.hours, '10.5');
+  assert.equal(row.status, 'corrected');
+});
+test('adminCorrect: explicit hours still wins over recomputation from timestamps', async () => {
+  const g = createMemoryGateway({ Attendance: [
+    ['id','instance_id','employee_phone','date','check_in_at','check_in_lat','check_in_lng','check_in_photo','check_in_in_geofence','check_out_at','check_out_lat','check_out_lng','check_out_photo','check_out_in_geofence','hours','status'],
+    ['a1','i1','p1','2026-07-01','2026-07-01T08:00:00.000Z','','','','no','2026-07-01T16:00:00.000Z','','','','no','8','closed'],
+  ]});
+  const r = await adminCorrect(g, 'a1', { checkOutAt: '2026-07-01T18:30:00.000Z', hours: '5' });
+  assert.equal(r.ok, true);
+  const row = rowsToObjects(g.dump()['Attendance']).find((o) => o.id === 'a1');
+  assert.ok(row);
+  assert.equal(row.check_out_at, '2026-07-01T18:30:00.000Z');
+  assert.equal(row.hours, '5');
+});
 test('checkIn blocks a new worker once headcount is reached', async () => {
   const g = createMemoryGateway({
     ShiftInstances: [['id','template_id','location','date','start','end','headcount','status','generated_at'],

@@ -74,11 +74,37 @@ export function AttendanceClient({ rows }: { rows: AttendanceRow[] }) {
   const [editedOut, setEditedOut] = useState<Record<string, string>>({});
 
   async function saveRow(attendanceId: string) {
+    const wasEditedIn = attendanceId in editedIn;
+    const wasEditedOut = attendanceId in editedOut;
+    const wasEditedHours = attendanceId in editedHours;
+    if (!wasEditedIn && !wasEditedOut && !wasEditedHours) return;
+
     const payload: Record<string, string> = { attendanceId };
-    if (attendanceId in editedIn) payload.checkInAt = localToUtcIso(editedIn[attendanceId]);
-    if (attendanceId in editedOut) payload.checkOutAt = localToUtcIso(editedOut[attendanceId]);
-    if (attendanceId in editedHours) payload.hours = editedHours[attendanceId];
-    if (Object.keys(payload).length === 1) return;
+
+    if (wasEditedIn) {
+      const checkInAt = localToUtcIso(editedIn[attendanceId]);
+      if (!checkInAt) {
+        alert('Invalid check-in time');
+        return;
+      }
+      payload.checkInAt = checkInAt;
+    }
+    if (wasEditedOut) {
+      const checkOutAt = localToUtcIso(editedOut[attendanceId]);
+      if (!checkOutAt) {
+        alert('Invalid check-out time');
+        return;
+      }
+      payload.checkOutAt = checkOutAt;
+    }
+    if (wasEditedHours) {
+      const hours = editedHours[attendanceId];
+      if (!hours) {
+        alert('Invalid hours');
+        return;
+      }
+      payload.hours = hours;
+    }
 
     setSaving(attendanceId);
     try {
@@ -155,7 +181,7 @@ export function AttendanceClient({ rows }: { rows: AttendanceRow[] }) {
                         [row.id]: e.target.value,
                       }))
                     }
-                    className="rounded border border-gray-300 px-2 py-1 text-xs"
+                    className="rounded border border-gray-300 px-2 py-1 text-sm"
                     disabled={isLoading}
                   />
                 </td>
@@ -169,7 +195,7 @@ export function AttendanceClient({ rows }: { rows: AttendanceRow[] }) {
                         [row.id]: e.target.value,
                       }))
                     }
-                    className="rounded border border-gray-300 px-2 py-1 text-xs"
+                    className="rounded border border-gray-300 px-2 py-1 text-sm"
                     disabled={isLoading}
                   />
                 </td>
