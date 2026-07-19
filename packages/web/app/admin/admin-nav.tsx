@@ -12,6 +12,7 @@ const TABS = [
   { href: '/admin/leave', label: 'Leave', icon: '🏖' },
   { href: '/admin/broadcast', label: 'Broadcast', icon: '📣' },
   { href: '/admin/reports', label: 'Reports', icon: '📊' },
+  { href: '/app/checkin', label: 'My shifts', icon: '🙋' },
 ];
 
 export function AdminNav({ role }: { role: string }) {
