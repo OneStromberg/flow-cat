@@ -1,6 +1,6 @@
 import { getGateway } from '../../../../lib/sheets';
 import { requireManagerOrAdmin } from '../../../../lib/session';
-import { addTemplate, generateInstances, type AddTemplateInput } from '@scourage/worklog-core';
+import { addTemplate, addRecurring, generateInstances, normalizePhone, type AddTemplateInput } from '@scourage/worklog-core';
 
 export const runtime = 'nodejs';
 
@@ -37,13 +37,15 @@ export async function POST(req: Request) {
   try {
     const r = await addTemplate(getGateway(), input);
     if (!r.ok) return Response.json({ errors: r.errors }, { status: 400 });
+    const assignPhone = typeof b.assignPhone === 'string' ? b.assignPhone.trim() : '';
     const today = new Date().toISOString().slice(0, 10);
     let seedWarning = false;
     try {
+      if (assignPhone) await addRecurring(getGateway(), r.id, normalizePhone(assignPhone));
       await generateInstances(getGateway(), today);
     } catch (e) {
       seedWarning = true;
-      console.error('[shifts] generateInstances after save failed:', e);
+      console.error('[shifts] seed/generate after save failed:', e);
     }
     return Response.json({ ok: true, id: r.id, seedWarning });
   } catch (err) {

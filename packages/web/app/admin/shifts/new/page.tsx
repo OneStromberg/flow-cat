@@ -1,7 +1,7 @@
 import { redirect } from 'next/navigation';
 import { requireManagerOrAdmin } from '../../../../lib/session';
 import { getRequestGateway } from '../../../../lib/sheets';
-import { loadActivePlaces } from '@scourage/worklog-core';
+import { loadActivePlaces, listWorkers } from '@scourage/worklog-core';
 import { AddTemplateForm } from './add-template-form';
 
 export const runtime = 'nodejs';
@@ -10,14 +10,17 @@ export const dynamic = 'force-dynamic';
 export default async function NewShiftTemplatePage() {
   const admin = await requireManagerOrAdmin();
   if (!admin) redirect('/');
-  const places = await loadActivePlaces(getRequestGateway());
+  const [places, workers] = await Promise.all([
+    loadActivePlaces(getRequestGateway()),
+    listWorkers(getRequestGateway()),
+  ]);
   return (
     <main className="mx-auto max-w-md p-5">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold">Add shift template</h1>
         <a href="/admin/shifts/templates" className="text-sm text-gray-500 underline">Back</a>
       </div>
-      <AddTemplateForm places={places} />
+      <AddTemplateForm places={places} workers={workers.filter((w) => w.active).map((w) => ({ phone: w.phone, name: w.name }))} />
     </main>
   );
 }

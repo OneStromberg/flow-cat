@@ -26,9 +26,9 @@ function initGrid(): DayGrid {
   return Object.fromEntries(DAY_ORDER.map((d) => [d, { on: false, slots: [{ start: '', end: '' }] }])) as DayGrid;
 }
 
-type Props = { places: string[] };
+type Props = { places: string[]; workers: { phone: string; name: string }[] };
 
-export function AddTemplateForm({ places }: Props) {
+export function AddTemplateForm({ places, workers }: Props) {
   const router = useRouter();
 
   // base fields
@@ -39,6 +39,7 @@ export function AddTemplateForm({ places }: Props) {
   const [instructions, setInstructions] = useState('');
   const [selfieStart, setSelfieStart] = useState(false);
   const [selfieEnd, setSelfieEnd] = useState(false);
+  const [assignPhone, setAssignPhone] = useState('');
 
   // per-day grid
   const [grid, setGrid] = useState<DayGrid>(initGrid);
@@ -128,7 +129,7 @@ export function AddTemplateForm({ places }: Props) {
       const res = await fetch('/api/admin/shifts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ location, label, headcount, rate, instructions, validFrom, validTo, dayTimes, selfieStart, selfieEnd }),
+        body: JSON.stringify({ location, label, headcount, rate, instructions, validFrom, validTo, dayTimes, selfieStart, selfieEnd, assignPhone }),
       });
       const data = await res.json();
       if (res.ok && data.ok) {
@@ -375,6 +376,17 @@ export function AddTemplateForm({ places }: Props) {
           onChange={(e) => setHeadcount(e.target.value)}
         />
         {errors.headcount && <p className="mt-1 text-sm text-red-600">{errors.headcount}</p>}
+      </div>
+
+      {/* Assign a worker now (optional) */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700">Assign worker (optional)</label>
+        <select className={inp} value={assignPhone} onChange={(e) => setAssignPhone(e.target.value)}>
+          <option value="">— No one yet —</option>
+          {workers.map((w) => (
+            <option key={w.phone} value={w.phone}>{w.name}</option>
+          ))}
+        </select>
       </div>
 
       {/* Rate */}
