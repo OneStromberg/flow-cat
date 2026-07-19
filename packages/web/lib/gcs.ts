@@ -81,6 +81,24 @@ export function photoZipEntryName(dateIso: string, tz: string, worker: string, w
   return `${day}_${hm}_${safeWorker}_${which}.jpg`;
 }
 
+// Defends the Content-Disposition header against injection/malformation from
+// free-text admin input (place names) or malformed date params — strips quotes
+// and control chars, then collapses whitespace runs to a single space.
+export function sanitizeHeaderValue(value: string): string {
+  return value.replace(/["\x00-\x1f]/g, ' ').replace(/\s{2,}/g, ' ').trim();
+}
+
+// Default lower bound for the export date range when the caller omits `from` —
+// old pre-compression photos aren't auto-deleted yet, so an unbounded default
+// (full history) risks pulling the entire uncompressed corpus into memory.
+// `todayIso` should be `todayISO(COMPANY_TZ)` so both ends of the range share
+// the same "today" reference.
+export function exportDefaultFromISO(todayIso: string, daysBack = 90): string {
+  const d = new Date(`${todayIso}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() - daysBack);
+  return d.toISOString().slice(0, 10);
+}
+
 export async function downloadPhoto(objectName: string): Promise<Buffer | null> {
   const bucket = process.env.CHECKIN_PHOTOS_BUCKET;
   if (!bucket || !objectName) return null;

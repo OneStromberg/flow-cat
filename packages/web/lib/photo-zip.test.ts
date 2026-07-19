@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { photoZipEntryName, buildStoreZip } from './gcs';
+import { photoZipEntryName, buildStoreZip, sanitizeHeaderValue, exportDefaultFromISO } from './gcs';
 
 test('photoZipEntryName encodes Jerusalem date+time, worker, leg', () => {
   assert.equal(
@@ -43,4 +43,33 @@ test('buildStoreZip with two entries emits two local file headers', () => {
   assert.equal(count, 2);
   assert.ok(zip.includes(Buffer.from('a.jpg')));
   assert.ok(zip.includes(Buffer.from('b.jpg')));
+});
+
+// ── batch-7 review: export filename/range hardening ──────────────────────
+test('sanitizeHeaderValue strips double-quotes and control chars, collapsing whitespace', () => {
+  assert.equal(sanitizeHeaderValue('Ha"ifa\r\nOffice\tSuite'), 'Ha ifa Office Suite');
+});
+
+test('sanitizeHeaderValue collapses runs of whitespace produced by adjacent unsafe chars', () => {
+  assert.equal(sanitizeHeaderValue('a""""b'), 'a b');
+});
+
+test('sanitizeHeaderValue trims leading/trailing whitespace left by stripped chars', () => {
+  assert.equal(sanitizeHeaderValue('"leading and trailing"'), 'leading and trailing');
+});
+
+test('sanitizeHeaderValue is a no-op on an already-safe value', () => {
+  assert.equal(sanitizeHeaderValue('Haifa Office 2026-01-01..2026-02-01'), 'Haifa Office 2026-01-01..2026-02-01');
+});
+
+test('exportDefaultFromISO subtracts 90 calendar days by default', () => {
+  assert.equal(exportDefaultFromISO('2026-07-19'), '2026-04-20');
+});
+
+test('exportDefaultFromISO honors an explicit daysBack override', () => {
+  assert.equal(exportDefaultFromISO('2026-01-01', 1), '2025-12-31');
+});
+
+test('exportDefaultFromISO crosses a year boundary correctly', () => {
+  assert.equal(exportDefaultFromISO('2026-01-15', 90), '2025-10-17');
 });

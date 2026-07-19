@@ -10,7 +10,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   return (
     <div className="pb-20">
       {children}
-      <WorkerNav lang={lang} />
+      <WorkerNav lang={lang} role={worker?.role} />
     </div>
   );
 }

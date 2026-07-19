@@ -7,5 +7,5 @@ export const dynamic = 'force-dynamic';
 export default async function Home() {
   const worker = await requireWorker();
   if (!worker) redirect('/login');
-  redirect(worker.admin ? '/admin' : '/app');
+  redirect(worker.role === 'worker' ? '/app' : '/admin');
 }

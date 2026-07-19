@@ -26,14 +26,34 @@ export function CheckinClient({ items, workerName, lang = DEFAULT_LANG }: Checki
     if (!input) return Promise.resolve(null);
     return new Promise((resolve) => {
       input.value = '';
+      let settled = false;
+      const onWindowFocus = () => {
+        window.removeEventListener('focus', onWindowFocus);
+        // Neither `change` nor `cancel` is guaranteed here (older browsers don't fire
+        // `cancel` at all). Give the picker a beat to populate `files`, then bail out
+        // if it's still empty — that means the user backed out without picking a photo.
+        setTimeout(() => {
+          if (!input.files?.length) settle(null);
+        }, 500);
+      };
+      const settle = (value: string | null) => {
+        if (settled) return;
+        settled = true;
+        window.removeEventListener('focus', onWindowFocus);
+        input.onchange = null;
+        input.oncancel = null;
+        resolve(value);
+      };
+      input.oncancel = () => settle(null);
       input.onchange = () => {
         const file = input.files?.[0];
-        if (!file) { resolve(null); return; }
+        if (!file) { settle(null); return; }
         const reader = new FileReader();
-        reader.onload = () => resolve(typeof reader.result === 'string' ? reader.result : null);
-        reader.onerror = () => resolve(null);
+        reader.onload = () => settle(typeof reader.result === 'string' ? reader.result : null);
+        reader.onerror = () => settle(null);
         reader.readAsDataURL(file);
       };
+      window.addEventListener('focus', onWindowFocus);
       input.click();
     });
   }
