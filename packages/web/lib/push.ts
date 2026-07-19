@@ -38,7 +38,13 @@ export function isPushConfigured(): boolean {
 
 let configuredSignature: string | null = null;
 
-/** Lazily calls webpush.setVapidDetails once per distinct config; no-ops if unconfigured. */
+/**
+ * Lazily calls webpush.setVapidDetails once per distinct config; no-ops if
+ * unconfigured. A malformed key (bad deploy) makes setVapidDetails throw —
+ * caught here and logged once so the sender no-ops instead of throwing,
+ * which would otherwise break the missed-checkin cron before it reaches
+ * recordAlerts.
+ */
 function ensureVapidConfigured(): VapidDetails | null {
   if (!isPushConfigured()) return null;
   const details: VapidDetails = {
@@ -48,8 +54,13 @@ function ensureVapidConfigured(): VapidDetails | null {
   };
   const signature = `${details.subject}|${details.publicKey}|${details.privateKey}`;
   if (configuredSignature !== signature) {
-    webpush.setVapidDetails(details.subject, details.publicKey, details.privateKey);
-    configuredSignature = signature;
+    try {
+      webpush.setVapidDetails(details.subject, details.publicKey, details.privateKey);
+      configuredSignature = signature;
+    } catch (err) {
+      console.error('ensureVapidConfigured: malformed VAPID config, push disabled', err);
+      return null;
+    }
   }
   return details;
 }
@@ -102,7 +113,7 @@ export async function sendPushToPhone(
     try {
       const result = await send(sub, data, { vapidDetails });
       if (result?.statusCode === 404 || result?.statusCode === 410) {
-        await deactivatePushSubscription(gw, sub.endpoint);
+        await deactivatePushSubscription(gw, sub.endpoint, phone);
       } else {
         sentCount++;
       }
@@ -110,7 +121,7 @@ export async function sendPushToPhone(
       const statusCode = (err as { statusCode?: number } | undefined)?.statusCode;
       if (statusCode === 404 || statusCode === 410) {
         try {
-          await deactivatePushSubscription(gw, sub.endpoint);
+          await deactivatePushSubscription(gw, sub.endpoint, phone);
         } catch (deactivateErr) {
           console.error('sendPushToPhone: deactivatePushSubscription failed for', sub.endpoint, deactivateErr);
         }
@@ -124,12 +135,18 @@ export async function sendPushToPhone(
 
 /**
  * Notifies a worker on their best available channel (push-over-Telegram cutover). Never throws.
+ *
+ * Delivery fallback: if the chosen channel is 'push' but every subscribed device
+ * fails to deliver (sent === 0), and the worker is an admin with a linked Telegram
+ * chat, fall back to Telegram so a subscribed admin whose devices all failed still
+ * gets the alert — this is a safety/attendance path, not just a UX nicety.
  */
 export async function notifyPhone(
   gw: SheetsGateway,
   worker: Worker,
   message: string,
   opts?: { url?: string; title?: string },
+  deps?: Parameters<typeof sendPushToPhone>[3],
 ): Promise<'push' | 'telegram' | 'none'> {
   try {
     const hasPush = await hasPushSubscription(gw, worker.phone);
@@ -140,11 +157,22 @@ export async function notifyPhone(
     });
 
     if (channel === 'push') {
-      await sendPushToPhone(gw, worker.phone, {
-        title: opts?.title ?? 'FlowCat',
-        body: message,
-        url: opts?.url,
-      });
+      const sent = await sendPushToPhone(
+        gw,
+        worker.phone,
+        {
+          title: opts?.title ?? 'FlowCat',
+          body: message,
+          url: opts?.url,
+        },
+        deps,
+      );
+      const telegramChatId = (worker.telegramChatId ?? '').trim();
+      if (sent === 0 && worker.admin && telegramChatId) {
+        await sendTelegram(telegramChatId, message);
+        return 'telegram';
+      }
+      return 'push';
     } else if (channel === 'telegram') {
       await sendTelegram((worker.telegramChatId ?? '').trim(), message);
     }

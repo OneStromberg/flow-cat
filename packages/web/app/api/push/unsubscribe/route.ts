@@ -22,7 +22,7 @@ export async function POST(req: Request) {
 
   const endpoint = str((body as Record<string, unknown> | null)?.endpoint);
   if (endpoint) {
-    await deactivatePushSubscription(getGateway(), endpoint);
+    await deactivatePushSubscription(getGateway(), endpoint, worker.phone);
   }
   return Response.json({ ok: true });
 }

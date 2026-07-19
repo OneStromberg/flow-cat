@@ -112,6 +112,74 @@ test('phone normalization: a 972... save is found by a 05... lookup', async () =
   assert.equal(subs.length, 1);
 });
 
+// --- Ownership / IDOR guards ---
+
+test('deactivatePushSubscription with a non-matching phone is a no-op', async () => {
+  const g = gw();
+  const endpoint = 'https://push.example/dev1';
+  await savePushSubscription(g, '0501234567', makeSub(endpoint));
+
+  await deactivatePushSubscription(g, endpoint, '0509999999');
+
+  const subs = await listPushSubscriptions(g, '0501234567');
+  assert.equal(subs.length, 1);
+  assert.equal(subs[0].endpoint, endpoint);
+});
+
+test('deactivatePushSubscription with the matching (owning) phone still deactivates', async () => {
+  const g = gw();
+  const endpoint = 'https://push.example/dev1';
+  await savePushSubscription(g, '0501234567', makeSub(endpoint));
+
+  await deactivatePushSubscription(g, endpoint, '0501234567');
+
+  assert.equal((await listPushSubscriptions(g, '0501234567')).length, 0);
+});
+
+test('deactivatePushSubscription with a matching phone in a different normalized form still deactivates', async () => {
+  const g = gw();
+  const endpoint = 'https://push.example/dev1';
+  await savePushSubscription(g, '0501234567', makeSub(endpoint));
+
+  await deactivatePushSubscription(g, endpoint, '972501234567');
+
+  assert.equal((await listPushSubscriptions(g, '0501234567')).length, 0);
+});
+
+test('savePushSubscription for an endpoint already owned by another worker deactivates the stale row and creates a fresh one for the caller', async () => {
+  const g = gw();
+  const endpoint = 'https://push.example/shared-device';
+  await savePushSubscription(g, '0501234567', makeSub(endpoint)); // worker A claims it first
+
+  // worker B saves the same endpoint (device changed hands)
+  await savePushSubscription(g, '0507654321', makeSub(endpoint));
+
+  const aSubs = await listPushSubscriptions(g, '0501234567');
+  assert.equal(aSubs.length, 0); // A's row no longer returned (deactivated)
+
+  const bSubs = await listPushSubscriptions(g, '0507654321');
+  assert.equal(bSubs.length, 1);
+  assert.equal(bSubs[0].endpoint, endpoint);
+
+  const rows = await g.readTab('PushSubscriptions');
+  assert.equal(rows.length, 3); // header + A's stale row + B's new row
+  const header = rows[0];
+  const aRow = rows.find((r, i) => i > 0 && r[header.indexOf('phone')] === '972501234567');
+  assert.equal(aRow?.[header.indexOf('active')], 'no');
+});
+
+test('savePushSubscription for an endpoint already owned by the same worker keeps upserting in place (no duplicate row)', async () => {
+  const g = gw();
+  const endpoint = 'https://push.example/dev1';
+  await savePushSubscription(g, '0501234567', makeSub(endpoint), 'ua-1');
+  await savePushSubscription(g, '972501234567', makeSub(endpoint), 'ua-2'); // same worker, different phone form
+
+  const subs = await listPushSubscriptions(g, '0501234567');
+  assert.equal(subs.length, 1);
+  const rows = await g.readTab('PushSubscriptions');
+  assert.equal(rows.length, 2); // header + 1 row, no append
+});
+
 test('listAllPushSubscriptions returns all active subs across workers, excludes inactive', async () => {
   const g = gw();
   await savePushSubscription(g, '0501234567', makeSub('https://push.example/dev1'));

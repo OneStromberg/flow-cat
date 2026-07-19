@@ -1,5 +1,6 @@
 import { getGateway } from '../../../../lib/sheets';
 import { requireWorker } from '../../../../lib/session';
+import { isAllowedPushEndpoint } from '../../../../lib/push-endpoint';
 import { savePushSubscription, type PushSub } from '@scourage/worklog-core';
 
 export const runtime = 'nodejs';
@@ -32,6 +33,7 @@ export async function POST(req: Request) {
 
   const sub = parseSubscription(body);
   if (!sub) return Response.json({ error: 'invalid subscription' }, { status: 400 });
+  if (!isAllowedPushEndpoint(sub.endpoint)) return Response.json({ error: 'invalid subscription' }, { status: 400 });
 
   await savePushSubscription(getGateway(), worker.phone, sub, req.headers.get('user-agent') ?? '');
   return Response.json({ ok: true });

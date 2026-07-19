@@ -199,3 +199,70 @@ test('notifyPhone: unsubscribed non-admin worker routes to none', async () => {
   const channel = await notifyPhone(g, worker, 'missed check-in');
   assert.equal(channel, 'none');
 });
+
+// --- notifyPhone: delivery fallback (push -> telegram when every device fails) ---
+
+const alwaysFailSend = {
+  send: async () => {
+    throw new Error('device unreachable');
+  },
+};
+
+test('notifyPhone: subscribed admin whose push send fails everywhere falls back to telegram', async () => {
+  await withVapidEnv(async () => {
+    const g = gw();
+    await savePushSubscription(g, '0501234567', makeSub('https://push.example/dead'));
+    const worker = makeWorker({ phone: '0501234567', admin: true, telegramChatId: '12345' });
+
+    const channel = await notifyPhone(g, worker, 'missed check-in', undefined, alwaysFailSend);
+    assert.equal(channel, 'telegram');
+  });
+});
+
+test('notifyPhone: subscribed non-admin worker whose push send fails everywhere gets no fallback (stays push)', async () => {
+  await withVapidEnv(async () => {
+    const g = gw();
+    await savePushSubscription(g, '0501234567', makeSub('https://push.example/dead'));
+    const worker = makeWorker({ phone: '0501234567', admin: false });
+
+    const channel = await notifyPhone(g, worker, 'missed check-in', undefined, alwaysFailSend);
+    assert.equal(channel, 'push');
+  });
+});
+
+test('notifyPhone: subscribed admin whose push send fails everywhere but has no linked telegram gets no fallback (stays push)', async () => {
+  await withVapidEnv(async () => {
+    const g = gw();
+    await savePushSubscription(g, '0501234567', makeSub('https://push.example/dead'));
+    const worker = makeWorker({ phone: '0501234567', admin: true, telegramChatId: '' });
+
+    const channel = await notifyPhone(g, worker, 'missed check-in', undefined, alwaysFailSend);
+    assert.equal(channel, 'push');
+  });
+});
+
+// --- ensureVapidConfigured: malformed VAPID key no-ops instead of throwing ---
+
+test('sendPushToPhone: malformed VAPID public key no-ops (returns 0, never throws)', async () => {
+  const prev = {
+    pub: process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY,
+    priv: process.env.VAPID_PRIVATE_KEY,
+    subj: process.env.VAPID_SUBJECT,
+  };
+  process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY = 'not-a-valid-vapid-key';
+  process.env.VAPID_PRIVATE_KEY = 'also-not-valid';
+  process.env.VAPID_SUBJECT = 'mailto:test@example.com';
+  try {
+    const g = gw();
+    await savePushSubscription(g, '0501234567', makeSub('https://push.example/dev1'));
+    const sent = await sendPushToPhone(g, '0501234567', { title: 't', body: 'b' });
+    assert.equal(sent, 0);
+  } finally {
+    if (prev.pub === undefined) delete process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+    else process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY = prev.pub;
+    if (prev.priv === undefined) delete process.env.VAPID_PRIVATE_KEY;
+    else process.env.VAPID_PRIVATE_KEY = prev.priv;
+    if (prev.subj === undefined) delete process.env.VAPID_SUBJECT;
+    else process.env.VAPID_SUBJECT = prev.subj;
+  }
+});

@@ -131,7 +131,9 @@ export function NotificationsOptin({ lang = DEFAULT_LANG }: { lang?: Lang }) {
     setTestStatus('sending');
     try {
       const res = await fetch('/api/push/test', { method: 'POST' });
-      setTestStatus(res.ok ? 'sent' : 'error');
+      const body = await res.json().catch(() => null);
+      const sent = (body as { sent?: number } | null)?.sent ?? 0;
+      setTestStatus(res.ok && sent > 0 ? 'sent' : 'error');
     } catch {
       setTestStatus('error');
     }
