@@ -1,5 +1,5 @@
 import { getGateway, COMPANY_TZ } from '../../../../lib/sheets';
-import { findMissedCheckins, lastAlertAtByKey, shouldRealert, recordAlerts, listWorkers, toE164 } from '@scourage/worklog-core';
+import { findMissedCheckins, recordAlerts, listWorkers, toE164 } from '@scourage/worklog-core';
 import { notifyAdmins, pickAdminChatIds } from '../../../../lib/telegram';
 import { notifyPhone, sendPushToPhone } from '../../../../lib/push';
 import { formatHmInTz } from '../../../../lib/format-time';
@@ -17,24 +17,37 @@ export async function GET(req: Request) {
 
   try {
     const missed = await findMissedCheckins(gw, now, 10, COMPANY_TZ);
-    const lastAt = await lastAlertAtByKey(gw);
-    const HORIZON_MS = 2 * 60 * 60 * 1000; // stop re-alerting ~2h after the expected time
     const nowMs = Date.parse(now);
-    const due = missed.filter((m) => {
-      const key = `${m.instanceId}|${m.employeePhone}|${m.type}`;
-      const last = lastAt.get(key);
-      if (m.type === 'out') return !last;                         // check-out: alert once ever
-      if (Number.isFinite(nowMs) && nowMs - Date.parse(m.expectedAt) > HORIZON_MS) return false; // stale no-show: stop
-      return shouldRealert(last, now, 4 * 60 * 1000);             // check-in: repeat (~5min cron, 4min gap avoids drift)
-    });
+    const HORIZON_MS = 2 * 60 * 60 * 1000; // stop re-alerting ~2h after the expected time
+    const CHECKIN_REALERT_MS = 4 * 60_000; // ~ every 5-min cron run
+    const workers = await listWorkers(gw);
+    const phoneToName = new Map(workers.map((w) => [w.phone, w.name]));
+    const admins = workers.filter((w) => w.admin);
 
-    if (due.length > 0) {
-      const workers = await listWorkers(gw);
-      const phoneToName = new Map(workers.map((w) => [w.phone, w.name]));
-      const admins = workers.filter((w) => w.admin);
+    const adminDue: typeof missed = [];
+    for (const m of missed) {
+      // stale missed check-ins stop re-alerting (check-out has no horizon)
+      if (m.type === 'in' && Number.isFinite(nowMs) && nowMs - Date.parse(m.expectedAt) > HORIZON_MS) continue;
 
-      const byLocation = new Map<string, typeof due>();
-      for (const m of due) {
+      // admin cadence: check-out alerts once ever, check-in re-alerts every cron run
+      const adminTtl = m.type === 'out' ? Infinity : CHECKIN_REALERT_MS;
+      if (await gw.tryClaim(`${m.instanceId}|${m.employeePhone}|${m.type}|admin`, adminTtl, nowMs)) {
+        adminDue.push(m);
+      }
+
+      // worker push: exactly once per event, no re-nag
+      if (await gw.tryClaim(`${m.instanceId}|${m.employeePhone}|${m.type}|worker`, Infinity, nowMs)) {
+        await sendPushToPhone(gw, m.employeePhone, {
+          title: 'FlowCat',
+          body: `You missed ${m.type === 'in' ? 'check-in' : 'check-out'} at ${m.location}`,
+          url: '/app/checkin',
+        });
+      }
+    }
+
+    if (adminDue.length > 0) {
+      const byLocation = new Map<string, typeof adminDue>();
+      for (const m of adminDue) {
         const arr = byLocation.get(m.location) ?? [];
         arr.push(m);
         byLocation.set(m.location, arr);
@@ -53,18 +66,10 @@ export async function GET(req: Request) {
         }
       }
 
-      for (const m of due) {
-        await sendPushToPhone(gw, m.employeePhone, {
-          title: 'FlowCat',
-          body: `You missed ${m.type === 'in' ? 'check-in' : 'check-out'} at ${m.location}`,
-          url: '/app/checkin',
-        });
-      }
-
-      await recordAlerts(gw, due);
+      await recordAlerts(gw, adminDue); // audit trail
     }
 
-    return Response.json({ ok: true, missed: missed.length, alerted: due.length });
+    return Response.json({ ok: true, missed: missed.length, alerted: adminDue.length });
   } catch (err) {
     console.error('missed-checkins cron failed:', err);
     try {

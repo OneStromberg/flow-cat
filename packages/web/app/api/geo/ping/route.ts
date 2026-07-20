@@ -8,8 +8,6 @@ import {
   distanceMeters,
   withinGeofence,
   todayISO,
-  lastAlertAtByKey,
-  shouldRealert,
   recordAlerts,
 } from '@scourage/worklog-core';
 import { notifyAdmins, pickAdminChatIds } from '../../../../lib/telegram';
@@ -76,12 +74,11 @@ export async function POST(req: Request) {
     // If place has no coordinates we cannot enforce — treat as in-zone
 
     if (!inZone) {
-      // Best-effort deduped alert: once per 15 minutes per (instance, worker)
+      // Race-free deduped alert: exactly one winner per 15-minute window per (instance, worker)
       try {
         const key = `${instanceId}|${worker.phone}|offsite`;
         const nowIso = new Date().toISOString();
-        const lastAt = await lastAlertAtByKey(gw);
-        if (shouldRealert(lastAt.get(key), nowIso, 15 * 60_000)) {
+        if (await gw.tryClaim(key, 15 * 60_000)) {
           await notifyAdmins(
             `📍 ${worker.name} is NOT on site at ${inst.location} — 📞 ${worker.phone}`,
             pickAdminChatIds(await listWorkers(gw)),
@@ -94,7 +91,7 @@ export async function POST(req: Request) {
               location: inst.location,
               expectedAt: nowIso,
             },
-          ]);
+          ]); // keep for audit trail
         }
       } catch (e) {
         console.error('geo ping offsite alert failed:', e);
