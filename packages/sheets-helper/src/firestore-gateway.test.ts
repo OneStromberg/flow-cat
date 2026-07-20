@@ -77,9 +77,9 @@ function makeFakeFirestore() {
     collection(name: string) {
       return makeCollRef(name);
     },
-    runTransaction(fn: (tx: TxLike) => Promise<void>): Promise<void> {
+    runTransaction<T>(fn: (tx: TxLike) => Promise<T>): Promise<T> {
       // Serialize: chain onto the previous transaction so appends are atomic.
-      txChain = txChain.then(() => {
+      const result = txChain.then(() => {
         const tx: TxLike = {
           async get(ref: ReturnType<typeof makeDocRef>) {
             return ref.get();
@@ -96,7 +96,14 @@ function makeFakeFirestore() {
         };
         return fn(tx);
       });
-      return txChain;
+      // txChain (void chain, used for serialization ordering) must not reject
+      // due to a per-call result; swallow here, real errors still propagate
+      // via the returned `result` promise.
+      txChain = result.then(
+        () => undefined,
+        () => undefined,
+      );
+      return result;
     },
   };
 
@@ -156,5 +163,47 @@ describe('createFirestoreGateway', () => {
     await g.writeHeaderRow('X', ['h']);
     await Promise.all([g.appendRow('X', ['a']), g.appendRow('X', ['b']), g.appendRow('X', ['c'])]);
     assert.equal((await g.readTab('X')).length, 4);
+  });
+
+  it('tryClaim: first claim wins, immediate re-claim within ttl fails, re-claimable after ttl', async () => {
+    const g = createFirestoreGateway({
+      projectId: 'p',
+      credentials: { client_email: 'x', private_key: 'y' },
+      firestore: makeFakeFirestore(),
+    });
+    assert.equal(await g.tryClaim('k', 60000, 1000), true);
+    assert.equal(await g.tryClaim('k', 60000, 1000), false);
+    assert.equal(await g.tryClaim('k', 60000, 61001), true);
+  });
+
+  it('tryClaim: different keys are independent', async () => {
+    const g = createFirestoreGateway({
+      projectId: 'p',
+      credentials: { client_email: 'x', private_key: 'y' },
+      firestore: makeFakeFirestore(),
+    });
+    assert.equal(await g.tryClaim('k', 60000, 1000), true);
+    assert.equal(await g.tryClaim('k2', 60000, 1000), true);
+  });
+
+  it('tryClaim: race — two concurrent claims for the same key, exactly one wins', async () => {
+    const g = createFirestoreGateway({
+      projectId: 'p',
+      credentials: { client_email: 'x', private_key: 'y' },
+      firestore: makeFakeFirestore(),
+    });
+    const results = await Promise.all([g.tryClaim('race', 60000, 5000), g.tryClaim('race', 60000, 5000)]);
+    assert.equal(results.filter((r) => r === true).length, 1);
+    assert.equal(results.filter((r) => r === false).length, 1);
+  });
+
+  it('tryClaim: keys with "/" and other special characters are sanitized into valid doc ids', async () => {
+    const g = createFirestoreGateway({
+      projectId: 'p',
+      credentials: { client_email: 'x', private_key: 'y' },
+      firestore: makeFakeFirestore(),
+    });
+    assert.equal(await g.tryClaim('worker/15551230000#alert', 60000, 1000), true);
+    assert.equal(await g.tryClaim('worker/15551230000#alert', 60000, 1000), false);
   });
 });

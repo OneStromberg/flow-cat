@@ -10,6 +10,7 @@ function countingGateway() {
     async writeHeaderRow() {},
     async appendRow() {},
     async updateRow() {},
+    async tryClaim() { return true; },
   };
   return { g, reads: () => reads };
 }

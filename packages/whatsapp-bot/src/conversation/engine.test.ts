@@ -128,6 +128,7 @@ test('save failure sends retry message, next message re-finalizes and writes log
     readTab: mem.readTab.bind(mem),
     writeHeaderRow: mem.writeHeaderRow.bind(mem),
     updateRow: mem.updateRow.bind(mem),
+    tryClaim: mem.tryClaim.bind(mem),
     async appendRow(tab, row) {
       if (failOnce) {
         failOnce = false;

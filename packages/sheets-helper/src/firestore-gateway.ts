@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { Firestore } from '@google-cloud/firestore';
 import type { SheetsGateway } from './gateway.ts';
 
@@ -33,7 +34,10 @@ interface TxContext {
 
 interface FirestoreLike {
   collection(name: string): CollRef;
-  runTransaction(fn: (tx: TxContext) => Promise<void>): Promise<void>;
+  // Generic to match the real Firestore#runTransaction<T>, which resolves to
+  // whatever the update function returns (needed so tryClaim can return its
+  // boolean result out of the transaction).
+  runTransaction<T>(fn: (tx: TxContext) => Promise<T>): Promise<T>;
 }
 
 // ---------------------------------------------------------------------------
@@ -60,6 +64,19 @@ export interface FirestoreGatewayOptions {
 
 const id = (n: number): string => String(n).padStart(9, '0');
 
+/**
+ * Sanitizes an arbitrary claim key into a valid Firestore doc id. Firestore
+ * ids can't contain "/" (and have a handful of other restrictions), so we
+ * replace disallowed characters and append a short content hash to avoid
+ * collisions between two different keys that sanitize to the same string
+ * (e.g. "a/b" and "a_b" would otherwise collide).
+ */
+function safeClaimDocId(key: string): string {
+  const sanitized = key.replace(/[^A-Za-z0-9_-]/g, '_').slice(0, 200);
+  const hash = createHash('sha1').update(key).digest('hex').slice(0, 10);
+  return `${sanitized || '_'}__${hash}`;
+}
+
 // ---------------------------------------------------------------------------
 // Factory
 // ---------------------------------------------------------------------------
@@ -83,6 +100,10 @@ export function createFirestoreGateway(opts: FirestoreGatewayOptions): SheetsGat
 
   function rowsRef(tab: string): CollRef {
     return db.collection(root).doc(tab).collection('rows');
+  }
+
+  function claimRef(key: string): DocRef {
+    return db.collection(root).doc('_claims').collection('keys').doc(safeClaimDocId(key));
   }
 
   return {
@@ -113,6 +134,23 @@ export function createFirestoreGateway(opts: FirestoreGatewayOptions): SheetsGat
 
     async updateRow(tab: string, rowNumber: number, row: string[]): Promise<void> {
       await rowsRef(tab).doc(id(rowNumber)).set({ _row: rowNumber, _cells: row });
+    },
+
+    async tryClaim(key: string, ttlMs: number, nowMs?: number): Promise<boolean> {
+      const now = nowMs ?? Date.now();
+      // Check-and-set happens INSIDE a single transaction, so two concurrent
+      // tryClaim calls for the same key are serialized by Firestore and
+      // exactly one observes "no prior claim" / "expired claim" → true.
+      return db.runTransaction(async (tx) => {
+        const ref = claimRef(key);
+        const snap = await tx.get(ref);
+        const last = snap.exists ? (snap.data()?.claimedAtMs as number | undefined) : undefined;
+        if (last === undefined || now - last >= ttlMs) {
+          tx.set(ref, { claimedAtMs: now });
+          return true;
+        }
+        return false;
+      });
     },
   };
 }

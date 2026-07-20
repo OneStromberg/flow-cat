@@ -34,7 +34,7 @@ export function createGoogleGateway(opts: SheetsAuthOptions): SheetsGateway {
     knownTabs.add(tab);
   }
 
-  return {
+  const gateway: SheetsGateway = {
     async readTab(tab) {
       try {
         const res = await sheets.spreadsheets.values.get({ spreadsheetId, range: tab });
@@ -71,5 +71,27 @@ export function createGoogleGateway(opts: SheetsAuthOptions): SheetsGateway {
         requestBody: { values: [row] },
       });
     },
+    // Best-effort only: Google Sheets has no atomic read-modify-write, so this
+    // read-then-append is racy under true concurrency (two callers can both
+    // observe "no recent claim" and both append). Acceptable here because
+    // production dedup runs through the Firestore gateway, which IS atomic;
+    // this legacy Sheets backend is the fallback path.
+    async tryClaim(key, ttlMs, nowMs) {
+      const now = nowMs ?? Date.now();
+      const rows = await gateway.readTab('_Claims');
+      let latest = -Infinity;
+      for (const r of rows) {
+        if (r[0] === key) {
+          const ts = Number(r[1]);
+          if (!Number.isNaN(ts) && ts > latest) latest = ts;
+        }
+      }
+      if (latest === -Infinity || now - latest >= ttlMs) {
+        await gateway.appendRow('_Claims', [key, String(now)]);
+        return true;
+      }
+      return false;
+    },
   };
+  return gateway;
 }

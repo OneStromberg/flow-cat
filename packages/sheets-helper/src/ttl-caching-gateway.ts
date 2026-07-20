@@ -37,5 +37,9 @@ export function createTtlCachingGateway(
       cache.delete(tab);
       return inner.updateRow(tab, rowNumber, row);
     },
+    // Pure pass-through — claims are never cached.
+    tryClaim(key, ttlMs, nowMs) {
+      return inner.tryClaim(key, ttlMs, nowMs);
+    },
   };
 }
