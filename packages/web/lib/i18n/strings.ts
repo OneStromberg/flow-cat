@@ -77,6 +77,12 @@ const EN = {
   'alert.backup': '💾 Backup saved: {name}',
   'alert.backupFailed': '⚠️ Backup failed: {reason}',
   'alert.shiftAccepted': '✅ Shift accepted\n📍 {location}{label}\n👤 {name}\n📞 {phone}\n🔗 {cardUrl}',
+  'alert.checkIn': 'check-in',
+  'alert.checkOut': 'check-out',
+  'alert.missedGroupHeader': 'Missed check-ins — {location}',
+  'alert.missedLine': '⚠️ {name} missed {checkType} (expected {time}) — 📞 {phone}',
+  'alert.workerMissed': 'You missed {checkType} at {location}',
+  'alert.missedDetectorFailed': '⚠️ Missed-checkin detector FAILED — check logs.',
 } as const;
 
 export type StringKey = keyof typeof EN;
@@ -157,6 +163,12 @@ const RU: Record<StringKey, string> = {
   'alert.backup': '💾 Бэкап сохранён: {name}',
   'alert.backupFailed': '⚠️ Ошибка бэкапа: {reason}',
   'alert.shiftAccepted': '✅ Смена принята\n📍 {location}{label}\n👤 {name}\n📞 {phone}\n🔗 {cardUrl}',
+  'alert.checkIn': 'приход',
+  'alert.checkOut': 'уход',
+  'alert.missedGroupHeader': 'Пропущенные отметки — {location}',
+  'alert.missedLine': '⚠️ {name} пропустил(-а) {checkType} (ожидалось {time}) — 📞 {phone}',
+  'alert.workerMissed': 'Вы пропустили {checkType} на {location}',
+  'alert.missedDetectorFailed': '⚠️ Детектор пропущенных отметок ОШИБКА — проверьте логи.',
 };
 
 // Hebrew is completed progressively — Partial is intentional; t() falls back he → en.

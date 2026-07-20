@@ -1,7 +1,7 @@
 import { getGateway, COMPANY_TZ } from '../../../../lib/sheets';
 import { findMissedCheckins, recordAlerts, listWorkers, toE164 } from '@scourage/worklog-core';
-import { notifyAdmins, pickAdminChatIds } from '../../../../lib/telegram';
-import { notifyPhone, sendPushToPhone } from '../../../../lib/push';
+import { notifyRecipients, sendPushToPhone } from '../../../../lib/push';
+import { tf, resolveLang } from '../../../../lib/i18n/strings';
 import { formatHmInTz } from '../../../../lib/format-time';
 
 export const runtime = 'nodejs';
@@ -22,6 +22,7 @@ export async function GET(req: Request) {
     const CHECKIN_REALERT_MS = 4 * 60_000; // ~ every 5-min cron run
     const workers = await listWorkers(gw);
     const phoneToName = new Map(workers.map((w) => [w.phone, w.name]));
+    const phoneToLang = new Map(workers.map((w) => [w.phone, w.lang]));
     const admins = workers.filter((w) => w.admin);
 
     const adminDue: typeof missed = [];
@@ -37,9 +38,13 @@ export async function GET(req: Request) {
 
       // worker push: exactly once per event, no re-nag
       if (await gw.tryClaim(`${m.instanceId}|${m.employeePhone}|${m.type}|worker`, Infinity, nowMs)) {
+        const workerLang = resolveLang(phoneToLang.get(m.employeePhone));
         await sendPushToPhone(gw, m.employeePhone, {
           title: 'FlowCat',
-          body: `You missed ${m.type === 'in' ? 'check-in' : 'check-out'} at ${m.location}`,
+          body: tf('alert.workerMissed', workerLang, {
+            checkType: tf(m.type === 'in' ? 'alert.checkIn' : 'alert.checkOut', workerLang, {}),
+            location: m.location,
+          }),
           url: '/app/checkin',
         });
       }
@@ -54,16 +59,18 @@ export async function GET(req: Request) {
       }
 
       for (const [location, events] of byLocation) {
-        const lines = events.map((m) => {
-          const name = phoneToName.get(m.employeePhone) || m.employeePhone;
-          const checkType = m.type === 'in' ? 'check-in' : 'check-out';
-          const expectedTime = formatHmInTz(m.expectedAt, COMPANY_TZ);
-          return `⚠️ ${name} missed ${checkType} (expected ${expectedTime}) — 📞 ${toE164(m.employeePhone)}`;
-        });
-        const message = `Missed check-ins — ${location}\n${lines.join('\n')}`;
-        for (const admin of admins) {
-          await notifyPhone(gw, admin, message, { url: '/admin/attendance' });
-        }
+        // build+send per admin, in that admin's own language (notifyRecipients calls
+        // this per recipient with their resolved lang — no shared/English-only string)
+        await notifyRecipients(gw, admins, (lang) => {
+          const header = tf('alert.missedGroupHeader', lang, { location });
+          const lines = events.map((m) => tf('alert.missedLine', lang, {
+            name: phoneToName.get(m.employeePhone) || m.employeePhone,
+            checkType: tf(m.type === 'in' ? 'alert.checkIn' : 'alert.checkOut', lang, {}),
+            time: formatHmInTz(m.expectedAt, COMPANY_TZ),
+            phone: toE164(m.employeePhone),
+          }));
+          return `${header}\n${lines.join('\n')}`;
+        }, { url: '/admin/attendance' });
       }
 
       await recordAlerts(gw, adminDue); // audit trail
@@ -74,8 +81,8 @@ export async function GET(req: Request) {
     console.error('missed-checkins cron failed:', err);
     try {
       const workers = await listWorkers(gw);
-      const admins = pickAdminChatIds(workers);
-      await notifyAdmins('⚠️ Missed-checkin detector FAILED — check logs.', admins);
+      const admins = workers.filter((w) => w.admin);
+      await notifyRecipients(gw, admins, (lang) => tf('alert.missedDetectorFailed', lang, {}));
     } catch (notifyErr) {
       console.error('missed-checkins failure-notify failed:', notifyErr);
     }
