@@ -37,6 +37,7 @@ export function isPushConfigured(): boolean {
 }
 
 let configuredSignature: string | null = null;
+let warnedUnconfigured = false;
 
 /**
  * Lazily calls webpush.setVapidDetails once per distinct config; no-ops if
@@ -46,7 +47,18 @@ let configuredSignature: string | null = null;
  * recordAlerts.
  */
 function ensureVapidConfigured(): VapidDetails | null {
-  if (!isPushConfigured()) return null;
+  if (!isPushConfigured()) {
+    // Surface a misconfigured deploy once: without this, every push send
+    // silently returns 0 and the missed-checkin "once" claim is consumed
+    // forever, so alerts vanish with no trace.
+    if (!warnedUnconfigured) {
+      warnedUnconfigured = true;
+      console.warn(
+        'web-push: VAPID env not configured — push sends are a silent no-op. Set NEXT_PUBLIC_VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY, VAPID_SUBJECT.',
+      );
+    }
+    return null;
+  }
   const details: VapidDetails = {
     subject: vapidSubject(),
     publicKey: vapidPublicKey(),

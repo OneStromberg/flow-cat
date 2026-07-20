@@ -12,7 +12,12 @@ export interface SheetsGateway {
    * the claim at `nowMs`) if there was no prior claim on `key`, or the prior
    * claim is older than `ttlMs` (re-claimable). Returns `false` if a claim
    * already exists within the window. `nowMs` defaults to `Date.now()`.
-   * Exactly one of N concurrent callers for the same key/window gets `true`.
+   *
+   * Atomic on the Firestore (transaction) and memory (single-threaded)
+   * backends — exactly one of N concurrent callers for the same key/window
+   * gets `true`. The legacy Sheets backend is BEST-EFFORT only (read-then-
+   * append, not atomic) and can double-claim under true concurrency, so the
+   * race-free guarantee holds only when `STORAGE_BACKEND=firestore`.
    */
   tryClaim(key: string, ttlMs: number, nowMs?: number): Promise<boolean>;
 }
