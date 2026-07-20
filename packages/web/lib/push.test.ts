@@ -44,23 +44,24 @@ async function withVapidEnv<T>(fn: () => Promise<T>): Promise<T> {
 
 // --- chooseChannel: pure cutover rule ---
 
-test('chooseChannel: hasPush wins regardless of admin/telegram state', () => {
-  assert.equal(chooseChannel({ hasPush: true, isAdmin: false, hasTelegramChat: false }), 'push');
-  assert.equal(chooseChannel({ hasPush: true, isAdmin: true, hasTelegramChat: true }), 'push');
-  assert.equal(chooseChannel({ hasPush: true, isAdmin: true, hasTelegramChat: false }), 'push');
+test('chooseChannel: hasPush wins regardless of telegram state', () => {
+  assert.equal(chooseChannel({ hasPush: true, hasTelegramChat: false }), 'push');
+  assert.equal(chooseChannel({ hasPush: true, hasTelegramChat: true }), 'push');
 });
 
-test('chooseChannel: no push, admin with linked telegram -> telegram', () => {
-  assert.equal(chooseChannel({ hasPush: false, isAdmin: true, hasTelegramChat: true }), 'telegram');
+test('chooseChannel: no push, linked telegram -> telegram (admin)', () => {
+  assert.equal(chooseChannel({ hasPush: false, hasTelegramChat: true }), 'telegram');
 });
 
-test('chooseChannel: no push, admin without linked telegram -> none', () => {
-  assert.equal(chooseChannel({ hasPush: false, isAdmin: true, hasTelegramChat: false }), 'none');
+test('chooseChannel: no push, linked telegram -> telegram (non-admin worker)', () => {
+  // The cutover applies to any recipient, not just admins — a linked non-admin
+  // worker with no push subscription must still resolve to 'telegram', or
+  // broadcast fan-out (which targets non-admin workers) silently drops them.
+  assert.equal(chooseChannel({ hasPush: false, hasTelegramChat: true }), 'telegram');
 });
 
-test('chooseChannel: no push, non-admin worker -> none regardless of telegram flag', () => {
-  assert.equal(chooseChannel({ hasPush: false, isAdmin: false, hasTelegramChat: false }), 'none');
-  assert.equal(chooseChannel({ hasPush: false, isAdmin: false, hasTelegramChat: true }), 'none');
+test('chooseChannel: no push, no linked telegram -> none', () => {
+  assert.equal(chooseChannel({ hasPush: false, hasTelegramChat: false }), 'none');
 });
 
 // --- sendPushToPhone: no-op when unconfigured ---
@@ -201,6 +202,17 @@ test('notifyPhone: unsubscribed non-admin worker routes to none', async () => {
   assert.equal(channel, 'none');
 });
 
+test('notifyPhone: unsubscribed non-admin worker with linked telegram routes to telegram', async () => {
+  // Regression coverage: admin/broadcast/route.ts fans out to non-admin workers via
+  // notifyPhone. A worker linked on Telegram but with no push subscription must still
+  // be reachable, or broadcasts silently stop delivering to them.
+  const g = gw();
+  const worker = makeWorker({ phone: '0507777777', admin: false, telegramChatId: '54321' });
+
+  const channel = await notifyPhone(g, worker, 'broadcast message');
+  assert.equal(channel, 'telegram');
+});
+
 // --- notifyPhone: delivery fallback (push -> telegram when every device fails) ---
 
 const alwaysFailSend = {
@@ -220,7 +232,7 @@ test('notifyPhone: subscribed admin whose push send fails everywhere falls back 
   });
 });
 
-test('notifyPhone: subscribed non-admin worker whose push send fails everywhere gets no fallback (stays push)', async () => {
+test('notifyPhone: subscribed non-admin worker whose push send fails everywhere but has no linked telegram gets no fallback (stays push)', async () => {
   await withVapidEnv(async () => {
     const g = gw();
     await savePushSubscription(g, '0501234567', makeSub('https://push.example/dead'));
@@ -228,6 +240,19 @@ test('notifyPhone: subscribed non-admin worker whose push send fails everywhere 
 
     const channel = await notifyPhone(g, worker, 'missed check-in', undefined, alwaysFailSend);
     assert.equal(channel, 'push');
+  });
+});
+
+test('notifyPhone: subscribed non-admin worker with linked telegram whose push send fails everywhere falls back to telegram', async () => {
+  // The delivery fallback is no longer admin-gated: any linked recipient whose
+  // subscribed devices all fail to deliver still gets the Telegram fallback.
+  await withVapidEnv(async () => {
+    const g = gw();
+    await savePushSubscription(g, '0501234567', makeSub('https://push.example/dead'));
+    const worker = makeWorker({ phone: '0501234567', admin: false, telegramChatId: '67890' });
+
+    const channel = await notifyPhone(g, worker, 'missed check-in', undefined, alwaysFailSend);
+    assert.equal(channel, 'telegram');
   });
 });
 
@@ -287,13 +312,16 @@ test('notifyRecipients: calls build once per recipient with that recipient\'s re
     return `msg-${lang}`;
   };
 
-  await notifyRecipients(g, recipients, build);
+  const sent = await notifyRecipients(g, recipients, build);
 
   assert.equal(calls.length, recipients.length);
   assert.deepEqual(calls.sort(), ['en', 'he', 'ru'].sort());
   // resolveLang('') defaults to 'ru', matching the app default (a recipient with no set
   // language gets Russian, not English) — confirmed here against the actual helper.
   assert.equal(resolveLang(''), 'ru');
+  // No push subs and no Telegram link configured for any of these -> every recipient
+  // routes to 'none', so the returned count is 0.
+  assert.equal(sent, 0);
 });
 
 test('notifyRecipients: resolves without throwing when every recipient routes to "none"', async () => {
@@ -302,7 +330,28 @@ test('notifyRecipients: resolves without throwing when every recipient routes to
     makeWorker({ phone: '0504444444', admin: false }),
     makeWorker({ phone: '0505555555', admin: false }),
   ];
-  await assert.doesNotReject(() => notifyRecipients(g, recipients, () => 'hi'));
+  let sent: number | undefined;
+  await assert.doesNotReject(async () => {
+    sent = await notifyRecipients(g, recipients, () => 'hi');
+  });
+  assert.equal(sent, 0);
+});
+
+test('notifyRecipients: returns the count of recipients that landed on a real channel', async () => {
+  // Regression coverage for the broadcast route: `sent` must reflect only
+  // recipients who actually resolved to 'push' or 'telegram', not the full
+  // recipient count — including a non-admin worker reachable only via a linked
+  // Telegram chat (the case admin/broadcast/route.ts regressed on).
+  const g = gw();
+  await savePushSubscription(g, '0501111111', makeSub('https://push.example/dev1'));
+  const recipients: Worker[] = [
+    makeWorker({ phone: '0501111111', admin: false }), // push
+    makeWorker({ phone: '0502222222', admin: false, telegramChatId: '112233' }), // telegram
+    makeWorker({ phone: '0503333333', admin: false }), // none
+  ];
+
+  const sent = await withVapidEnv(() => notifyRecipients(g, recipients, () => 'broadcast'));
+  assert.equal(sent, 2);
 });
 
 test('notifyRecipients: an empty recipient list is a no-op that resolves', async () => {
@@ -311,4 +360,5 @@ test('notifyRecipients: an empty recipient list is a no-op that resolves', async
     throw new Error('build should never be called for an empty recipient list');
   };
   await assert.doesNotReject(() => notifyRecipients(g, [], build));
+  assert.equal(await notifyRecipients(g, [], build), 0);
 });

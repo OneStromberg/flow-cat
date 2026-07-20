@@ -78,14 +78,13 @@ function ensureVapidConfigured(): VapidDetails | null {
   return details;
 }
 
-/** Per-recipient cutover rule: push if subscribed, else Telegram for subscribed admins, else nothing. Pure. */
+/** Per-recipient cutover rule: push if subscribed, else Telegram if linked, else nothing. Applies to any recipient (admin or not). Pure. */
 export function chooseChannel(opts: {
   hasPush: boolean;
-  isAdmin: boolean;
   hasTelegramChat: boolean;
 }): 'push' | 'telegram' | 'none' {
   if (opts.hasPush) return 'push';
-  if (opts.isAdmin && opts.hasTelegramChat) return 'telegram';
+  if (opts.hasTelegramChat) return 'telegram';
   return 'none';
 }
 
@@ -148,11 +147,12 @@ export async function sendPushToPhone(
 
 /**
  * Notifies a worker on their best available channel (push-over-Telegram cutover). Never throws.
+ * Applies to any recipient, admin or not.
  *
  * Delivery fallback: if the chosen channel is 'push' but every subscribed device
- * fails to deliver (sent === 0), and the worker is an admin with a linked Telegram
- * chat, fall back to Telegram so a subscribed admin whose devices all failed still
- * gets the alert — this is a safety/attendance path, not just a UX nicety.
+ * fails to deliver (sent === 0), and the worker has a linked Telegram chat, fall
+ * back to Telegram so a subscribed recipient whose devices all failed still gets
+ * the alert — this is a safety/attendance path, not just a UX nicety.
  */
 export async function notifyPhone(
   gw: SheetsGateway,
@@ -165,7 +165,6 @@ export async function notifyPhone(
     const hasPush = await hasPushSubscription(gw, worker.phone);
     const channel = chooseChannel({
       hasPush,
-      isAdmin: !!worker.admin,
       hasTelegramChat: !!(worker.telegramChatId ?? '').trim(),
     });
 
@@ -181,7 +180,7 @@ export async function notifyPhone(
         deps,
       );
       const telegramChatId = (worker.telegramChatId ?? '').trim();
-      if (sent === 0 && worker.admin && telegramChatId) {
+      if (sent === 0 && telegramChatId) {
         await sendTelegram(telegramChatId, message);
         return 'telegram';
       }
@@ -204,14 +203,18 @@ export async function notifyPhone(
  * `Promise.allSettled` so one recipient's failure never affects delivery to the
  * others; `notifyPhone` already never throws, so this never throws either. An empty
  * `recipients` list is a no-op.
+ *
+ * Returns the count of recipients that landed on a real channel ('push' or
+ * 'telegram') — i.e. excludes 'none' and any settled-rejected entries.
  */
 export async function notifyRecipients(
   gw: SheetsGateway,
   recipients: Worker[],
   build: (lang: Lang) => string,
   opts?: { url?: string; title?: string },
-): Promise<void> {
-  await Promise.allSettled(
+): Promise<number> {
+  const results = await Promise.allSettled(
     recipients.map((r) => notifyPhone(gw, r, build(resolveLang(r.lang)), opts)),
   );
+  return results.filter((r) => r.status === 'fulfilled' && r.value !== 'none').length;
 }

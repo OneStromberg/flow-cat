@@ -48,9 +48,9 @@ export async function POST(req: Request) {
 
     const filtered = filterWorkers(workers, filters);
 
-    await notifyRecipients(gw, filtered, () => message, { url: '/app' });
+    const sent = await notifyRecipients(gw, filtered, () => message, { url: '/app' });
 
-    return Response.json({ ok: true, matched: filtered.length });
+    return Response.json({ ok: true, matched: filtered.length, sent });
   } catch (err) {
     console.error('broadcast failed:', err);
     return Response.json({ error: 'broadcast failed' }, { status: 503 });
