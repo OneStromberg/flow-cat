@@ -78,7 +78,7 @@ export function BroadcastClient({ workers, cities, places, shifts, templates, en
   const cityOpts = cities.map((c) => ({ value: c, label: c }));
   const placeOpts = places.map((p) => ({ value: p, label: p }));
 
-  const canSend = message.trim().length > 0 && linked.length > 0 && !sending;
+  const canSend = message.trim().length > 0 && filtered.length > 0 && !sending;
   const selectedTpl = templates.find((t) => t.id === tplId) ?? null;
   const canSendTpl = !!selectedTpl && linked.length > 0 && !tplSending;
 
@@ -94,7 +94,7 @@ export function BroadcastClient({ workers, cities, places, shifts, templates, en
       });
       const data = (await res.json()) as { sent?: number; error?: string };
       if (!res.ok) throw new Error(data.error ?? 'Request failed');
-      setStatus({ type: 'success', text: `Sent to ${data.sent ?? 0} of ${linked.length}` });
+      setStatus({ type: 'success', text: `Sent to ${data.sent ?? 0} of ${filtered.length}` });
       setMessage('');
     } catch (err) {
       setStatus({ type: 'error', text: err instanceof Error ? err.message : 'Failed to send' });
@@ -217,7 +217,7 @@ export function BroadcastClient({ workers, cities, places, shifts, templates, en
         onClick={handleSend}
         className="w-full rounded-lg bg-gray-900 px-4 py-3 text-sm font-medium text-white disabled:opacity-40"
       >
-        {sending ? 'Sending…' : `Send to ${linked.length} worker${linked.length !== 1 ? 's' : ''}`}
+        {sending ? 'Sending…' : `Send to ${filtered.length} worker${filtered.length !== 1 ? 's' : ''}`}
       </button>
 
       {/* Broadcast a template */}

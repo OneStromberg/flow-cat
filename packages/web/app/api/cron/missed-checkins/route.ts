@@ -1,6 +1,6 @@
 import { getGateway, COMPANY_TZ } from '../../../../lib/sheets';
 import { findMissedCheckins, recordAlerts, listWorkers, toE164 } from '@scourage/worklog-core';
-import { notifyRecipients, sendPushToPhone } from '../../../../lib/push';
+import { notifyRecipients, notifyPhone, sendPushToPhone } from '../../../../lib/push';
 import { tf, resolveLang } from '../../../../lib/i18n/strings';
 import { formatHmInTz } from '../../../../lib/format-time';
 
@@ -36,17 +36,22 @@ export async function GET(req: Request) {
         adminDue.push(m);
       }
 
-      // worker push: exactly once per event, no re-nag
+      // worker notify: exactly once per event, no re-nag. Routed through the
+      // push-or-Telegram cutover (notifyPhone) so linked workers without a push
+      // subscription still get reached; falls back to direct push if the worker
+      // record can't be found (shouldn't happen for an assigned worker).
       if (await gw.tryClaim(`${m.instanceId}|${m.employeePhone}|${m.type}|worker`, Infinity, nowMs)) {
-        const workerLang = resolveLang(phoneToLang.get(m.employeePhone));
-        await sendPushToPhone(gw, m.employeePhone, {
-          title: 'FlowCat',
-          body: tf('alert.workerMissed', workerLang, {
-            checkType: tf(m.type === 'in' ? 'alert.checkIn' : 'alert.checkOut', workerLang, {}),
-            location: m.location,
-          }),
-          url: '/app/checkin',
+        const worker = workers.find((w) => w.phone === m.employeePhone);
+        const workerLang = resolveLang(worker?.lang ?? phoneToLang.get(m.employeePhone));
+        const body = tf('alert.workerMissed', workerLang, {
+          checkType: tf(m.type === 'in' ? 'alert.checkIn' : 'alert.checkOut', workerLang, {}),
+          location: m.location,
         });
+        if (worker) {
+          await notifyPhone(gw, worker, body, { url: '/app/checkin' });
+        } else {
+          await sendPushToPhone(gw, m.employeePhone, { title: 'FlowCat', body, url: '/app/checkin' });
+        }
       }
     }
 
