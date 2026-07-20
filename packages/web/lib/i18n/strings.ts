@@ -184,3 +184,15 @@ export function resolveLang(raw: string | undefined | null): Lang {
 export function t(key: StringKey, lang: Lang = DEFAULT_LANG): string {
   return DICT[lang][key] ?? EN[key] ?? key;
 }
+
+/**
+ * Resolves `key` via `t(key, lang)`, then fills `{placeholder}` tokens from `params`.
+ * A missing/undefined/null param resolves to '' — never leaks `{name}` or the literal
+ * string "undefined". No effect on templates without placeholders.
+ */
+export function tf(key: StringKey, lang: Lang, params: Record<string, string | number>): string {
+  return t(key, lang).replace(/\{(\w+)\}/g, (_, name) => {
+    const v = params[name];
+    return v === undefined || v === null ? '' : String(v);
+  });
+}

@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import webpush from 'web-push';
 import { createMemoryGateway } from '@scourage/sheets-helper';
 import { savePushSubscription, listPushSubscriptions, type Worker } from '@scourage/worklog-core';
-import { chooseChannel, sendPushToPhone, notifyPhone, isPushConfigured } from './push.ts';
+import { chooseChannel, sendPushToPhone, notifyPhone, notifyRecipients, isPushConfigured } from './push.ts';
+import { resolveLang } from './i18n/strings';
 
 // Real (but throwaway) VAPID keypair: webpush.setVapidDetails validates key shape,
 // so a placeholder string like 'test-pub-key' fails validation before we even get
@@ -265,4 +266,49 @@ test('sendPushToPhone: malformed VAPID public key no-ops (returns 0, never throw
     if (prev.subj === undefined) delete process.env.VAPID_SUBJECT;
     else process.env.VAPID_SUBJECT = prev.subj;
   }
+});
+
+// --- notifyRecipients: per-recipient fan-out ---
+//
+// gw() sets up a memory gateway with no push subs and no TELEGRAM_BOT_TOKEN configured, so
+// every recipient here routes to 'none' — these tests are about the fan-out mechanics
+// (per-recipient build + never-throws + empty-list no-op), not delivery routing (covered above).
+
+test('notifyRecipients: calls build once per recipient with that recipient\'s resolved lang', async () => {
+  const g = gw();
+  const recipients: Worker[] = [
+    makeWorker({ phone: '0501111111', admin: true, lang: 'en' }),
+    makeWorker({ phone: '0502222222', admin: true, lang: '' }),
+    makeWorker({ phone: '0503333333', admin: true, lang: 'he' }),
+  ];
+  const calls: string[] = [];
+  const build = (lang: string) => {
+    calls.push(lang);
+    return `msg-${lang}`;
+  };
+
+  await notifyRecipients(g, recipients, build);
+
+  assert.equal(calls.length, recipients.length);
+  assert.deepEqual(calls.sort(), ['en', 'he', 'ru'].sort());
+  // resolveLang('') defaults to 'ru', matching the app default (a recipient with no set
+  // language gets Russian, not English) — confirmed here against the actual helper.
+  assert.equal(resolveLang(''), 'ru');
+});
+
+test('notifyRecipients: resolves without throwing when every recipient routes to "none"', async () => {
+  const g = gw();
+  const recipients: Worker[] = [
+    makeWorker({ phone: '0504444444', admin: false }),
+    makeWorker({ phone: '0505555555', admin: false }),
+  ];
+  await assert.doesNotReject(() => notifyRecipients(g, recipients, () => 'hi'));
+});
+
+test('notifyRecipients: an empty recipient list is a no-op that resolves', async () => {
+  const g = gw();
+  const build = () => {
+    throw new Error('build should never be called for an empty recipient list');
+  };
+  await assert.doesNotReject(() => notifyRecipients(g, [], build));
 });

@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { t, resolveLang, DEFAULT_LANG } from './strings';
+import { t, tf, resolveLang, DEFAULT_LANG } from './strings';
 
 test('t returns RU by default and EN/HE when asked', () => {
   assert.equal(t('checkin.start'), 'Начать смену');       // default ru
@@ -45,4 +45,54 @@ test('a key missing in the he dictionary but present in en falls back to the en 
   assert.equal(heValue, enValue);
   assert.notEqual(heValue, '');
   assert.notEqual(heValue, undefined);
+});
+
+// --- tf: interpolation mechanics ---
+//
+// No real StringKey has placeholders yet (the `alert.*` templates land in a later task), so —
+// like the "unknown key" test above — these tests pass a key literal that isn't in the
+// dictionary; t()'s own fallback (`DICT[lang][key] ?? EN[key] ?? key`) returns the key text
+// itself, which gives tf() a real `{placeholder}`-bearing template to interpolate against.
+// The interpolation mechanism is what's under test, not any specific dictionary content.
+
+test('tf: interpolates multiple placeholders from a resolved template', () => {
+  // @ts-expect-error — intentionally passing a key outside the StringKey union; t()'s fallback
+  // returns the key text itself, giving us a real template with placeholders to interpolate.
+  const result = tf('Hello {a}, you have {b} shifts today', 'en', { a: 'Dana', b: 3 });
+  assert.equal(result, 'Hello Dana, you have 3 shifts today');
+});
+
+test('tf: a missing param resolves to empty string — never leaks "{x}" or "undefined"', () => {
+  // @ts-expect-error — fallback-key technique, see block comment above
+  const result = tf('Value: {x}', 'en', {});
+  assert.equal(result, 'Value: ');
+  assert.equal(result.includes('{x}'), false);
+  assert.equal(result.includes('undefined'), false);
+});
+
+test('tf: a key with no placeholders is returned unchanged', () => {
+  assert.equal(tf('nav.hours', 'en', {}), t('nav.hours', 'en'));
+  assert.equal(tf('nav.hours', 'en', { unused: 'x' }), 'Hours');
+});
+
+test('tf: numeric params stringify', () => {
+  // @ts-expect-error — fallback-key technique, see block comment above
+  const zero = tf('Count: {n}', 'en', { n: 0 });
+  // @ts-expect-error — fallback-key technique, see block comment above
+  const fortyTwo = tf('Count: {n}', 'en', { n: 42 });
+  assert.equal(zero, 'Count: 0');
+  assert.equal(fortyTwo, 'Count: 42');
+});
+
+test('tf: respects lang — EN and RU templates for the same key differ', () => {
+  const en = tf('checkin.title', 'en', {});
+  const ru = tf('checkin.title', 'ru', {});
+  assert.equal(en, 'Check in / out');
+  assert.equal(ru, 'Отметка прихода / ухода');
+  assert.notEqual(en, ru);
+});
+
+test('tf: HE-missing key falls back to EN via the underlying t()', () => {
+  // 'hours.noAttended' is present in EN but intentionally not yet filled in HE
+  assert.equal(tf('hours.noAttended', 'he', {}), t('hours.noAttended', 'en'));
 });

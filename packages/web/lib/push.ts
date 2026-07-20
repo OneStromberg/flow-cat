@@ -8,6 +8,7 @@ import {
   type Worker,
 } from '@scourage/worklog-core';
 import { sendTelegram } from './telegram';
+import { resolveLang, type Lang } from './i18n/strings';
 
 export interface PushPayload {
   title: string;
@@ -193,4 +194,24 @@ export async function notifyPhone(
     console.error('notifyPhone failed for', worker.phone, err);
     return 'none';
   }
+}
+
+/**
+ * Fans a message out to a list of recipients, building the message text in each
+ * recipient's own resolved language (never a single shared string) and routing it
+ * through the per-recipient `notifyPhone` push-or-Telegram cutover.
+ *
+ * `Promise.allSettled` so one recipient's failure never affects delivery to the
+ * others; `notifyPhone` already never throws, so this never throws either. An empty
+ * `recipients` list is a no-op.
+ */
+export async function notifyRecipients(
+  gw: SheetsGateway,
+  recipients: Worker[],
+  build: (lang: Lang) => string,
+  opts?: { url?: string; title?: string },
+): Promise<void> {
+  await Promise.allSettled(
+    recipients.map((r) => notifyPhone(gw, r, build(resolveLang(r.lang)), opts)),
+  );
 }
