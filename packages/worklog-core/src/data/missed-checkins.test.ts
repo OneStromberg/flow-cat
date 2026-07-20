@@ -99,6 +99,25 @@ test('a closed (non-open) attendance record never yields a missed check-OUT even
   assert.equal(m.filter((mm) => mm.type === 'out').length, 0);
 });
 
+test('mixed phone forms: assignment 0506… vs attendance 972506… join correctly (no false missed check-in); event phone normalized', async () => {
+  // Worker DID check in, but the assignment stores the local form and attendance the 972 form.
+  const g = seed({
+    ShiftAssignments: [['instance_id','employee_phone','source','status','assigned_at','assigned_by'],
+      ['i1','0506918673','manual','assigned','','']],
+    Attendance: [['id','instance_id','employee_phone','date','check_in_at','check_in_lat','check_in_lng','check_in_photo','check_in_in_geofence','check_out_at','check_out_lat','check_out_lng','check_out_photo','check_out_in_geofence','hours','status'],
+      ['a1','i1','972506918673','2026-07-01','2026-07-01T08:00:00.000Z','','','','no','','','','','no','','open']],
+  });
+  // Normalized join must find the attendance → NO false "missed check-in" (raw-key join would miss).
+  assert.equal((await findMissedCheckins(g, '2026-07-01T08:15:00.000Z', 10)).filter((m) => m.type === 'in').length, 0);
+
+  // With no attendance, the missed event carries the NORMALIZED phone (972…), so the dedup key + push lookup are consistent.
+  const g2 = seed({ ShiftAssignments: [['instance_id','employee_phone','source','status','assigned_at','assigned_by'],
+    ['i1','0506918673','manual','assigned','','']] });
+  const m2 = await findMissedCheckins(g2, '2026-07-01T08:15:00.000Z', 10);
+  assert.equal(m2.length, 1);
+  assert.equal(m2[0].employeePhone, '972506918673');
+});
+
 test('lastAlertAtByKey returns latest sent_at; shouldRealert respects the window', async () => {
   const g = createMemoryGateway({ Alerts: [
     ['instance_id','employee_phone','type','sent_at'],

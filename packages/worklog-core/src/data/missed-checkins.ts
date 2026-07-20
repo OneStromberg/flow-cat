@@ -1,6 +1,7 @@
 import { objectToRow, rowsToObjects, type SheetsGateway } from '@scourage/sheets-helper';
 import { localWallClockToUTC } from '../time/dates';
 import { listPlaces, placeGraceMins } from './places';
+import { normalizePhone } from './phone';
 
 export interface MissedEvent {
   instanceId: string;
@@ -63,7 +64,11 @@ export async function findMissedCheckins(
   const attByKey = new Map<string, Record<string, string>[]>();
   for (const o of attObjs) {
     const iid = (o.instance_id ?? '').trim();
-    const phone = (o.employee_phone ?? '').trim();
+    // Normalize so a worker stored under mixed phone forms (e.g. 0506918673 in
+    // assignments vs 972506918673 in attendance) joins correctly and dedups to
+    // one key — otherwise the join misses (false "missed check-in") and the
+    // alert dedup key splits (duplicate alerts).
+    const phone = normalizePhone((o.employee_phone ?? '').trim());
     if (!iid || !phone) continue;
     const key = `${iid}|${phone}`;
     const arr = attByKey.get(key) ?? [];
@@ -75,7 +80,7 @@ export async function findMissedCheckins(
 
   for (const asgn of assignments) {
     const instanceId = (asgn.instance_id ?? '').trim();
-    const phone = (asgn.employee_phone ?? '').trim();
+    const phone = normalizePhone((asgn.employee_phone ?? '').trim());
     if (!instanceId || !phone) continue;
 
     const inst = instanceById.get(instanceId);
