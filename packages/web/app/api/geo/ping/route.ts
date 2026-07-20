@@ -10,7 +10,8 @@ import {
   todayISO,
   recordAlerts,
 } from '@scourage/worklog-core';
-import { notifyAdmins, pickAdminChatIds } from '../../../../lib/telegram';
+import { notifyRecipients } from '../../../../lib/push';
+import { tf } from '../../../../lib/i18n/strings';
 
 export const runtime = 'nodejs';
 
@@ -79,9 +80,16 @@ export async function POST(req: Request) {
         const key = `${instanceId}|${worker.phone}|offsite`;
         const nowIso = new Date().toISOString();
         if (await gw.tryClaim(key, 15 * 60_000)) {
-          await notifyAdmins(
-            `📍 ${worker.name} is NOT on site at ${inst.location} — 📞 ${worker.phone}`,
-            pickAdminChatIds(await listWorkers(gw)),
+          const admins = (await listWorkers(gw)).filter((w) => w.admin);
+          await notifyRecipients(
+            gw,
+            admins,
+            (lang) => tf('alert.offsite', lang, {
+              name: worker.name,
+              location: inst.location,
+              phone: worker.phone,
+            }),
+            { url: '/admin/attendance' },
           );
           await recordAlerts(gw, [
             {

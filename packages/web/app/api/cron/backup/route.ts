@@ -1,7 +1,8 @@
 import { getGateway } from '../../../../lib/sheets';
 import { backupSpreadsheet } from '../../../../lib/backup';
 import { listWorkers } from '@scourage/worklog-core';
-import { notifyAdmins, pickAdminChatIds } from '../../../../lib/telegram';
+import { notifyRecipients } from '../../../../lib/push';
+import { tf } from '../../../../lib/i18n/strings';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -16,10 +17,11 @@ export async function GET(req: Request) {
 
   try {
     const gw = getGateway();
-    const admins = pickAdminChatIds(await listWorkers(gw));
-    await notifyAdmins(
-      r.ok ? `💾 Backup saved: ${r.name}` : `⚠️ Backup failed: ${r.reason}`,
+    const admins = (await listWorkers(gw)).filter((w) => w.admin);
+    await notifyRecipients(
+      gw,
       admins,
+      (lang) => (r.ok ? tf('alert.backup', lang, { name: r.name }) : tf('alert.backupFailed', lang, { reason: r.reason })),
     );
   } catch (notifyErr) {
     console.error('backup cron notify failed:', notifyErr);

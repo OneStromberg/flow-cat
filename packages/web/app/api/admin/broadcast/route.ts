@@ -2,7 +2,7 @@ import type { WorkerFilters } from '../../../../lib/filter-workers';
 import { filterWorkers } from '../../../../lib/filter-workers';
 import { getGateway } from '../../../../lib/sheets';
 import { requireManagerOrAdmin } from '../../../../lib/session';
-import { sendToChatIds } from '../../../../lib/telegram';
+import { notifyRecipients } from '../../../../lib/push';
 import { listWorkers } from '@scourage/worklog-core';
 
 export const runtime = 'nodejs';
@@ -26,7 +26,8 @@ export async function POST(req: Request) {
   }
 
   try {
-    const workers = await listWorkers(getGateway());
+    const gw = getGateway();
+    const workers = await listWorkers(gw);
 
     // Coerce filters object to WorkerFilters shape with defaults
     const filters: WorkerFilters = {
@@ -47,13 +48,9 @@ export async function POST(req: Request) {
 
     const filtered = filterWorkers(workers, filters);
 
-    const recipients = filtered
-      .filter((w) => (w.telegramChatId ?? '').trim() !== '')
-      .map((w) => (w.telegramChatId ?? '').trim());
+    await notifyRecipients(gw, filtered, () => message, { url: '/app' });
 
-    const sent = await sendToChatIds(recipients, message);
-
-    return Response.json({ ok: true, matched: filtered.length, sent });
+    return Response.json({ ok: true, matched: filtered.length });
   } catch (err) {
     console.error('broadcast failed:', err);
     return Response.json({ error: 'broadcast failed' }, { status: 503 });

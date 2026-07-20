@@ -67,6 +67,16 @@ const EN = {
   'push.denied': 'Notifications are blocked — enable them in your browser settings.',
   'push.iosInstallFirst': 'On iPhone, install the app first (Share → Add to Home Screen), then turn on alerts.',
   'push.turnOff': 'Turn off',
+  'alert.earlyCheckin': '⏱ Early check-in\n📍 {location}\n👤 {name}\n🕐 {time} (starts {start})\n📞 {phone}',
+  'alert.earlyCheckout': '⚠️ Early check-out\n📍 {location}\n👤 {name}\n🕐 {time} (shift ends {end})\n📞 {phone}',
+  'alert.shortShift': '⚠️ Very short shift\n📍 {location}\n👤 {name}\n🕐 {mins} min\n📞 {phone}',
+  'alert.coverageGap': "🔁 Coverage gap\n📍 {location}\n👤 {name} left before the next shift's worker checked in\n📞 {phone}",
+  'alert.offsite': '📍 {name} is NOT on site at {location} — 📞 {phone}',
+  'alert.shiftGen': '🗓 Shift generator: {created} new instances, {seeded} assignments seeded (through {horizonEnd}).',
+  'alert.shiftGenFailed': '⚠️ Shift generator FAILED — check logs.',
+  'alert.backup': '💾 Backup saved: {name}',
+  'alert.backupFailed': '⚠️ Backup failed: {reason}',
+  'alert.shiftAccepted': '✅ Shift accepted\n📍 {location}{label}\n👤 {name}\n📞 {phone}\n🔗 {cardUrl}',
 } as const;
 
 export type StringKey = keyof typeof EN;
@@ -137,6 +147,16 @@ const RU: Record<StringKey, string> = {
   'push.denied': 'Уведомления заблокированы — включите их в настройках браузера.',
   'push.iosInstallFirst': 'На iPhone сначала установите приложение (Поделиться → На экран «Домой»), затем включите уведомления.',
   'push.turnOff': 'Отключить',
+  'alert.earlyCheckin': '⏱ Ранний приход\n📍 {location}\n👤 {name}\n🕐 {time} (начало {start})\n📞 {phone}',
+  'alert.earlyCheckout': '⚠️ Ранний уход\n📍 {location}\n👤 {name}\n🕐 {time} (смена заканчивается {end})\n📞 {phone}',
+  'alert.shortShift': '⚠️ Очень короткая смена\n📍 {location}\n👤 {name}\n🕐 {mins} мин\n📞 {phone}',
+  'alert.coverageGap': '🔁 Разрыв подмены\n📍 {location}\n👤 {name} ушёл(-ла) до прихода сотрудника следующей смены\n📞 {phone}',
+  'alert.offsite': '📍 {name} НЕ на месте ({location}) — 📞 {phone}',
+  'alert.shiftGen': '🗓 Генератор смен: {created} новых смен, {seeded} назначений создано (по {horizonEnd}).',
+  'alert.shiftGenFailed': '⚠️ Генератор смен ОШИБКА — проверьте логи.',
+  'alert.backup': '💾 Бэкап сохранён: {name}',
+  'alert.backupFailed': '⚠️ Ошибка бэкапа: {reason}',
+  'alert.shiftAccepted': '✅ Смена принята\n📍 {location}{label}\n👤 {name}\n📞 {phone}\n🔗 {cardUrl}',
 };
 
 // Hebrew is completed progressively — Partial is intentional; t() falls back he → en.
@@ -171,6 +191,16 @@ const HE: Partial<Record<StringKey, string>> = {
   'push.notNow': 'לא עכשיו',
   'push.on': 'התראות פעילות',
   'push.sendTest': 'שלח בדיקה',
+  'alert.earlyCheckin': '⏱ הגעה מוקדמת\n📍 {location}\n👤 {name}\n🕐 {time} (התחלה {start})\n📞 {phone}',
+  'alert.earlyCheckout': '⚠️ עזיבה מוקדמת\n📍 {location}\n👤 {name}\n🕐 {time} (סיום {end})\n📞 {phone}',
+  'alert.shortShift': "⚠️ משמרת קצרה מאוד\n📍 {location}\n👤 {name}\n🕐 {mins} דק'\n📞 {phone}",
+  'alert.coverageGap': '🔁 פער כיסוי\n📍 {location}\n👤 {name} עזב/ה לפני שהעובד/ת של המשמרת הבאה הגיע/ה\n📞 {phone}',
+  'alert.offsite': '📍 {name} לא נמצא/ת באתר {location} — 📞 {phone}',
+  'alert.shiftGen': '🗓 מחולל משמרות: {created} משמרות חדשות, {seeded} שיבוצים נוצרו (עד {horizonEnd}).',
+  'alert.shiftGenFailed': '⚠️ מחולל המשמרות נכשל — בדקו לוגים.',
+  'alert.backup': '💾 גיבוי נשמר: {name}',
+  'alert.backupFailed': '⚠️ הגיבוי נכשל: {reason}',
+  'alert.shiftAccepted': '✅ המשמרת התקבלה\n📍 {location}{label}\n👤 {name}\n📞 {phone}\n🔗 {cardUrl}',
   // …remaining HE keys filled progressively; missing ones fall back to EN.
 };
 

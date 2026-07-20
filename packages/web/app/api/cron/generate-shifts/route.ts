@@ -1,6 +1,7 @@
 import { getGateway } from '../../../../lib/sheets';
 import { generateInstances, listWorkers } from '@scourage/worklog-core';
-import { notifyAdmins, pickAdminChatIds } from '../../../../lib/telegram';
+import { notifyRecipients } from '../../../../lib/push';
+import { tf } from '../../../../lib/i18n/strings';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -13,14 +14,18 @@ export async function GET(req: Request) {
   const gw = getGateway();
   try {
     const r = await generateInstances(gw, today);
-    const admins = pickAdminChatIds(await listWorkers(gw));
-    await notifyAdmins(`🗓 Shift generator: ${r.instancesCreated} new instances, ${r.assignmentsSeeded} assignments seeded (through ${r.horizonEnd}).`, admins);
+    const admins = (await listWorkers(gw)).filter((w) => w.admin);
+    await notifyRecipients(gw, admins, (lang) => tf('alert.shiftGen', lang, {
+      created: r.instancesCreated,
+      seeded: r.assignmentsSeeded,
+      horizonEnd: r.horizonEnd,
+    }));
     return Response.json({ ok: true, ...r });
   } catch (err) {
     console.error('generate-shifts cron failed:', err);
     try {
-      const admins = pickAdminChatIds(await listWorkers(gw));
-      await notifyAdmins('⚠️ Shift generator FAILED — check logs.', admins);
+      const admins = (await listWorkers(gw)).filter((w) => w.admin);
+      await notifyRecipients(gw, admins, (lang) => tf('alert.shiftGenFailed', lang, {}));
     } catch (notifyErr) {
       console.error('generate-shifts failure-notify failed:', notifyErr);
     }

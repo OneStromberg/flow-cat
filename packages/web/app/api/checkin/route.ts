@@ -15,8 +15,10 @@ import {
   todayISO,
   localWallClockToUTC,
   toE164,
+  type Worker,
 } from '@scourage/worklog-core';
-import { notifyAdmins, pickAdminChatIds } from '../../../lib/telegram';
+import { notifyRecipients } from '../../../lib/push';
+import { tf } from '../../../lib/i18n/strings';
 
 export const runtime = 'nodejs';
 
@@ -140,8 +142,19 @@ export async function POST(req: Request) {
       try {
         const startMs = Date.parse(localWallClockToUTC(instance.date, instance.start, COMPANY_TZ));
         if (Number.isFinite(startMs) && startMs - Date.parse(at) > 15 * 60000) {
-          const admins = pickAdminChatIds(await listWorkers(gw));
-          await notifyAdmins(`⏱ Early check-in\n📍 ${instance.location}\n👤 ${worker.name}\n🕐 ${hhmm(at, COMPANY_TZ)} (starts ${instance.start})\n📞 ${toE164(worker.phone)}`, admins);
+          const admins = (await listWorkers(gw)).filter((w) => w.admin);
+          await notifyRecipients(
+            gw,
+            admins,
+            (lang) => tf('alert.earlyCheckin', lang, {
+              location: instance.location,
+              name: worker.name,
+              time: hhmm(at, COMPANY_TZ),
+              start: instance.start,
+              phone: toE164(worker.phone),
+            }),
+            { url: '/admin/attendance' },
+          );
         }
       } catch (e) { console.error('early-checkin alert failed:', e); }
       return Response.json({ ok: true, inGeofence });
@@ -166,13 +179,24 @@ export async function POST(req: Request) {
       const endMs = Date.parse(localWallClockToUTC(endDate, instance.end, COMPANY_TZ));
 
       // Fetch admins once — shared by all alert blocks below (best-effort)
-      let admins: string[] = [];
-      try { admins = pickAdminChatIds(await listWorkers(gw)); } catch { /* no admins available */ }
+      let admins: Worker[] = [];
+      try { admins = (await listWorkers(gw)).filter((w) => w.admin); } catch { /* no admins available */ }
 
       // RULE 2: Early-checkout alert (>15 min before scheduled end)
       if (Number.isFinite(endMs) && endMs - Date.parse(at) > 15 * 60000) {
         try {
-          await notifyAdmins(`⚠️ Early check-out\n📍 ${instance.location}\n👤 ${worker.name}\n🕐 ${hhmm(at, COMPANY_TZ)} (shift ends ${instance.end})\n📞 ${toE164(worker.phone)}`, admins);
+          await notifyRecipients(
+            gw,
+            admins,
+            (lang) => tf('alert.earlyCheckout', lang, {
+              location: instance.location,
+              name: worker.name,
+              time: hhmm(at, COMPANY_TZ),
+              end: instance.end,
+              phone: toE164(worker.phone),
+            }),
+            { url: '/admin/attendance' },
+          );
         } catch (e) { console.error('early-checkout alert failed:', e); }
       }
 
@@ -180,7 +204,17 @@ export async function POST(req: Request) {
       try {
         const mins = Math.round(Number(result.hours) * 60);
         if (Number.isFinite(mins) && mins < 10) {
-          await notifyAdmins(`⚠️ Very short shift\n📍 ${instance.location}\n👤 ${worker.name}\n🕐 ${mins} min\n📞 ${toE164(worker.phone)}`, admins);
+          await notifyRecipients(
+            gw,
+            admins,
+            (lang) => tf('alert.shortShift', lang, {
+              location: instance.location,
+              name: worker.name,
+              mins,
+              phone: toE164(worker.phone),
+            }),
+            { url: '/admin/attendance' },
+          );
         }
       } catch (e) { console.error('short-shift alert failed:', e); }
 
@@ -201,7 +235,16 @@ export async function POST(req: Request) {
           if (otherPhones.length === 0) continue;
           const nextAtt = await listAttendance(gw, { instanceId: next.id });
           if (nextAtt.some((a) => a.status === 'open')) continue;
-          await notifyAdmins(`🔁 Coverage gap\n📍 ${instance.location}\n👤 ${worker.name} left before the next shift's worker checked in\n📞 ${toE164(worker.phone)}`, admins);
+          await notifyRecipients(
+            gw,
+            admins,
+            (lang) => tf('alert.coverageGap', lang, {
+              location: instance.location,
+              name: worker.name,
+              phone: toE164(worker.phone),
+            }),
+            { url: '/admin/attendance' },
+          );
           break;
         }
       } catch (e) { console.error('coverage-gap alert failed:', e); }

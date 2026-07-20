@@ -1,7 +1,9 @@
 import { getGateway } from '../../../../lib/sheets';
 import { getSigningKey } from '../../../../lib/session';
 import { verifyLinkToken } from '../../../../lib/telegram-link';
-import { sendTelegram, notifyAdmins, pickAdminChatIds, answerCallbackQuery } from '../../../../lib/telegram';
+import { sendTelegram, answerCallbackQuery } from '../../../../lib/telegram';
+import { notifyRecipients } from '../../../../lib/push';
+import { tf } from '../../../../lib/i18n/strings';
 import { linkTelegramChat, findWorker, findWorkerByChatId, listTemplates, listPlaces, listWorkers, toE164 } from '@scourage/worklog-core';
 
 export const runtime = 'nodejs';
@@ -28,7 +30,19 @@ export async function POST(req: Request) {
           const origin = new URL(req.url).origin;
           const cardUrl = `${origin}/admin/workers/${encodeURIComponent(worker?.phone ?? '')}`;
           const label = tpl?.label ? ` — ${tpl.label}` : '';
-          await notifyAdmins(`✅ Shift accepted\n📍 ${tpl?.location ?? 'a shift'}${label}\n👤 ${worker?.name ?? 'Someone'}\n📞 ${toE164(worker?.phone ?? '')}\n🔗 ${cardUrl}`, pickAdminChatIds(await listWorkers(gw)));
+          const admins = (await listWorkers(gw)).filter((w) => w.admin);
+          await notifyRecipients(
+            gw,
+            admins,
+            (lang) => tf('alert.shiftAccepted', lang, {
+              location: tpl?.location ?? 'a shift',
+              label,
+              name: worker?.name ?? 'Someone',
+              phone: toE164(worker?.phone ?? ''),
+              cardUrl,
+            }),
+            { url: cardUrl },
+          );
           await answerCallbackQuery(cq.id, 'Спасибо! Менеджер свяжется с вами.');
         } else if (data.startsWith('contact:')) {
           const templateId = data.slice('contact:'.length);
